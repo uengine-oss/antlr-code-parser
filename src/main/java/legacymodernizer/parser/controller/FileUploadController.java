@@ -19,7 +19,7 @@ public class FileUploadController {
         this.analysisProcessingService = analysisProcessingService;
     }
 
-    @PostMapping("/upload")
+    @PostMapping("/uploadFile")
     public ResponseEntity<Map<String, String>> handleFileUpload(@RequestParam("file") MultipartFile file) {
         try {
             return analysisProcessingService.analsisFile(file);
