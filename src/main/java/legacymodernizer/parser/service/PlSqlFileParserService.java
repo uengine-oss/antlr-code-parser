@@ -44,8 +44,9 @@ public class PlSqlFileParserService {
         CustomPlSqlListener listener = new CustomPlSqlListener(tokens);
         walker.walk(listener, tree);
     
-        listener.printStructure();
-    
+        // listener.printStructure();
+        System.out.println("\n결과 : \n");
+
         System.out.println(listener.getRoot().toJson());
     
         String outputDir = "C:\\Users\\roede\\Desktop\\uEngine\\Antlr-Server\\result\\analysis";

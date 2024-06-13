@@ -21,13 +21,13 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
     private void enterStatement(String statementType, int line) {
         Node currentNode = new Node(statementType, line, nodeStack.peek());
         nodeStack.push(currentNode);
-        System.out.println("Enter " + statementType + " Statement Line: " + line);
+        // System.out.println("Enter " + statementType + " Statement Line: " + line);
     }
 
     private void exitStatement(String statementType, int line) {
         Node node = nodeStack.pop();
         node.endLine = line;
-        System.out.println("Exit " + statementType + " Statement Line: " + line);
+        // System.out.println("Exit " + statementType + " Statement Line: " + line);
     }
 
     @Override

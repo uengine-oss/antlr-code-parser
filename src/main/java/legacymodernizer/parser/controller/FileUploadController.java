@@ -4,6 +4,7 @@ package legacymodernizer.parser.controller;
 import java.nio.file.Files;
 import java.util.Map;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.io.File;
 import org.springframework.http.ResponseEntity;
 import org.springframework.core.io.Resource;
@@ -47,6 +48,17 @@ public class FileUploadController {
     @PostMapping("/analysis")
     public ResponseEntity<Resource> analysisContext(@RequestParam("fileName") String fileName) {
         try {
+            String baseFileName = fileName.substring(0, fileName.lastIndexOf('.'));
+            Path resultPath = Paths.get("C:\\Users\\roede\\Desktop\\uEngine\\Antlr-Server\\result\\analysis", baseFileName + ".json");
+            
+            if (Files.exists(resultPath)) {
+                ByteArrayResource resource = new ByteArrayResource(Files.readAllBytes(resultPath));
+                System.out.println("\n기존 파일 사용\n");
+                return ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                        .body(resource);
+            }
+    
             File analysisFile = plSqlFileParserService.parseAndSaveStructure(fileName);
             Path path = analysisFile.toPath();
             ByteArrayResource resource = new ByteArrayResource(Files.readAllBytes(path));
