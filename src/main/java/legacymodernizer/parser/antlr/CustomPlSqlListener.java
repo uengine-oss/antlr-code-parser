@@ -5,6 +5,7 @@ import java.util.Stack;
 import org.antlr.v4.runtime.TokenStream;
 
 public class CustomPlSqlListener extends PlSqlParserBaseListener {
+    @SuppressWarnings("unused")
     private TokenStream tokens;
     private Stack<Node> nodeStack = new Stack<>();
     private Node root = new Node("ROOT", 0, null); // 루트 노드

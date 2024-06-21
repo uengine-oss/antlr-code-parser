@@ -26,10 +26,13 @@ import legacymodernizer.parser.antlr.PlSqlParser;
 @Service
 public class PlSqlFileParserService {
 
+    private static final String PLSQL_DIR = System.getenv("PLSQL_DIR") != null ? System.getenv("PLSQL_DIR") : "C:\\Users\\roede\\Desktop\\uEngine\\Antlr-Server\\result\\plsql";
+    private static final String ANALYSIS_DIR = System.getenv("ANALYSIS_DIR") != null ? System.getenv("ANALYSIS_DIR") : "C:\\Users\\roede\\Desktop\\uEngine\\Antlr-Server\\result\\analysis";
+
     public File parseAndSaveStructure(String fileName) throws IOException {
         System.out.println("\n분석시작\n");
 
-        InputStream in = new FileInputStream("result/plsql/" + fileName);
+        InputStream in = new FileInputStream(PLSQL_DIR + "\\" + fileName);
         CharStream s = CharStreams.fromStream(in);
     
         CaseChangingCharStream upper = new CaseChangingCharStream(s, true);
@@ -49,7 +52,7 @@ public class PlSqlFileParserService {
 
         System.out.println(listener.getRoot().toJson());
     
-        String outputDir = "C:\\Users\\roede\\Desktop\\uEngine\\Antlr-Server\\result\\analysis";
+        String outputDir = ANALYSIS_DIR;
         File directory = new File(outputDir);
         if (!directory.exists()) {
             boolean dirsCreated = directory.mkdirs(); 
@@ -72,7 +75,7 @@ public class PlSqlFileParserService {
     public Map<String, String> saveFile(MultipartFile file) throws IOException {
         String fileName = file.getOriginalFilename();
         // Windows 환경에서의 절대 경로 설정
-        String baseDir = "C:\\Users\\roede\\Desktop\\uEngine\\Antlr-Server\\result\\plsql"; // 절대 경로로 수정
+        String baseDir = PLSQL_DIR;
         File directory = new File(baseDir);
         if (!directory.exists()) {
             boolean dirsCreated = directory.mkdirs(); // 디렉토리가 없으면 생성

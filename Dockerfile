@@ -10,4 +10,4 @@ COPY --from=builder /app/target/*SNAPSHOT.jar /app.jar
 
 EXPOSE 8081
 
-CMD ["java", "-Xms512m", "-Xmx2048m", "-jar", "/app.jar"]
+CMD ["java", "-Xms512m", "-Xmx4096m", "-jar", "/app.jar"]
