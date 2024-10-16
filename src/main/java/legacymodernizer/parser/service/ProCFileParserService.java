@@ -19,32 +19,32 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import legacymodernizer.parser.antlr.CaseChangingCharStream;
-import legacymodernizer.parser.antlr.CustomPlSqlListener;
-import legacymodernizer.parser.antlr.PlSqlLexer;
-import legacymodernizer.parser.antlr.PlSqlParser;
+import legacymodernizer.parser.antlr.CustomProCListener;
+import legacymodernizer.parser.antlr.ProCLexer;
+import legacymodernizer.parser.antlr.ProCParser;
 
 @Service
-public class PlSqlFileParserService {
+public class ProCFileParserService {
 
-    private static final String PLSQL_DIR = System.getenv("PLSQL_DIR") != null ? System.getenv("PLSQL_DIR") : "/Users/jhyg/Desktop/legacy-modernizer/Antlr-Server/plsql";
+    private static final String PROC_DIR = System.getenv("PROC_DIR") != null ? System.getenv("PROC_DIR") : "/Users/jhyg/Desktop/legacy-modernizer/Antlr-Server/proc";
     private static final String ANALYSIS_DIR = System.getenv("ANALYSIS_DIR") != null ? System.getenv("ANALYSIS_DIR") : "/Users/jhyg/Desktop/legacy-modernizer/Antlr-Server/analysis";
 
     public File parseAndSaveStructure(String fileName) throws IOException {
         System.out.println("\n분석시작\n");
 
-        InputStream in = new FileInputStream(PLSQL_DIR + "\\" + fileName);
+        InputStream in = new FileInputStream(PROC_DIR + "\\" + fileName);
         CharStream s = CharStreams.fromStream(in);
     
         CaseChangingCharStream upper = new CaseChangingCharStream(s, true);
     
-        PlSqlLexer lexer = new PlSqlLexer(upper);
+        ProCLexer lexer = new ProCLexer(upper);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
     
-        PlSqlParser parser = new PlSqlParser(tokens);
-        ParserRuleContext tree = parser.sql_script();
+        ProCParser parser = new ProCParser(tokens);
+        ParserRuleContext tree = parser.compoundStatement();
     
         ParseTreeWalker walker = new ParseTreeWalker();
-        CustomPlSqlListener listener = new CustomPlSqlListener(tokens);
+        CustomProCListener listener = new CustomProCListener(tokens);
         walker.walk(listener, tree);
     
         // listener.printStructure();
@@ -75,7 +75,7 @@ public class PlSqlFileParserService {
     public Map<String, String> saveFile(MultipartFile file) throws IOException {
         String fileName = file.getOriginalFilename();
         // Windows 환경에서의 절대 경로 설정
-        String baseDir = PLSQL_DIR;
+        String baseDir = PROC_DIR;
         File directory = new File(baseDir);
         if (!directory.exists()) {
             boolean dirsCreated = directory.mkdirs(); // 디렉토리가 없으면 생성

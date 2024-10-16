@@ -17,14 +17,15 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import legacymodernizer.parser.service.PlSqlFileParserService;
+// import legacymodernizer.parser.service.ProCFileParserService;
 
 @RestController
 public class FileUploadController {
 
-    private final PlSqlFileParserService plSqlFileParserService;
+    private final PlSqlFileParserService PlSqlFileParserService;
 
-    public FileUploadController(PlSqlFileParserService plSqlFileParserService) {
-        this.plSqlFileParserService = plSqlFileParserService;
+    public FileUploadController(PlSqlFileParserService PlSqlFileParserService) {
+        this.PlSqlFileParserService = PlSqlFileParserService;
     }
 
     @PostMapping("/fileUpload")
@@ -35,7 +36,7 @@ public class FileUploadController {
         }
 
         try {
-            Map<String, String> fileInfo = plSqlFileParserService.saveFile(file);
+            Map<String, String> fileInfo = PlSqlFileParserService.saveFile(file);
             System.out.println("\n저장완료\n");
             return new ResponseEntity<>(fileInfo, HttpStatus.OK);
         } catch (Exception e) {
@@ -49,7 +50,7 @@ public class FileUploadController {
     public ResponseEntity<Resource> analysisContext(@RequestParam("fileName") String fileName) {
         // 환경 변수를 사용하여 경로 설정
         String analysisDir = System.getenv("ANALYSIS_DIR") != null ? System.getenv("ANALYSIS_DIR")
-                : "C:\\Users\\roede\\Desktop\\uEngine\\Antlr-Server\\result\\analysis";
+                : "/Users/jhyg/Desktop/legacy-modernizer/Antlr-Server/analysis";
 
         try {
             String baseFileName = fileName.substring(0, fileName.lastIndexOf('.'));
@@ -63,7 +64,7 @@ public class FileUploadController {
                         .body(resource);
             }
 
-            File analysisFile = plSqlFileParserService.parseAndSaveStructure(fileName);
+            File analysisFile = PlSqlFileParserService.parseAndSaveStructure(fileName);
             Path path = analysisFile.toPath();
             ByteArrayResource resource = new ByteArrayResource(Files.readAllBytes(path));
             System.out.println("\n분석완료\n");
