@@ -26,9 +26,13 @@ import legacymodernizer.parser.antlr.PlSqlParser;
 @Service
 public class PlSqlFileParserService {
 
-    private static final String PLSQL_DIR = System.getenv("PLSQL_DIR") != null ? System.getenv("PLSQL_DIR") : "/Users/jhyg/Desktop/legacy-modernizer/Antlr-Server/plsql";
-    private static final String ANALYSIS_DIR = System.getenv("ANALYSIS_DIR") != null ? System.getenv("ANALYSIS_DIR") : "/Users/jhyg/Desktop/legacy-modernizer/Antlr-Server/analysis";
-
+    // private static final String PLSQL_DIR = System.getenv("PLSQL_DIR") != null ? System.getenv("PLSQL_DIR") : "C:\\Users\\roede\\Desktop\\uEngine\\Antlr-Server\\result\\plsql";
+    // private static final String ANALYSIS_DIR = System.getenv("ANALYSIS_DIR") != null ? System.getenv("ANALYSIS_DIR") : "C:\\Users\\roede\\Desktop\\uEngine\\Antlr-Server\\result\\analysis";
+    
+    private static final String PROJECT_DIR = System.getProperty("user.dir");
+    private static final String PLSQL_DIR = System.getenv("PLSQL_DIR") != null ? System.getenv("PLSQL_DIR") : PROJECT_DIR + File.separator + "result" + File.separator + "plsql";
+    private static final String ANALYSIS_DIR = System.getenv("ANALYSIS_DIR") != null ? System.getenv("ANALYSIS_DIR") : PROJECT_DIR + File.separator + "result" + File.separator + "analysis";
+    
     public File parseAndSaveStructure(String fileName) throws IOException {
         System.out.println("\n분석시작\n");
 
