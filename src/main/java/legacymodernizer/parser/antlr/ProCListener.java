@@ -1,4 +1,4 @@
-// Generated from ProC.g4 by ANTLR 4.13.2
+package legacymodernizer.parser.antlr;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 /**
