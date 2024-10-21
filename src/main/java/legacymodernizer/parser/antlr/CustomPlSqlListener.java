@@ -231,6 +231,16 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
         exitStatement("EXCEPTION", ctx.getStop().getLine());
     }
 
+    @Override
+    public void enterCall_statement(PlSqlParser.Call_statementContext ctx) {
+        enterStatement("CALL", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitCall_statement(PlSqlParser.Call_statementContext ctx) {
+        enterStatement("CALL", ctx.getStart().getLine());
+    }
+
     // @Override
     // public void enterStatement(PlSqlParser.StatementContext ctx) {
     //     enterStatement("STATEMENT", ctx.getStart().getLine());
