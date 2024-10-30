@@ -4,6 +4,9 @@ import java.util.Stack;
 
 import org.antlr.v4.runtime.TokenStream;
 
+import legacymodernizer.parser.antlr.proc.ProCBaseListener;
+import legacymodernizer.parser.antlr.proc.ProCParser;
+
 public class CustomProCListener extends ProCBaseListener {
     @SuppressWarnings("unused")
     private TokenStream tokens;

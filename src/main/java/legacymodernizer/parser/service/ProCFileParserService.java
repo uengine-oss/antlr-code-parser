@@ -20,8 +20,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import legacymodernizer.parser.antlr.CaseChangingCharStream;
 import legacymodernizer.parser.antlr.CustomProCListener;
-import legacymodernizer.parser.antlr.ProCLexer;
-import legacymodernizer.parser.antlr.ProCParser;
+import legacymodernizer.parser.antlr.proc.ProCLexer;
+import legacymodernizer.parser.antlr.proc.ProCParser;
 
 @Service
 public class ProCFileParserService {

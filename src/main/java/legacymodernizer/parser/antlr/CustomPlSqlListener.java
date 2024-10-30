@@ -1,7 +1,8 @@
 package legacymodernizer.parser.antlr;
 
 import java.util.Stack;
-
+import legacymodernizer.parser.antlr.plsql.PlSqlParserBaseListener;
+import legacymodernizer.parser.antlr.plsql.PlSqlParser;
 import org.antlr.v4.runtime.TokenStream;
 
 public class CustomPlSqlListener extends PlSqlParserBaseListener {
