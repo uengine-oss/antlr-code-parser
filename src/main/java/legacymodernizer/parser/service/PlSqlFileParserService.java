@@ -30,13 +30,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class PlSqlFileParserService {
-
-    // PL/SQL 파일이 저장될 디렉토리 경로
-    // 환경변수에서 먼저 확인하고, 없으면 기본 경로 사용
-    private static final String PLSQL_DIR = System.getenv("PLSQL_DIR") != null ? 
-        System.getenv("PLSQL_DIR") : 
-        new File(System.getProperty("user.dir")).getParent() + File.separator + "result" + File.separator + "plsql";
-
         
     // SQL 객체(패키지, 프로시저, 함수 등)의 이름을 추출하기 위한 정규식 패턴
     private static final Pattern SQL_OBJECT_PATTERN = Pattern.compile(
@@ -51,13 +44,13 @@ public class PlSqlFileParserService {
      * @return 파일명, 파일내용, 객체명을 포함한 Map
      * @throws IOException 파일 처리 중 발생하는 예외
      */
-    public Map<String, String> saveFile(MultipartFile file) throws IOException {
+    public Map<String, String> saveFile(MultipartFile file, String plsqlDir) throws IOException {
         String fileName = file.getOriginalFilename();
-        File directory = new File(PLSQL_DIR);
+        File directory = new File(plsqlDir);
 
         // 저장 디렉토리가 없으면 생성
         if (!directory.exists() && !directory.mkdirs()) {
-            throw new IOException("디렉토리 생성 실패: " + PLSQL_DIR);
+            throw new IOException("디렉토리 생성 실패: " + plsqlDir);
         }
 
         // 파일 저장 및 내용 분석
@@ -84,7 +77,7 @@ public class PlSqlFileParserService {
      * @return 파일의 내용 문자열
      * @throws IOException 파일 읽기 실패시 발생
      */
-    private String readFileContent(File file) throws IOException {
+    public String readFileContent(File file) throws IOException {
         try {
             // UTF-8로 먼저 시도
             return Files.readString(file.toPath(), StandardCharsets.UTF_8);
@@ -105,8 +98,8 @@ public class PlSqlFileParserService {
      * @param outputPath 결과를 저장할 경로
      * @throws IOException 파일 처리 중 발생하는 예외
      */
-    public void parseAndSaveStructure(String fileName, String outputPath) throws IOException {
-        try (InputStream in = new FileInputStream(new File(PLSQL_DIR, fileName))) {
+    public void parseAndSaveStructure(String fileName, String outputPath, String plsqlDir) throws IOException {
+        try (InputStream in = new FileInputStream(new File(plsqlDir, fileName))) {
             // ANTLR 파서 설정
             CharStream s = CharStreams.fromStream(in);
             CaseChangingCharStream upper = new CaseChangingCharStream(s, true);
@@ -134,7 +127,7 @@ public class PlSqlFileParserService {
      * @param sqlContent SQL 파일 내용
      * @return 추출된 객체 이름, 매칭되지 않으면 null
      */
-    private String extractSqlObjectName(String sqlContent) {
+    public String extractSqlObjectName(String sqlContent) {
         Matcher matcher = SQL_OBJECT_PATTERN.matcher(sqlContent);
         if (matcher.find()) {
             return matcher.group(1);  // 첫 번째 매칭된 객체 이름만 반환
