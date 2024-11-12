@@ -198,6 +198,7 @@ public class FileUploadController {
                 Map<String, String> fileData = new HashMap<>();
                 fileData.put("fileName", fileName);
                 fileData.put("objectName", objectName);
+                fileData.put("fileContent", fileContent);
                 successFiles.add(fileData);
     
                 // 이미 분석된 파일인지 확인
