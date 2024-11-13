@@ -168,7 +168,8 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
         if (!ctx.routine_name().isEmpty()) {
             PlSqlParser.Routine_nameContext routineName = ctx.routine_name(0); // 첫 번째 routine_name 가져오기
             if (routineName.getText().toUpperCase().contains("RAISE")) {
-                statementType = "RAISE";
+                // statementType = "RAISE";
+                return;
             }
         }
         enterStatement(statementType, ctx.getStart().getLine());
@@ -180,7 +181,8 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
         if (!ctx.routine_name().isEmpty()) {
             PlSqlParser.Routine_nameContext routineName = ctx.routine_name(0);
             if (routineName.getText().toUpperCase().contains("RAISE")) {
-                statementType = "RAISE";
+                // statementType = "RAISE";
+                return;
             }
         }
         exitStatement(statementType, ctx.getStop().getLine());
