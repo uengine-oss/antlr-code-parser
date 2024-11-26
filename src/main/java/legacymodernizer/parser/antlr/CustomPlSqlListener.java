@@ -43,6 +43,26 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
     }
 
     @Override
+    public void enterCreate_package(PlSqlParser.Create_packageContext ctx) {
+        enterStatement("PACKAGE_SPEC", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitCreate_package(PlSqlParser.Create_packageContext ctx) {
+        exitStatement("PACKAGE_SPEC", ctx.getStop().getLine());
+    }
+
+    @Override
+    public void enterCreate_package_body(PlSqlParser.Create_package_bodyContext ctx) {
+        enterStatement("PACKAGE_BODY", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitCreate_package_body(PlSqlParser.Create_package_bodyContext ctx) {
+        exitStatement("PACKAGE_BODY", ctx.getStop().getLine());
+    }
+
+    @Override
     public void enterAssignment_statement(PlSqlParser.Assignment_statementContext ctx) {
         enterStatement("ASSIGNMENT", ctx.getStart().getLine());
     }
@@ -162,11 +182,68 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
         exitStatement("EXCEPTION", ctx.getStop().getLine());
     }
 
+
+    @Override
+    public void enterFunction_body(PlSqlParser.Function_bodyContext ctx) {
+        enterStatement("BODY", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitFunction_body(PlSqlParser.Function_bodyContext ctx) {
+        exitStatement("BODY", ctx.getStop().getLine());
+    }
+
+    @Override
+    public void enterProcedure_body(PlSqlParser.Procedure_bodyContext ctx) {
+        enterStatement("BODY", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitProcedure_body(PlSqlParser.Procedure_bodyContext ctx) {
+        exitStatement("BODY", ctx.getStop().getLine());
+    }
+
+
+    @Override
+    public void enterSeq_of_statements(PlSqlParser.Seq_of_statementsContext ctx) {
+        String text = ctx.getText();
+        // 프로시저의 본문인 경우 (BodyContext의 자식이면서 Create_procedure_bodyContext의 손자)
+        if (ctx.getParent() instanceof PlSqlParser.BodyContext && 
+            ctx.getParent().getParent() instanceof PlSqlParser.Create_procedure_bodyContext) {
+            enterStatement("BODY", ctx.getStart().getLine());
+        }
+        // BEGIN-END 블록의 내용인 경우
+        else if (!text.contains("BEGIN") && 
+                 ctx.getParent() instanceof PlSqlParser.BodyContext && 
+                 ctx.getParent().getParent() instanceof PlSqlParser.StatementContext) {
+            
+            enterStatement("TRY", ctx.getStart().getLine());
+        }
+    }
+    
+    @Override
+    public void exitSeq_of_statements(PlSqlParser.Seq_of_statementsContext ctx) {
+        
+        String text = ctx.getText();
+        // 프로시저의 본문인 경우
+        if (ctx.getParent() instanceof PlSqlParser.BodyContext && 
+            ctx.getParent().getParent() instanceof PlSqlParser.Create_procedure_bodyContext) {
+            exitStatement("BODY", ctx.getStop().getLine());
+        }
+        // BEGIN-END 블록의 내용인 경우
+        else if (!text.contains("BEGIN") && 
+                 ctx.getParent() instanceof PlSqlParser.BodyContext && 
+                 ctx.getParent().getParent() instanceof PlSqlParser.StatementContext) {
+            
+            exitStatement("TRY", ctx.getStop().getLine());
+        }
+    }
+    
     @Override
     public void enterCall_statement(PlSqlParser.Call_statementContext ctx) {
         String statementType = "CALL";
         if (!ctx.routine_name().isEmpty()) {
-            PlSqlParser.Routine_nameContext routineName = ctx.routine_name(0); // 첫 번째 routine_name 가져오기
+            PlSqlParser.Routine_nameContext routineName = ctx.routine_name(0); 
             if (routineName.getText().toUpperCase().contains("RAISE")) {
                 // statementType = "RAISE";
                 return;
@@ -189,57 +266,26 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
     }
 
     @Override
-    public void enterCreate_package(PlSqlParser.Create_packageContext ctx) {
-        enterStatement("PACKAGE_SPEC", ctx.getStart().getLine());
-    }
-
-    @Override
-    public void exitCreate_package(PlSqlParser.Create_packageContext ctx) {
-        exitStatement("PACKAGE_SPEC", ctx.getStop().getLine());
-    }
-
-    @Override
-    public void enterCreate_package_body(PlSqlParser.Create_package_bodyContext ctx) {
-        enterStatement("PACKAGE_BODY", ctx.getStart().getLine());
-    }
-
-    @Override
-    public void exitCreate_package_body(PlSqlParser.Create_package_bodyContext ctx) {
-        exitStatement("PACKAGE_BODY", ctx.getStop().getLine());
-    }
-    
-
-    @Override
     public void enterPackage_obj_spec(PlSqlParser.Package_obj_specContext ctx) {
-        enterStatement("PACKAGE_SPEC_MEMBER", ctx.getStart().getLine());
+        enterStatement("PROCEDURE_SPEC", ctx.getStart().getLine());
     }
 
     @Override
     public void exitPackage_obj_spec(PlSqlParser.Package_obj_specContext ctx) {
-        exitStatement("PACKAGE_SPEC_MEMBER", ctx.getStop().getLine());
+        exitStatement("PROCEDURE_SPEC", ctx.getStop().getLine());
     }
 
     @Override
     public void enterPackage_obj_body(PlSqlParser.Package_obj_bodyContext ctx) {
-        String memberType = ctx.function_body() != null ? "FUNCTION" : "PACKAGE_BODY_MEMBER";
+        String memberType = ctx.function_body() != null ? "FUNCTION" : "PROCEDURE";
         enterStatement(memberType, ctx.getStart().getLine());
     }
     
     @Override
     public void exitPackage_obj_body(PlSqlParser.Package_obj_bodyContext ctx) {
-        String memberType = ctx.function_body() != null ? "FUNCTION" : "PACKAGE_BODY_MEMBER";
+        String memberType = ctx.function_body() != null ? "FUNCTION" : "PROCEDURE";
         exitStatement(memberType, ctx.getStop().getLine());
     }
-
-    // @Override
-    // public void enterStatement(PlSqlParser.StatementContext ctx) {
-    // enterStatement("STATEMENT", ctx.getStart().getLine());
-    // }
-
-    // @Override
-    // public void exitStatement(PlSqlParser.StatementContext ctx) {
-    // exitStatement("STATEMENT", ctx.getStop().getLine());
-    // }
 
     // 트리 구조를 출력하는 메서드 (디버깅 목적)
     public void printTree(Node node, String indent) {

@@ -154,7 +154,7 @@ public class FileUploadController {
      */
     @PostMapping("/start")
     public ResponseEntity<?> startAnalysisContext() {
-        
+        System.out.println("시작 버튼 클릭");
         // 분석 디렉토리 생성
         try {
             Path analysisPath = Paths.get(ANALYSIS_DIR);

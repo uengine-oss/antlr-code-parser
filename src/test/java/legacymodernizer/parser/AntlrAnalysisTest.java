@@ -44,8 +44,15 @@ public class AntlrAnalysisTest {
     void testAnalysisWithExistingFiles() throws Exception {
         // src 폴더의 SQL 파일 목록 가져오기
         File srcDir = new File(PLSQL_DIR);
-        File[] sqlFiles = srcDir.listFiles((dir, name) -> name.toLowerCase().endsWith(".sql"));
-        
+        File[] sqlFiles = srcDir.listFiles((dir, name) -> {
+            String lowercaseName = name.toLowerCase();
+            return lowercaseName.endsWith(".sql") || 
+                   lowercaseName.endsWith(".plsql") ||
+                   lowercaseName.endsWith(".pls") ||
+                   lowercaseName.endsWith(".pck") ||
+                   lowercaseName.endsWith(".txt");
+        });   
+
         assertNotNull(sqlFiles, "SQL 파일을 찾을 수 없습니다");
         assertTrue(sqlFiles.length > 0, "분석할 SQL 파일이 없습니다");
         
