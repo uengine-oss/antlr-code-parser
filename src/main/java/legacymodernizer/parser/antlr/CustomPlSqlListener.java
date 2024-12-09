@@ -192,38 +192,53 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
     public void enterSeq_of_statements(PlSqlParser.Seq_of_statementsContext ctx) {
         String text = ctx.getText();
         
-        // 프로시저나 함수의 본문인 경우 (BodyContext의 자식이면서 Create_procedure_bodyContext나 Function_bodyContext의 손자)
-        if (ctx.getParent() instanceof PlSqlParser.BodyContext && 
-            (ctx.getParent().getParent() instanceof PlSqlParser.Create_procedure_bodyContext ||
-             ctx.getParent().getParent() instanceof PlSqlParser.Function_bodyContext ||
-             ctx.getParent().getParent() instanceof PlSqlParser.Procedure_bodyContext)) {
-            enterStatement("BODY", ctx.getStart().getLine());
-        }
+        // // 프로시저나 함수의 본문인 경우 (BodyContext의 자식이면서 Create_procedure_bodyContext나 Function_bodyContext의 손자)
+        // if (ctx.getParent() instanceof PlSqlParser.BodyContext && 
+        //     (ctx.getParent().getParent() instanceof PlSqlParser.Create_procedure_bodyContext ||
+        //      ctx.getParent().getParent() instanceof PlSqlParser.Function_bodyContext ||
+        //      ctx.getParent().getParent() instanceof PlSqlParser.Procedure_bodyContext)) {
+        //     enterStatement("BODY", ctx.getStart().getLine());
+        // }
+        
+        // // BEGIN-END 블록의 내용인 경우
+        // else if (!text.contains("BEGIN") && 
+        //          ctx.getParent() instanceof PlSqlParser.BodyContext && 
+        //          ctx.getParent().getParent() instanceof PlSqlParser.StatementContext) {
+        //     enterStatement("TRY", ctx.getStart().getLine());
+        // }
         
         // BEGIN-END 블록의 내용인 경우
-        else if (!text.contains("BEGIN") && 
-                 ctx.getParent() instanceof PlSqlParser.BodyContext && 
-                 ctx.getParent().getParent() instanceof PlSqlParser.StatementContext) {
+        if (!text.contains("BEGIN") && 
+            ctx.getParent() instanceof PlSqlParser.BodyContext && 
+            ctx.getParent().getParent() instanceof PlSqlParser.StatementContext) {
             enterStatement("TRY", ctx.getStart().getLine());
         }
     }
     
+
     @Override
     public void exitSeq_of_statements(PlSqlParser.Seq_of_statementsContext ctx) {
         String text = ctx.getText();
         
-        // 프로시저나 함수의 본문인 경우
-        if (ctx.getParent() instanceof PlSqlParser.BodyContext && 
-            (ctx.getParent().getParent() instanceof PlSqlParser.Create_procedure_bodyContext ||
-             ctx.getParent().getParent() instanceof PlSqlParser.Function_bodyContext ||
-             ctx.getParent().getParent() instanceof PlSqlParser.Procedure_bodyContext)) {
-            exitStatement("BODY", ctx.getStop().getLine());
-        }
+        // // 프로시저나 함수의 본문인 경우
+        // if (ctx.getParent() instanceof PlSqlParser.BodyContext && 
+        //     (ctx.getParent().getParent() instanceof PlSqlParser.Create_procedure_bodyContext ||
+        //      ctx.getParent().getParent() instanceof PlSqlParser.Function_bodyContext ||
+        //      ctx.getParent().getParent() instanceof PlSqlParser.Procedure_bodyContext)) {
+        //     exitStatement("BODY", ctx.getStop().getLine());
+        // }
         
+        // // BEGIN-END 블록의 내용인 경우
+        // else if (!text.contains("BEGIN") && 
+        //          ctx.getParent() instanceof PlSqlParser.BodyContext && 
+        //          ctx.getParent().getParent() instanceof PlSqlParser.StatementContext) {
+        //     exitStatement("TRY", ctx.getStop().getLine());
+        // }
+
         // BEGIN-END 블록의 내용인 경우
-        else if (!text.contains("BEGIN") && 
-                 ctx.getParent() instanceof PlSqlParser.BodyContext && 
-                 ctx.getParent().getParent() instanceof PlSqlParser.StatementContext) {
+        if (!text.contains("BEGIN") && 
+            ctx.getParent() instanceof PlSqlParser.BodyContext && 
+            ctx.getParent().getParent() instanceof PlSqlParser.StatementContext) {
             exitStatement("TRY", ctx.getStop().getLine());
         }
     }
