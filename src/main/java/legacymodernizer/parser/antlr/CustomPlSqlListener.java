@@ -328,10 +328,10 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
         Object bodyCtx = ctx.function_body() != null ? ctx.function_body() : ctx.procedure_body();
         if (bodyCtx instanceof PlSqlParser.Function_bodyContext) {
             PlSqlParser.Function_bodyContext funcCtx = (PlSqlParser.Function_bodyContext) bodyCtx;
-            exitStatement("SPEC", (funcCtx.IS() != null ? funcCtx.IS() : funcCtx.AS()).getSymbol().getLine() - 1);
+            exitStatement("SPEC", (funcCtx.IS() != null ? funcCtx.IS() : funcCtx.AS()).getSymbol().getLine());
         } else {
             PlSqlParser.Procedure_bodyContext procCtx = (PlSqlParser.Procedure_bodyContext) bodyCtx;
-            exitStatement("SPEC", (procCtx.IS() != null ? procCtx.IS() : procCtx.AS()).getSymbol().getLine() - 1);
+            exitStatement("SPEC", (procCtx.IS() != null ? procCtx.IS() : procCtx.AS()).getSymbol().getLine());
         }
     }
 
