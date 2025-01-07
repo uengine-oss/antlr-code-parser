@@ -30,7 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class PlSqlFileParserService {
-        
+
     // SQL 객체(패키지, 프로시저, 함수 등)의 이름을 추출하기 위한 정규식 패턴
     private static final Pattern SQL_OBJECT_PATTERN = Pattern.compile(
         "CREATE\\s+OR\\s+REPLACE\\s+(?:PACKAGE|PACKAGE BODY|PROCEDURE|FUNCTION)\\s+([\\w$]+)", 
@@ -41,16 +41,19 @@ public class PlSqlFileParserService {
     /**
      * MultipartFile을 받아 파일 시스템에 저장하고 관련 정보를 반환
      * @param file 업로드된 MultipartFile 객체
+     * @param targetDir 파일 저장 디렉토리
+     * @param sessionUUID 세션 UUID
      * @return 파일명, 파일내용, 객체명을 포함한 Map
      * @throws IOException 파일 처리 중 발생하는 예외
      */
-    public Map<String, String> saveFile(MultipartFile file, String plsqlDir) throws IOException {
+    public Map<String, String> saveFile(MultipartFile file, String targetDir, String sessionUUID) throws IOException {
         String fileName = file.getOriginalFilename();
-        File directory = new File(plsqlDir);
+        String sessionDir = targetDir + File.separator + sessionUUID;
+        File directory = new File(sessionDir);
 
         // 저장 디렉토리가 없으면 생성
         if (!directory.exists() && !directory.mkdirs()) {
-            throw new IOException("디렉토리 생성 실패: " + plsqlDir);
+            throw new IOException("디렉토리 생성 실패: " + sessionDir);
         }
 
         // 파일 저장 및 내용 분석
@@ -93,10 +96,12 @@ public class PlSqlFileParserService {
         }
     }
 
+
     /**
      * PL/SQL 파일을 파싱하고 구조를 JSON 형식으로 저장
      * @param fileName 분석할 파일명
      * @param outputPath 결과를 저장할 경로
+     * @param plsqlDir 파일이 저장된 디렉토리
      * @throws IOException 파일 처리 중 발생하는 예외
      */
     public void parseAndSaveStructure(String fileName, String outputPath, String plsqlDir) throws IOException {
@@ -123,6 +128,7 @@ public class PlSqlFileParserService {
         }
     }
 
+    
     /**
      * SQL 내용에서 객체 이름을 추출
      * @param sqlContent SQL 파일 내용
