@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import legacymodernizer.parser.controller.FileUploadController;
 
@@ -24,12 +25,18 @@ public class AntlrAnalysisTest {
     
     @Autowired
     private FileUploadController fileUploadController;
-    
+
     private static final String ANALYSIS_DIR = new File(System.getProperty("user.dir")).getParent() + File.separator + "analysis";
     private static final String PLSQL_DIR = new File(System.getProperty("user.dir")).getParent() + File.separator + "src";
-    
+    private MockHttpServletRequest mockRequest;
+
     @BeforeEach
     void setUp() throws Exception {
+
+        // 테스트 세션 UUID 생성
+        MockHttpServletRequest mockRequest = new MockHttpServletRequest();
+        mockRequest.addHeader("Session-UUID", "test-session-123");
+
         // analysis 폴더 내용 삭제
         File analysisDir = new File(ANALYSIS_DIR);
         if (analysisDir.exists()) {
@@ -68,7 +75,7 @@ public class AntlrAnalysisTest {
         request.put("fileNames", fileNames);
         
         // 분석 실행
-        ResponseEntity<String> response = fileUploadController.analysisContext(request);
+        ResponseEntity<String> response = fileUploadController.analysisContext(request, mockRequest);
         
         // 결과 검증
         assertEquals(200, response.getStatusCode().value(), "분석이 실패했습니다");
