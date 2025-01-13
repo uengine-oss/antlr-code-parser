@@ -30,12 +30,10 @@ public class FileUploadController {
     // 분석 결과 파일이 저장될 디렉토리 경로 설정
     private static final String ANALYSIS_DIR = System.getenv("ANALYSIS_DIR") != null ? System.getenv("ANALYSIS_DIR")
             : new File(System.getProperty("user.dir")).getParent() + File.separator + "analysis";
-    
 
     // PLSQL 파일이 저장될 디렉토리 경로 설정
-    private static final String PLSQL_DIR = System.getenv("PLSQL_DIR") != null ? System.getenv("PLSQL_DIR") : 
-            new File(System.getProperty("user.dir")).getParent() + File.separator + "src";
-        
+    private static final String PLSQL_DIR = System.getenv("PLSQL_DIR") != null ? System.getenv("PLSQL_DIR")
+            : new File(System.getProperty("user.dir")).getParent() + File.separator + "src";
 
     private final PlSqlFileParserService plSqlFileParserService;
 
@@ -166,26 +164,33 @@ public class FileUploadController {
             System.out.println("분석 디렉토리 생성 실패: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("분석 디렉토리 생성 실패");
         }
-    
+
         // PLSQL 디렉토리 확인
         File plsqlDirectory = new File(PLSQL_DIR);
         if (!plsqlDirectory.exists() || !plsqlDirectory.isDirectory()) {
             System.out.println("PLSQL 디렉토리를 찾을 수 없음: " + PLSQL_DIR);
             return ResponseEntity.badRequest().body("PLSQL 디렉토리를 찾을 수 없음");
         }
-    
+
         // SQL 파일 목록 가져오기
         File[] allFiles = plsqlDirectory.listFiles();
         if (allFiles == null || allFiles.length == 0) {
             System.out.println("파일을 찾을 수 없음: " + PLSQL_DIR);
             return ResponseEntity.badRequest().body("파일을 찾을 수 없음");
         }
-    
-        System.out.println("분석 시작: 총 " + allFiles.length + "개의 파일");
+
+        List<File> sqlFiles = new ArrayList<>();
+        for (File file : allFiles) {
+            if (file.isFile() && file.getName().endsWith(".sql")) {
+                sqlFiles.add(file);
+            }
+        }
+
+        System.out.println("분석 시작: 총 " + sqlFiles.size() + "개의 파일");
         List<Map<String, String>> successFiles = new ArrayList<>();
 
         // 각 파일별 분석 수행
-        for (File sqlFile : allFiles) {
+        for (File sqlFile : sqlFiles) {
             try {
                 String fileName = sqlFile.getName();
                 String fileContent = plSqlFileParserService.readFileContent(sqlFile);
@@ -193,14 +198,13 @@ public class FileUploadController {
 
                 String baseFileName = fileName.substring(0, fileName.lastIndexOf('.'));
                 Path resultPath = Paths.get(ANALYSIS_DIR, baseFileName + ".json");
-    
 
                 Map<String, String> fileData = new HashMap<>();
                 fileData.put("fileName", fileName);
                 fileData.put("objectName", objectName);
                 fileData.put("fileContent", fileContent);
                 successFiles.add(fileData);
-    
+
                 // 이미 분석된 파일인지 확인
                 if (Files.exists(resultPath)) {
                     System.out.println("기존 분석 파일 사용: " + resultPath);
@@ -215,7 +219,7 @@ public class FileUploadController {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("분석 실패");
             }
         }
-    
+
         System.out.println("모든 파일 분석 완료");
         return ResponseEntity.ok(Map.of("successFiles", successFiles));
     }
