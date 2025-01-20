@@ -1,9 +1,5 @@
 package legacymodernizer.parser.controller;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import java.util.List;
@@ -11,7 +7,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,21 +20,9 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RequiredArgsConstructor
 public class FileUploadController {
 
-    // 기본 데이터 디렉토리 경로 설정
-    private static final String BASE_DIR = System.getenv("DOCKER_COMPOSE_CONTEXT") != null ?
-            System.getenv("DOCKER_COMPOSE_CONTEXT") :  // 도커 환경
-            new File(System.getProperty("user.dir")).getParent() + File.separator + "data";  // 로컬 환경
-
-    // 각 유형별 디렉토리 경로 설정
-    private static final String PLSQL_DIR = BASE_DIR + File.separator + "src";       // 기본 소스 디렉토리
-    private static final String DDL_DIR = BASE_DIR + File.separator + "ddl";         // DDL 파일 디렉토리
-    private static final String SEQ_DIR = BASE_DIR + File.separator + "sequence";    // SEQUENCE 파일 디렉토리
-    private static final String ANALYSIS_DIR = BASE_DIR + File.separator + "analysis"; // 분석 결과 디렉토리
-            
     private final PlSqlFileParserService plSqlFileParserService;
 
     
@@ -73,14 +56,11 @@ public class FileUploadController {
         for (MultipartFile file : files) {
             if (!file.isEmpty()) {
                 try {
-                    
-                    // 파일 타입에 따라 적절한 디렉토리를 반환
-                    String targetDir = getTargetDirectory(file.getOriginalFilename());
-                    
                     // 파일 저장 및 정보 추출
-                    Map<String, String> fileInfo = plSqlFileParserService.saveFile(file, targetDir, sessionUUID);
+                    Map<String, String> fileInfo = plSqlFileParserService.saveFile(file, sessionUUID);
+
                     
-                    if (targetDir.equals(PLSQL_DIR)) {
+                    if (fileInfo.get("fileType").equals("PLSQL")) {
                         Map<String, String> fileData = new HashMap<>();
                         fileData.put("objectName", fileInfo.get("objectName"));
                         fileData.put("fileContent", fileInfo.get("fileContent"));
@@ -120,66 +100,50 @@ public class FileUploadController {
      * @return 분석 결과 상태
      */
     @PostMapping("/analysis")
-    public ResponseEntity<String> analysisContext(@RequestBody Map<String, List<Map<String, String>>> request, HttpServletRequest httpRequest) {
-
-        // 세션 정보 및 디렉토리 경로 설정
+    public ResponseEntity<String> analysisContext(@RequestBody Map<String, List<Map<String, String>>> request, 
+                                                HttpServletRequest httpRequest) {
+        // 세션 검증
         String sessionUUID = httpRequest.getHeader("Session-UUID");
-        String sessionAnalysisDir = ANALYSIS_DIR + File.separator + sessionUUID;
-        String sessionPlsqlDir = PLSQL_DIR + File.separator + sessionUUID;
         if (sessionUUID == null || sessionUUID.trim().isEmpty()) {
+            System.out.println("세션 정보 없음");
             return ResponseEntity.badRequest().body("세션 정보가 없습니다");
         }
-
-        // PLSQL 디렉토리 존재 여부 확인
-        File plsqlDirectory = new File(sessionPlsqlDir);
-        if (!plsqlDirectory.exists() || !plsqlDirectory.isDirectory()) {
-            log.error("PLSQL 디렉토리를 찾을 수 없음: {}", sessionPlsqlDir);
-            return ResponseEntity.badRequest().body("업로드된 파일이 없습니다. 먼저 파일을 업로드해주세요");
-        }
-        
-        // 세션별 분석 디렉토리 생성
-        try {
-            Path analysisPath = Paths.get(sessionAnalysisDir);
-            if (!Files.exists(analysisPath)) {
-                Files.createDirectories(analysisPath);
-                System.out.println("세션별 분석 디렉토리 생성됨: " + sessionAnalysisDir);
-            }
-        } catch (IOException e) {
-            System.out.println("분석 디렉토리 생성 실패: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("분석 디렉토리 생성 실패");
-        }
-
-        // 분석할 파일 목록 추출
+    
+        // 파일 목록 검증
         List<Map<String, String>> fileNames = request.get("fileNames");
-        System.out.println("분석 요청된 파일 정보들: " + fileNames);
-
-        // 파일 목록 유효성 검사
         if (fileNames == null || fileNames.isEmpty()) {
+            System.out.println("파일 정보 없음");
             return ResponseEntity.badRequest().body("파일 정보가 없습니다");
         }
-
+    
+        System.out.println("분석 시작: " + fileNames.size() + "개의 파일");
+        
         // 각 파일별 분석 수행
+        List<String> successFiles = new ArrayList<>();
+        List<String> failedFiles = new ArrayList<>();
+    
         for (Map<String, String> fileInfo : fileNames) {
             try {
                 String fileName = fileInfo.get("fileName");
-                String baseFileName = fileName.substring(0, fileName.lastIndexOf('.'));
-                Path resultPath = Paths.get(sessionAnalysisDir, baseFileName + ".json");
-
-                // 이미 분석된 파일인지 확인
-                if (Files.exists(resultPath)) {
-                    System.out.println("기존 분석 파일 사용: " + resultPath);
-                } else {
-                    // 새로운 분석 수행
-                    plSqlFileParserService.parseAndSaveStructure(fileName, resultPath.toString(), sessionPlsqlDir);
-                    System.out.println("새로운 분석 완료: " + fileName);
-                }
+                plSqlFileParserService.parseAndSaveStructure(fileName, sessionUUID);
+                successFiles.add(fileName);
+                System.out.println("파일 분석 완료: " + fileName);
             } catch (Exception e) {
-                System.out.println("분석 실패: " + fileInfo);
+                System.out.println("파일 분석 실패: " + fileInfo.get("fileName"));
                 e.printStackTrace();
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("분석 실패");
+                failedFiles.add(fileInfo.get("fileName"));
             }
         }
-
+    
+        // 결과 반환
+        if (!failedFiles.isEmpty()) {
+            System.out.println("일부 파일 분석 실패: " + failedFiles);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(String.format("일부 파일 분석 실패 (%d/%d 성공)", 
+                        successFiles.size(), fileNames.size()));
+        }
+    
+        System.out.println("모든 파일 분석 완료: " + successFiles.size() + "개");
         return ResponseEntity.ok("OK");
     }
 
@@ -191,95 +155,23 @@ public class FileUploadController {
      */
     @PostMapping("/start")
     public ResponseEntity<Map<String, Object>> startAnalysisContext(HttpServletRequest httpRequest) {
-        
         System.out.println("시작 버튼 클릭");
-
-        // 세션 정보 추출 및 디렉토리 경로 설정
+        
         String sessionUUID = httpRequest.getHeader("Session-UUID");
-        String sessionPlsqlDir = PLSQL_DIR + File.separator + sessionUUID;
-        String sessionAnalysisDir = ANALYSIS_DIR + File.separator + sessionUUID;
         if (sessionUUID == null || sessionUUID.trim().isEmpty()) {
+            System.out.println("세션 정보 없음");
             return ResponseEntity.badRequest().body(Map.of("message", "세션 정보가 없습니다"));
         }
-
-        // 분석 디렉토리 생성
+    
         try {
-            Path analysisPath = Paths.get(sessionAnalysisDir);
-            if (!Files.exists(analysisPath)) {
-                Files.createDirectories(analysisPath);
-                System.out.println("분석 디렉토리 생성됨: " + sessionAnalysisDir);
-            }
+            List<Map<String, String>> successFiles = plSqlFileParserService.analyzeAllFilesInDirectory(sessionUUID);
+            System.out.println("모든 파일 분석 완료: " + successFiles.size() + "개");
+            return ResponseEntity.ok(Map.of("successFiles", successFiles));
         } catch (IOException e) {
-            System.out.println("분석 디렉토리 생성 실패: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "분석 디렉토리 생성 실패"));
+            System.out.println("분석 실패: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", e.getMessage()));
         }
-    
-        // PLSQL 디렉토리 확인
-        File plsqlDirectory = new File(sessionPlsqlDir);
-        if (!plsqlDirectory.exists() || !plsqlDirectory.isDirectory()) {
-            System.out.println("PLSQL 디렉토리를 찾을 수 없음: " + sessionPlsqlDir);
-            return ResponseEntity.badRequest().body(Map.of("message", "업로드된 파일이 없습니다. 먼저 파일을 업로드해주세요"));
-        }
-    
-        // PLSQL 파일 목록 가져오기
-        File[] allFiles = plsqlDirectory.listFiles();
-        if (allFiles == null || allFiles.length == 0) {
-            System.out.println("파일을 찾을 수 없음: " + sessionPlsqlDir);
-            return ResponseEntity.badRequest().body(Map.of("message", "PLSQL파일을 찾을 수 없습니다. 먼저 파일을 업로드해주세요"));
-        }
-    
-        System.out.println("분석 시작: 총 " + allFiles.length + "개의 파일");
-        List<Map<String, String>> successFiles = new ArrayList<>();
-
-        // 각 파일별 분석 수행
-        for (File sqlFile : allFiles) {
-            try {
-                String fileName = sqlFile.getName();
-                String fileContent = plSqlFileParserService.readFileContent(sqlFile);
-                String objectName = plSqlFileParserService.extractSqlObjectName(fileContent);
-
-                String baseFileName = fileName.substring(0, fileName.lastIndexOf('.'));
-                Path resultPath = Paths.get(sessionAnalysisDir, baseFileName + ".json");
-    
-
-                Map<String, String> fileData = new HashMap<>();
-                fileData.put("fileName", fileName);
-                fileData.put("objectName", objectName);
-                fileData.put("fileContent", fileContent);
-                successFiles.add(fileData);
-    
-                // 이미 분석된 파일인지 확인
-                if (Files.exists(resultPath)) {
-                    System.out.println("기존 분석 파일 사용: " + resultPath);
-                } else {
-                    // 새로운 분석 수행
-                    plSqlFileParserService.parseAndSaveStructure(fileName, resultPath.toString(), sessionPlsqlDir);
-                    System.out.println("새로운 분석 완료: " + fileName);
-                }
-
-            } catch (Exception e) {
-                System.out.println("분석 실패: " + sqlFile.getName());
-                e.printStackTrace();
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "파일 분석 중 오류가 발생했습니다"));
-            }
-        }
-    
-        System.out.println("모든 파일 분석 완료");
-        return ResponseEntity.ok(Map.of("successFiles", successFiles));
-    }
-
-
-    /**
-     * 파일 이름에 따라 적절한 디렉토리를 반환
-     * @param fileName 파일 이름
-     * @return 적절한 디렉토리 경로
-     */
-    private String getTargetDirectory(String fileName) {
-        if (fileName == null) return PLSQL_DIR;
-        
-        String upperFileName = fileName.toUpperCase();
-        if (upperFileName.contains("TPJ")) return DDL_DIR;
-        if (upperFileName.contains("SEQ")) return SEQ_DIR;
-        return PLSQL_DIR;
     }
 }

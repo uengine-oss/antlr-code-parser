@@ -19,39 +19,42 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import legacymodernizer.parser.controller.FileUploadController;
+import legacymodernizer.parser.service.PlSqlFileParserService;
 
 @SpringBootTest
 public class AntlrAnalysisTest {
     
     @Autowired
     private FileUploadController fileUploadController;
+    
+    @Autowired
+    private PlSqlFileParserService plSqlFileParserService;
 
-    private static final String ANALYSIS_DIR = new File(System.getProperty("user.dir")).getParent() + File.separator + "analysis";
-    private static final String PLSQL_DIR = new File(System.getProperty("user.dir")).getParent() + File.separator + "src";
     private MockHttpServletRequest mockRequest;
+    private static final String TEST_SESSION = "test-session-123";
 
     @BeforeEach
     void setUp() throws Exception {
-
-        // 테스트 세션 UUID 생성
-        MockHttpServletRequest mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("Session-UUID", "test-session-123");
+        mockRequest = new MockHttpServletRequest();
+        mockRequest.addHeader("Session-UUID", TEST_SESSION);
 
         // analysis 폴더 내용 삭제
-        File analysisDir = new File(ANALYSIS_DIR);
-        if (analysisDir.exists()) {
-            for (File file : analysisDir.listFiles()) {
+        String analysisDir = plSqlFileParserService.getAnalysisDirectory(TEST_SESSION);
+        File analysisDirFile = new File(analysisDir);
+        if (analysisDirFile.exists()) {
+            for (File file : analysisDirFile.listFiles()) {
                 file.delete();
             }
         }
-        System.out.println("Analysis 디렉토리 정리 완료");
+        System.out.println("Analysis 디렉토리 정리 완료: " + analysisDir);
     }
     
     @Test
     void testAnalysisWithExistingFiles() throws Exception {
         // src 폴더의 SQL 파일 목록 가져오기
-        File srcDir = new File(PLSQL_DIR);
-        File[] sqlFiles = srcDir.listFiles((dir, name) -> {
+        String srcDir = plSqlFileParserService.getTargetDirectory(TEST_SESSION, null);
+        File srcDirFile = new File(srcDir);
+        File[] sqlFiles = srcDirFile.listFiles((dir, name) -> {
             String lowercaseName = name.toLowerCase();
             return lowercaseName.endsWith(".sql") || 
                    lowercaseName.endsWith(".plsql") ||
@@ -82,9 +85,10 @@ public class AntlrAnalysisTest {
         assertEquals("OK", response.getBody(), "분석 결과가 OK가 아닙니다");
         
         // 분석 결과 파일 확인
+        String analysisDir = plSqlFileParserService.getAnalysisDirectory(TEST_SESSION);
         for (File sqlFile : sqlFiles) {
             String baseFileName = sqlFile.getName().substring(0, sqlFile.getName().lastIndexOf('.'));
-            Path resultPath = Paths.get(ANALYSIS_DIR, baseFileName + ".json");
+            Path resultPath = Paths.get(analysisDir, baseFileName + ".json");
             assertTrue(Files.exists(resultPath), 
                 String.format("분석 결과 파일이 생성되지 않았습니다: %s", resultPath));
             
