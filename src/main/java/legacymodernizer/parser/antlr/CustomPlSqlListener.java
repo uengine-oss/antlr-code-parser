@@ -57,7 +57,7 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
     // * 프로시저/함수 관련 리스너 모음 *
     @Override
     public void enterCreate_procedure_body(PlSqlParser.Create_procedure_bodyContext ctx) {
-        enterStatement("CREATE_PROCEDURE_BODY", ctx.getStart().getLine());
+        enterStatement("PROCEDURE", ctx.getStart().getLine());
 
         enterStatement("SPEC", ctx.getStart().getLine());
         
@@ -70,7 +70,7 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
 
     @Override
     public void exitCreate_procedure_body(PlSqlParser.Create_procedure_bodyContext ctx) {
-        exitStatement("CREATE_PROCEDURE_BODY", ctx.getStop().getLine());
+        exitStatement("PROCEDURE", ctx.getStop().getLine());
     }
 
     @Override
@@ -161,12 +161,12 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
 
     @Override
     public void enterLoop_statement(PlSqlParser.Loop_statementContext ctx) {
-        enterStatement("WHILE", ctx.getStart().getLine());
+        enterStatement("LOOP", ctx.getStart().getLine());
     }
 
     @Override
     public void exitLoop_statement(PlSqlParser.Loop_statementContext ctx) {
-        exitStatement("WHILE", ctx.getStop().getLine());
+        exitStatement("LOOP", ctx.getStop().getLine());
     }
 
     // * 예외처리 관련 리스너 모음 *

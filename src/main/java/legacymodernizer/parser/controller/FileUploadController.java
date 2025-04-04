@@ -1,6 +1,5 @@
 package legacymodernizer.parser.controller;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
@@ -99,7 +98,7 @@ public class FileUploadController {
      * @param request 분석할 파일 정보를 포함한 요청
      * @return 분석 결과 상태
      */
-    @PostMapping("/analysis")
+    @PostMapping("/parsing")
     public ResponseEntity<String> analysisContext(@RequestBody Map<String, List<Map<String, String>>> request, 
                                                 HttpServletRequest httpRequest) {
         // 세션 검증
@@ -149,33 +148,5 @@ public class FileUploadController {
     
         System.out.println("모든 파일 분석 완료: " + successFiles.size() + "개");
         return ResponseEntity.ok("OK");
-    }
-
-
-    /**
-     * 시작 버튼을 눌렀을 때 파일 분석을 처리하는 엔드포인트
-     *
-     * @return 분석된 파일 이름과 프로시저 이름이 하나의 요소로 구성된 리스트
-     */
-    @PostMapping("/start")
-    public ResponseEntity<Map<String, Object>> startAnalysisContext(HttpServletRequest httpRequest) {
-        System.out.println("시작 버튼 클릭");
-        
-        String sessionUUID = httpRequest.getHeader("Session-UUID");
-        if (sessionUUID == null || sessionUUID.trim().isEmpty()) {
-            System.out.println("세션 정보 없음");
-            return ResponseEntity.badRequest().body(Map.of("message", "세션 정보가 없습니다"));
-        }
-    
-        try {
-            List<Map<String, String>> successFiles = plSqlFileParserService.analyzeAllFilesInDirectory(sessionUUID);
-            System.out.println("모든 파일 분석 완료: " + successFiles.size() + "개");
-            return ResponseEntity.ok(Map.of("successFiles", successFiles));
-        } catch (IOException e) {
-            System.out.println("분석 실패: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", e.getMessage()));
-        }
     }
 }
