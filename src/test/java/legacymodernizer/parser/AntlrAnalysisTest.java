@@ -31,7 +31,7 @@ public class AntlrAnalysisTest {
     private PlSqlFileParserService plSqlFileParserService;
 
     private MockHttpServletRequest mockRequest;
-    private static final String TEST_SESSION = "test-session-123";
+    private static final String TEST_SESSION = "test-session-12345";
 
     @BeforeEach
     void setUp() throws Exception {
