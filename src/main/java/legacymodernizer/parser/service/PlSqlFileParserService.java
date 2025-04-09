@@ -62,7 +62,7 @@ public class PlSqlFileParserService {
         
         if (fileName != null) {
             String upperFileName = fileName.toUpperCase();
-            if (upperFileName.contains("TPJ")) subDir = DDL_DIR;
+            if (upperFileName.contains("DDL")) subDir = DDL_DIR;
             if (upperFileName.contains("SEQ")) subDir = SEQ_DIR;
         }
         
@@ -80,7 +80,7 @@ public class PlSqlFileParserService {
         if (fileName == null) return "PLSQL";
         
         String upperFileName = fileName.toUpperCase();
-        if (upperFileName.contains("TPJ")) return "DDL";
+        if (upperFileName.contains("DDL")) return "DDL";
         if (upperFileName.contains("SEQ")) return "SEQ";
         return "PLSQL";
     }
