@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -150,4 +151,76 @@ public class FileUploadController {
         System.out.println("모든 파일 분석 완료: " + successFiles.size() + "개");
         return ResponseEntity.ok("OK");
     }
+
+    /**
+     * 테스트 샘플 처리 엔드포인트
+     * 
+     * @param request 파일명을 포함하는 요청
+     * @param httpRequest HTTP 요청 객체 (세션 UUID 추출용)
+     * @return 성공한 파일 정보 목록을 포함한 응답
+     */
+    @PostMapping("/testsample")
+    public ResponseEntity<Map<String, Object>> testSample(@RequestBody Map<String, Object> request, 
+                                                         HttpServletRequest httpRequest) {
+        // 세션 검증
+        String sessionUUID = httpRequest.getHeader("Session-UUID");
+        if (sessionUUID == null || sessionUUID.trim().isEmpty()) {
+            System.out.println("세션 정보 없음");
+            return ResponseEntity.badRequest().body(Map.of("message", "세션 정보가 없습니다"));
+        }
+        
+        // procedureName 추출
+        Object procedureNameObj = request.get("procedureName");
+        
+        // 클라이언트에서 배열로 보내는 경우를 처리하기 위한 변환 로직
+        List<String> procedureNames = new ArrayList<>();
+        
+        if (procedureNameObj instanceof String) {
+            // 단일 문자열인 경우
+            procedureNames.add((String) procedureNameObj);
+            System.out.println("단일 프로시저 이름을 받음: " + procedureNameObj);
+        } else if (procedureNameObj instanceof List<?>) {
+            // 배열인 경우
+            List<?> list = (List<?>) procedureNameObj;
+            for (Object item : list) {
+                if (item instanceof String) {
+                    procedureNames.add((String) item);
+                }
+            }
+            System.out.println("프로시저 이름 배열을 받음: " + procedureNames.size() + "개");
+        } else {
+            System.out.println("프로시저 정보 없음 또는 잘못된 형식: " + (procedureNameObj != null ? procedureNameObj.getClass().getName() : "null"));
+            return ResponseEntity.badRequest().body(Map.of("message", "프로시저 정보가 없거나 잘못된 형식입니다"));
+        }
+        
+        // 프로시저 이름 목록 검증
+        if (procedureNames.isEmpty()) {
+            System.out.println("처리할 프로시저 정보 없음");
+            return ResponseEntity.badRequest().body(Map.of("message", "처리할 프로시저 정보가 없습니다"));
+        }
+        
+        System.out.println("테스트 샘플 처리 시작: " + procedureNames.size() + "개의 프로시저");
+
+        try {
+            // 서비스를 통해 파일 정보 조회
+            List<Map<String, String>> successFiles = plSqlFileParserService.processTestSample(procedureNames, sessionUUID);
+            
+            if (successFiles.isEmpty()) {
+                System.out.println("처리할 수 있는 파일이 없습니다.");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("message", "처리할 수 있는 파일이 없습니다."));
+            }
+            
+            // 성공 결과 반환
+            System.out.println("테스트 샘플 처리 완료: " + successFiles.size() + "개의 파일");
+            return ResponseEntity.ok(Map.of("successFiles", successFiles));
+            
+        } catch (Exception e) {
+            System.out.println("테스트 샘플 처리 중 오류 발생");
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "처리 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
+
 }

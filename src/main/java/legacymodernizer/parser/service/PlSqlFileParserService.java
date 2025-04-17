@@ -104,7 +104,7 @@ public class PlSqlFileParserService {
 
         // 파일 저장 및 내용 분석
         File outputFile = new File(directory, fileName);
-
+        
         // 파일이 이미 존재하지 않는 경우에만 저장
         if (!outputFile.exists()) {
             file.transferTo(outputFile);
@@ -129,6 +129,77 @@ public class PlSqlFileParserService {
 
     
     /**
+     * 테스트 샘플 처리를 위해 파일명 배열을 받아 해당 파일들의 정보를 조회하는 메서드
+     * 
+     * @param fileNames 조회할 파일명 배열
+     * @param sessionUUID 세션 UUID
+     * @return 조회된 파일 정보 목록 (fileName, objectName, fileContent, fileType)
+     * @throws IOException 파일 처리 중 발생할 수 있는 예외
+     */
+    public List<Map<String, String>> processTestSample(List<String> fileNames, String sessionUUID) throws IOException {
+        List<Map<String, String>> successFiles = new ArrayList<>();
+        List<Map<String, String>> failedFiles = new ArrayList<>();
+        
+        // src 디렉토리 경로 확인
+        String srcDir = getTargetDirectory(sessionUUID, null); // PLSQL_DIR 사용
+        File directory = new File(srcDir);
+        
+        if (!directory.exists() || !directory.isDirectory()) {
+            throw new IOException("소스 디렉토리를 찾을 수 없음: " + srcDir);
+        }
+        
+        // 각 파일에 대해 처리 수행
+        for (String procedureName : fileNames) {
+            // 파일명으로 변환 (확장자 추가)
+            String fileName = procedureName;
+            if (!fileName.toLowerCase().endsWith(".sql")) {
+                fileName = fileName + ".sql";
+            }
+            
+            File targetFile = new File(directory, fileName);
+            
+            if (targetFile.exists() && targetFile.isFile()) {
+                try {
+                    String fileContent = readFileContent(targetFile);
+                    String objectName = extractSqlObjectName(fileContent);
+                    String fileType = getFileType(fileName);
+                    
+                    Map<String, String> fileData = new HashMap<>();
+                    fileData.put("objectName", objectName != null ? objectName : "");
+                    fileData.put("fileContent", fileContent);
+                    fileData.put("fileName", fileName);
+                    fileData.put("fileType", fileType);
+                    
+                    successFiles.add(fileData);
+                    System.out.println("테스트 샘플 파일 처리 완료: " + fileName + " (오브젝트 이름: " + objectName + ")");
+                } catch (Exception e) {
+                    System.out.println("테스트 샘플 파일 처리 실패: " + fileName);
+                    e.printStackTrace();
+                    
+                    Map<String, String> failedFileData = new HashMap<>();
+                    failedFileData.put("fileName", fileName);
+                    failedFileData.put("error", "파일 처리 실패: " + e.getMessage());
+                    failedFiles.add(failedFileData);
+                }
+            } else {
+                System.out.println("테스트 샘플 파일을 찾을 수 없음: " + fileName);
+                
+                Map<String, String> failedFileData = new HashMap<>();
+                failedFileData.put("fileName", fileName);
+                failedFileData.put("error", "파일을 찾을 수 없음");
+                failedFiles.add(failedFileData);
+            }
+        }
+        
+        // 실패한 파일이 있다면 로그로 기록
+        if (!failedFiles.isEmpty()) {
+            System.out.println("일부 테스트 샘플 파일 처리 실패: " + failedFiles.size() + "개");
+        }
+        
+        return successFiles;
+    }
+
+    /**
      * 파일의 내용을 다양한 인코딩으로 시도하여 읽어옴
      * @param file 읽을 파일 객체
      * @return 파일의 내용 문자열
@@ -147,6 +218,48 @@ public class PlSqlFileParserService {
                 return Files.readString(file.toPath(), Charset.forName("MS949"));
             }
         }
+    }
+
+
+    /**
+     * 파일 시스템에 존재하는 SQL 파일들을 순회하면서,
+     * 파일 내용에서 추출된 SQL 객체명이 입력받은 objectName과 일치하는 파일 정보를 반환합니다.
+     *
+     * @param sessionUUID 세션 UUID (파일 경로 구분용)
+     * @param objectName  조회할 SQL 객체 이름 (대소문자 무시 비교)
+     * @return 일치하는 SQL 객체 정보를 담은 파일 리스트 (fileName, objectName, fileContent, fileType)
+     * @throws IOException 파일 읽기 실패 시 발생하는 예외
+     */
+    public List<Map<String, String>> retrieveFiles(String sessionUUID, String objectName) throws IOException {
+        List<Map<String, String>> resultFiles = new ArrayList<>();
+        
+        // 조회 대상 서브 디렉토리 목록 (기존 업로드 시 사용한 디렉토리와 동일)
+        String[] subDirs = { PLSQL_DIR, DDL_DIR, SEQ_DIR, ANALYSIS_DIR };
+
+        for (String subDir : subDirs) {
+            String targetDir = BASE_DIR + File.separator + sessionUUID + File.separator + subDir;
+            File directory = new File(targetDir);
+            if (directory.exists() && directory.isDirectory()) {
+                // .sql 확장자를 가진 파일들만 조회 (필요에 따라 조건 수정 가능)
+                File[] files = directory.listFiles((dir, name) -> name.toLowerCase().endsWith(".sql"));
+                if (files != null) {
+                    for (File file : files) {
+                        String fileContent = readFileContent(file);
+                        String extractedObject = extractSqlObjectName(fileContent);
+                        if (extractedObject != null && extractedObject.equalsIgnoreCase(objectName)) {
+                            Map<String, String> fileData = new HashMap<>();
+                            fileData.put("fileName", file.getName());
+                            fileData.put("objectName", extractedObject);
+                            fileData.put("fileContent", fileContent);
+                            fileData.put("fileType", getFileType(file.getName()));
+                            resultFiles.add(fileData);
+                            System.out.println("조회 성공 - 파일: " + file.getName() + ", 객체: " + extractedObject);
+                        }
+                    }
+                }
+            }
+        }
+        return resultFiles;
     }
 
 
