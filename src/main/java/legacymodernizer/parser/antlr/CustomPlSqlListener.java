@@ -32,28 +32,6 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
         // System.out.println("Exit " + statementType + " Statement Line: " + line);
     }
 
-    // * 패키지 관련 리스너 모음 *
-    @Override
-    public void enterCreate_package(PlSqlParser.Create_packageContext ctx) {
-        enterStatement("PACKAGE_SPEC", ctx.getStart().getLine());
-    }
-
-    @Override
-    public void exitCreate_package(PlSqlParser.Create_packageContext ctx) {
-        exitStatement("PACKAGE_SPEC", ctx.getStop().getLine());
-    }
-
-    @Override
-    public void enterCreate_package_body(PlSqlParser.Create_package_bodyContext ctx) {
-        enterStatement("PACKAGE_BODY", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitCreate_package_body(PlSqlParser.Create_package_bodyContext ctx) {
-        
-        exitStatement("PACKAGE_BODY", ctx.getStop().getLine());
-    }
-    
     // * 프로시저/함수 관련 리스너 모음 *
     @Override
     public void enterCreate_procedure_body(PlSqlParser.Create_procedure_bodyContext ctx) {
@@ -311,31 +289,27 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
     @Override
     public void enterPackage_obj_spec(PlSqlParser.Package_obj_specContext ctx) {
         String text = ctx.getText().toUpperCase().trim();
-        String specType;
         
-        if (text.startsWith("FUNCTION")) {
-            specType = "FUNCTION_SPEC";
-        } else if (text.startsWith("PROCEDURE")) {
-            specType = "PROCEDURE_SPEC";
-        } else {
-            specType = "PACKAGE_VARIABLE";
+        // FUNCTION이나 PROCEDURE로 시작하면 무시하고 리턴
+        if (text.startsWith("FUNCTION") || text.startsWith("PROCEDURE")) {
+            return;
         }
-        enterStatement(specType, ctx.getStart().getLine());
+        
+        // 그 외의 경우만 PACKAGE_VARIABLE로 처리
+        enterStatement("PACKAGE_VARIABLE", ctx.getStart().getLine());
     }
     
     @Override
     public void exitPackage_obj_spec(PlSqlParser.Package_obj_specContext ctx) {
         String text = ctx.getText().toUpperCase().trim();
-        String specType;
         
-        if (text.startsWith("FUNCTION")) {
-            specType = "FUNCTION_SPEC";
-        } else if (text.startsWith("PROCEDURE")) {
-            specType = "PROCEDURE_SPEC";
-        } else {
-            specType = "PACKAGE_VARIABLE";
+        // FUNCTION이나 PROCEDURE로 시작하면 무시하고 리턴
+        if (text.startsWith("FUNCTION") || text.startsWith("PROCEDURE")) {
+            return;
         }
-        exitStatement(specType, ctx.getStop().getLine());
+        
+        // 그 외의 경우만 PACKAGE_VARIABLE로 처리
+        exitStatement("PACKAGE_VARIABLE", ctx.getStop().getLine());
     }
 
     @Override
