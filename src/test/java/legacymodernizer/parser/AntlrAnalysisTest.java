@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,27 +33,33 @@ public class AntlrAnalysisTest {
 
     private MockHttpServletRequest mockRequest;
     private static final String TEST_SESSION = "TestSession_5";
+    private static final String TEST_PROJECT = "TestProject_5";
 
     @BeforeEach
     void setUp() throws Exception {
         mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("Session-UUID", TEST_SESSION);
+        
+        // 테스트 프로젝트 디렉터리 미리 생성
+        String srcDir = plSqlFileParserService.getTargetDirectory(TEST_SESSION, TEST_PROJECT, null);
+        File srcDirFile = new File(srcDir);
+        if (!srcDirFile.exists()) {
+            srcDirFile.mkdirs();
+        }
 
-        // analysis 폴더 내용 삭제
-        String analysisDir = plSqlFileParserService.getAnalysisDirectory(TEST_SESSION);
+        // analysis 폴더 내용 삭제 (프로젝트 단위)
+        String analysisDir = plSqlFileParserService.getAnalysisDirectory(TEST_SESSION, TEST_PROJECT);
         File analysisDirFile = new File(analysisDir);
         if (analysisDirFile.exists()) {
-            for (File file : analysisDirFile.listFiles()) {
-                file.delete();
-            }
+            deleteRecursively(analysisDirFile);
         }
         System.out.println("Analysis 디렉토리 정리 완료: " + analysisDir);
     }
     
     @Test
     void testAnalysisWithExistingFiles() throws Exception {
-        // src 폴더의 SQL 파일 목록 가져오기
-        String srcDir = plSqlFileParserService.getTargetDirectory(TEST_SESSION, null);
+        // src 폴더의 SQL 파일 목록 가져오기 (프로젝트 단위)
+        String srcDir = plSqlFileParserService.getTargetDirectory(TEST_SESSION, TEST_PROJECT, null);
         File srcDirFile = new File(srcDir);
         File[] sqlFiles = srcDirFile.listFiles((dir, name) -> {
             String lowercaseName = name.toLowerCase();
@@ -66,38 +73,42 @@ public class AntlrAnalysisTest {
         assertNotNull(sqlFiles, "SQL 파일을 찾을 수 없습니다");
         assertTrue(sqlFiles.length > 0, "분석할 SQL 파일이 없습니다");
         
-        // 분석 요청 데이터 준비
-        List<Map<String, String>> fileNames = new ArrayList<>();
+        // 분석 요청 데이터 준비 (systems 기반)
+        List<String> spList = new ArrayList<>();
         for (File sqlFile : sqlFiles) {
-            Map<String, String> fileInfo = new HashMap<>();
-            fileInfo.put("fileName", sqlFile.getName());
-            fileNames.add(fileInfo);
+            spList.add(sqlFile.getName());
         }
-        
-        Map<String, List<Map<String, String>>> request = new HashMap<>();
-        request.put("fileNames", fileNames);
-        
+        Map<String, Object> system = new HashMap<>();
+        system.put("name", "TEST");
+        system.put("sp", spList);
+        List<Map<String, Object>> systems = new ArrayList<>();
+        systems.add(system);
+
+        Map<String, Object> request = new HashMap<>();
+        request.put("projectName", TEST_PROJECT);
+        request.put("dbms", "oracle");
+        request.put("systems", systems);
+
         // 분석 실행
-        ResponseEntity<String> response = fileUploadController.analysisContext(request, mockRequest);
-        
+        ResponseEntity<Map<String, Object>> response = fileUploadController.analysisContext(request, mockRequest);
+
         // 결과 검증
         assertEquals(200, response.getStatusCode().value(), "분석이 실패했습니다");
-        assertEquals("OK", response.getBody(), "분석 결과가 OK가 아닙니다");
+        assertTrue(response.getBody().containsKey("successFiles"), "successFiles가 없습니다");
         
-        // 분석 결과 파일 확인
-        String analysisDir = plSqlFileParserService.getAnalysisDirectory(TEST_SESSION);
+        // 분석 결과 파일 확인 (analysis/ 및 하위 시스템 폴더 포함)
+        String analysisDir = plSqlFileParserService.getAnalysisDirectory(TEST_SESSION, TEST_PROJECT);
         for (File sqlFile : sqlFiles) {
             String baseFileName = sqlFile.getName().substring(0, sqlFile.getName().lastIndexOf('.'));
-            Path resultPath = Paths.get(analysisDir, baseFileName + ".json");
-            assertTrue(Files.exists(resultPath), 
-                String.format("분석 결과 파일이 생성되지 않았습니다: %s", resultPath));
+            Path found = findJsonRecursively(Paths.get(analysisDir), baseFileName + ".json");
+            assertNotNull(found, String.format("분석 결과 파일이 생성되지 않았습니다: %s", baseFileName + ".json"));
             
-            String content = Files.readString(resultPath);
+            String content = Files.readString(found);
             assertFalse(content.isEmpty(), 
-                String.format("분석 결과 파일이 비어있습니다: %s", resultPath));
+                String.format("분석 결과 파일이 비어있습니다: %s", found));
             
             System.out.println("분석 완료: " + sqlFile.getName());
-            System.out.println("결과 파일: " + resultPath);
+            System.out.println("결과 파일: " + found);
             System.out.println("결과 내용: " + content);
             System.out.println("-------------------");
         }
@@ -145,8 +156,8 @@ public class AntlrAnalysisTest {
     void testRealFileObjectNameExtraction() throws Exception {
         System.out.println("=== 실제 파일에서 객체명 추출 테스트 시작 ===");
         
-        // src 폴더의 SQL 파일 목록 가져오기
-        String srcDir = plSqlFileParserService.getTargetDirectory(TEST_SESSION, null);
+        // src 폴더의 SQL 파일 목록 가져오기 (프로젝트 단위)
+        String srcDir = plSqlFileParserService.getTargetDirectory(TEST_SESSION, TEST_PROJECT, null);
         File srcDirFile = new File(srcDir);
         
         // 파일이 있다면 실제 파일로 테스트
@@ -184,5 +195,25 @@ public class AntlrAnalysisTest {
         }
         
         System.out.println("=== 실제 파일에서 객체명 추출 테스트 완료 ===");
+    }
+
+    private static void deleteRecursively(File file) {
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) deleteRecursively(child);
+            }
+        }
+        file.delete();
+    }
+
+    private static Path findJsonRecursively(Path root, String fileName) throws Exception {
+        try (Stream<Path> stream = Files.walk(root)) {
+            return stream
+                .filter(Files::isRegularFile)
+                .filter(p -> p.getFileName().toString().equalsIgnoreCase(fileName))
+                .findFirst()
+                .orElse(null);
+        }
     }
 }
