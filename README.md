@@ -125,11 +125,178 @@ Frontend → ANTLR 서버 → 파일 검색 → ANTLR 파싱 → AST 생성 → 
 7. 💾 **JSON 저장**: `analysis/{system}/{파일명}.json`에 결과 저장
 8. ✅ **완료 응답**: 시스템별 파일 정보 반환 (파일명, 내용, 분석 상태)
 
+### 🔧 ANTLR 파싱 처리 상세 흐름
+
+ANTLR에서 **Lexer(렉서)**와 **Parser(파서)**는 두 단계로 나뉜 문법 분석기 구성요소입니다.
+쉽게 말해 **"문장을 쪼개는 사람"**과 **"문장의 구조를 이해하는 사람"**이라고 보면 됩니다.
+
+---
+
+## 🔹 1. Lexer (렉서, 어휘 분석기)
+
+**역할:**
+입력된 문자열(소스 코드)을 **토큰(token)**으로 쪼갭니다.
+즉, **"단어 단위로 자르는"** 단계입니다.
+
+**예시:**
+아래 PL/SQL 코드가 있다고 해볼게요 👇
+
+```sql
+SELECT name FROM users;
+```
+
+**Lexer는 이걸 다음처럼 토큰화(tokenize) 합니다:**
+
+```
+SELECT   → KEYWORD_SELECT  
+name     → IDENTIFIER  
+FROM     → KEYWORD_FROM  
+users    → IDENTIFIER  
+;        → SEMICOLON
+```
+
+**결과물:**
+→ **"토큰 리스트(Token Stream)"**
+이게 다음 단계인 파서(Parser)에 입력됩니다.
+
+---
+
+## 🔹 2. Parser (파서, 구문 분석기)
+
+**역할:**
+Lexer가 만든 토큰들을 **문법 규칙(grammar rule)**에 따라 **트리 구조(AST, Parse Tree)**로 분석합니다.
+즉, **"문장이 문법적으로 올바른지 검사하고 구조를 파악하는"** 단계입니다.
+
+**예시:**
+같은 문장에서 파서는 이런 구조를 만듭니다.
+
+```
+(selectStatement
+   (selectClause SELECT name)
+   (fromClause FROM users)
+   SEMICOLON)
+```
+
+**결과물:**
+→ **Parse Tree (또는 Abstract Syntax Tree)**
+이후 코드 해석, 변환, 실행 등에서 사용됩니다.
+
+---
+
+## 🔸 정리하면
+
+| 구분 | 단계 | 입력 | 출력 | 역할 |
+|------|------|------|------|------|
+| **Lexer** | 어휘 분석 | 문자 | 토큰 | 문자열을 토큰 단위로 분리 |
+| **Parser** | 구문 분석 | 토큰 | 파스트리(Parse Tree) | 토큰을 문법 구조로 해석 |
+
+---
+
+## 🔹 실제 PL/SQL 파싱 과정
+
+### 1️⃣ **렉싱 단계**
+```
+PL/SQL 소스코드 → PlSqlLexer → 토큰 스트림
+```
+
+**렉서가 하는 일:**
+- 📝 **키워드 인식**: `CREATE`, `PROCEDURE`, `BEGIN`, `END` 등 PL/SQL 예약어
+- 🔤 **식별자 추출**: 변수명, 함수명, 테이블명 등
+- 🔢 **리터럴 처리**: 숫자, 문자열, 날짜 등
+- 🎯 **구분자 인식**: 세미콜론, 괄호, 콤마 등
+- 📍 **위치 정보**: 각 토큰의 시작/종료 라인/컬럼 번호
+
+**실제 예시:**
+```sql
+CREATE PROCEDURE test_proc AS
+BEGIN
+    SELECT * FROM users;
+END;
+```
+
+**렉서 출력 (토큰 스트림):**
+```
+[CREATE, 1:1] [PROCEDURE, 1:8] [test_proc, 1:18] [AS, 1:28]
+[BEGIN, 2:1] [SELECT, 3:5] [*, 3:12] [FROM, 3:14] [users, 3:19] [;, 3:24]
+[END, 4:1] [;, 4:4]
+```
+
+### 2️⃣ **파싱 단계**
+```
+토큰 스트림 → PlSqlParser → 구문 트리 (Parse Tree)
+```
+
+**파서가 하는 일:**
+- 🌳 **구문 트리 생성**: 토큰들을 문법 규칙에 따라 계층적 구조로 구성
+- 📋 **문법 검증**: PL/SQL 문법에 맞는지 검사
+- 🏗️ **구조 분석**: 프로시저, 함수, 블록 등의 중첩 구조 파악
+- 🔗 **관계 설정**: 각 구문 요소 간의 부모-자식 관계 정의
+
+**구문 트리 예시:**
+```
+sql_script
+└── procedure_definition
+    ├── CREATE PROCEDURE test_proc AS
+    └── block
+        ├── BEGIN
+        ├── statement
+        │   └── select_statement
+        │       ├── SELECT *
+        │       └── FROM users
+        └── END
+```
+
+### 3️⃣ **리스너 순회 단계**
+```
+구문 트리 → CustomPlSqlListener → AST 노드 수집
+```
+
+**리스너가 하는 일:**
+- 🚶 **트리 순회**: 구문 트리의 각 노드를 방문
+- 📊 **노드 수집**: 중요한 구문 요소만 선별하여 수집
+- 🏷️ **타입 분류**: 각 노드의 구문 타입 식별 (PROCEDURE, SELECT, etc.)
+- 📍 **위치 정보**: 시작/종료 라인 번호 추출
+- 🔗 **관계 구성**: 부모-자식 관계를 유지하며 AST 구성
+
+**수집되는 노드 타입:**
+- `PROCEDURE_DEFINITION`: 프로시저 정의
+- `FUNCTION_DEFINITION`: 함수 정의  
+- `SELECT_STATEMENT`: SELECT 문
+- `INSERT_STATEMENT`: INSERT 문
+- `UPDATE_STATEMENT`: UPDATE 문
+- `DELETE_STATEMENT`: DELETE 문
+- `IF_STATEMENT`: IF 조건문
+- `LOOP_STATEMENT`: 반복문
+
+### 4️⃣ **최종 AST JSON 생성**
+```json
+{
+  "type": "PROCEDURE_DEFINITION",
+  "name": "test_proc",
+  "startLine": 1,
+  "endLine": 4,
+  "children": [
+    {
+      "type": "SELECT_STATEMENT", 
+      "startLine": 3,
+      "endLine": 3,
+      "query": "SELECT * FROM users"
+    }
+  ]
+}
+```
+
 **왜 AST가 필요한가요?**
 
 AST(추상 구문 트리)는 코드의 문법 구조를 계층적으로 표현한 것입니다. 
 이를 통해 **코드 분석 도구**가 각 구문의 위치와 관계를 정확히 파악하여, 
 의미 분석이나 코드 변환을 수행할 수 있습니다.
+
+**AST 활용 사례:**
+- 🔍 **코드 분석**: 복잡한 PL/SQL의 구조 파악
+- 🔄 **코드 변환**: 다른 언어나 프레임워크로 마이그레이션
+- 📊 **메트릭 수집**: 코드 복잡도, 라인 수 등 측정
+- 🛠️ **리팩토링**: 자동화된 코드 개선
 
 
 ---
