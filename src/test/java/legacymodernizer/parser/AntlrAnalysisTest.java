@@ -32,8 +32,8 @@ public class AntlrAnalysisTest {
     private PlSqlFileParserService plSqlFileParserService;
 
     private MockHttpServletRequest mockRequest;
-    private static final String TEST_SESSION = "TestSession_5";
-    private static final String TEST_PROJECT = "TestProject_5";
+    private static final String TEST_SESSION = "TestSession";
+    private static final String TEST_PROJECT = "text2sql";
 
     // ========================================
     // 테스트 설정
@@ -71,31 +71,53 @@ public class AntlrAnalysisTest {
     void testAnalysisWithExistingFiles() throws Exception {
         String srcDir = plSqlFileParserService.getTargetDirectory(TEST_SESSION, TEST_PROJECT, null);
         File srcDirFile = new File(srcDir);
-        File[] sqlFiles = srcDirFile.listFiles((dir, name) -> {
-            String lowercaseName = name.toLowerCase();
-            return lowercaseName.endsWith(".sql") || 
-                   lowercaseName.endsWith(".plsql") ||
-                   lowercaseName.endsWith(".pls") ||
-                   lowercaseName.endsWith(".pck") ||
-                   lowercaseName.endsWith(".txt");
-        });   
-
-        assertNotNull(sqlFiles, "SQL 파일을 찾을 수 없습니다");
-        assertTrue(sqlFiles.length > 0, "분석할 SQL 파일이 없습니다");
         
-        List<String> spList = new ArrayList<>();
-        for (File sqlFile : sqlFiles) {
-            spList.add(sqlFile.getName());
-        }
-        Map<String, Object> system = new HashMap<>();
-        system.put("name", "TEST");
-        system.put("sp", spList);
+        // src 디렉토리가 존재하는지 확인
+        assertTrue(srcDirFile.exists(), "src 디렉토리가 존재하지 않습니다: " + srcDir);
+        assertTrue(srcDirFile.isDirectory(), "src 경로가 디렉토리가 아닙니다: " + srcDir);
+        
+        // 시스템별 폴더 및 파일을 동적으로 탐지
         List<Map<String, Object>> systems = new ArrayList<>();
-        systems.add(system);
-
+        Map<String, List<File>> systemToFiles = new HashMap<>();
+        
+        File[] systemDirs = srcDirFile.listFiles(File::isDirectory);
+        assertNotNull(systemDirs, "시스템 폴더를 찾을 수 없습니다");
+        assertTrue(systemDirs.length > 0, "시스템 폴더가 없습니다");
+        
+        // 각 폴더를 시스템명으로 인식
+        for (File systemDir : systemDirs) {
+            String systemName = systemDir.getName();
+            File[] sqlFiles = systemDir.listFiles((dir, name) -> {
+                String lowercaseName = name.toLowerCase();
+                return lowercaseName.endsWith(".sql") || 
+                       lowercaseName.endsWith(".plsql") ||
+                       lowercaseName.endsWith(".pls") ||
+                       lowercaseName.endsWith(".pck") ||
+                       lowercaseName.endsWith(".txt");
+            });
+            
+            if (sqlFiles != null && sqlFiles.length > 0) {
+                List<File> fileList = new ArrayList<>();
+                List<String> spList = new ArrayList<>();
+                
+                for (File sqlFile : sqlFiles) {
+                    fileList.add(sqlFile);
+                    spList.add(sqlFile.getName());
+                }
+                
+                Map<String, Object> system = new HashMap<>();
+                system.put("name", systemName);
+                system.put("sp", spList);
+                systems.add(system);
+                systemToFiles.put(systemName, fileList);
+            }
+        }
+        
+        assertTrue(systems.size() > 0, "분석할 시스템이 없습니다");
+        
         Map<String, Object> request = new HashMap<>();
         request.put("projectName", TEST_PROJECT);
-        request.put("dbms", "oracle");
+        request.put("dbms", "postgres");
         request.put("systems", systems);
 
         ResponseEntity<Map<String, Object>> response = fileUploadController.analysisContext(request, mockRequest);
@@ -103,20 +125,27 @@ public class AntlrAnalysisTest {
         assertEquals(200, response.getStatusCode().value(), "분석이 실패했습니다");
         assertTrue(response.getBody().containsKey("successFiles"), "successFiles가 없습니다");
         
-        String analysisDir = plSqlFileParserService.getAnalysisDirectory(TEST_SESSION, TEST_PROJECT, null);
-        for (File sqlFile : sqlFiles) {
-            String baseFileName = sqlFile.getName().substring(0, sqlFile.getName().lastIndexOf('.'));
-            Path found = findJsonRecursively(Paths.get(analysisDir), baseFileName + ".json");
-            assertNotNull(found, String.format("분석 결과 파일이 생성되지 않았습니다: %s", baseFileName + ".json"));
+        // 각 시스템별로 분석 결과 파일 검증
+        for (Map<String, Object> system : systems) {
+            String systemName = (String) system.get("name");
+            List<File> files = systemToFiles.get(systemName);
             
-            String content = Files.readString(found);
-            assertFalse(content.isEmpty(), 
-                String.format("분석 결과 파일이 비어있습니다: %s", found));
-            
-            System.out.println("분석 완료: " + sqlFile.getName());
-            System.out.println("결과 파일: " + found);
-            System.out.println("결과 내용: " + content);
-            System.out.println("-------------------");
+            if (files != null) {
+                String analysisDir = plSqlFileParserService.getAnalysisDirectory(TEST_SESSION, TEST_PROJECT, systemName);
+                for (File sqlFile : files) {
+                    String baseFileName = sqlFile.getName().substring(0, sqlFile.getName().lastIndexOf('.'));
+                    Path found = findJsonRecursively(Paths.get(analysisDir), baseFileName + ".json");
+                    assertNotNull(found, String.format("분석 결과 파일이 생성되지 않았습니다: system=%s, file=%s.json", systemName, baseFileName));
+                    
+                    String content = Files.readString(found);
+                    assertFalse(content.isEmpty(), 
+                        String.format("분석 결과 파일이 비어있습니다: %s", found));
+                    
+                    System.out.println(String.format("시스템: %s, 파일: %s", systemName, sqlFile.getName()));
+                    System.out.println("결과 파일: " + found);
+                    System.out.println("-------------------");
+                }
+            }
         }
     }
 
