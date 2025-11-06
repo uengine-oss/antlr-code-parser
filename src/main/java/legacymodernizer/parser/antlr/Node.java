@@ -3,11 +3,11 @@ package legacymodernizer.parser.antlr;
 import java.util.ArrayList;
 
 public class Node {
-    String type;
-    int startLine;
-    int endLine;
-    Node parent;
-    ArrayList<Node> children = new ArrayList<>();
+    public String type;
+    public int startLine;
+    public int endLine;
+    public Node parent;
+    public ArrayList<Node> children = new ArrayList<>();
 
     public Node(String type, int startLine, Node parent) {
         this.type = type;

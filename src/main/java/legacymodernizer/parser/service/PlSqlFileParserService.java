@@ -229,7 +229,7 @@ public class PlSqlFileParserService {
     // ========================================
 
     /**
-     * ANTLR 파싱 후 분석 결과를 JSON으로 저장
+     * ANTLR 파싱 후 분석 결과를 JSON으로 저장 (PL/SQL 전용)
      * @param candidate 파싱 대상 파일
      * @param displayFileName 표시용 파일명
      * @param sessionUUID 세션 UUID
@@ -266,6 +266,42 @@ public class PlSqlFileParserService {
     }
 
     /**
+     * ANTLR 파싱 후 분석 결과를 JSON으로 저장 (전략 패턴 지원)
+     * @param candidate 파싱 대상 파일
+     * @param displayFileName 표시용 파일명
+     * @param sessionUUID 세션 UUID
+     * @param projectName 프로젝트명
+     * @param systemName 시스템명
+     * @param parsingFunction 파싱 실행 함수 (File, String outputPath를 받아 파싱)
+     */
+    public void parseAndSaveStructureWithStrategy(File candidate,
+                                                  String displayFileName,
+                                                  String sessionUUID,
+                                                  String projectName,
+                                                  String systemName,
+                                                  ParsingFunction parsingFunction) throws IOException {
+        String analysisDir = getAnalysisDirectory(sessionUUID, projectName, systemName);
+        String baseFileName = toBaseNameWithoutExt(displayFileName != null ? displayFileName : candidate.getName());
+        String outputPath = analysisDir + File.separator + baseFileName + ".json";
+
+        createDirectoryIfNotExists(analysisDir);
+
+        try {
+            parsingFunction.parse(candidate, outputPath);
+        } catch (Exception e) {
+            throw new IOException("파싱 실패: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 파싱 함수 인터페이스
+     */
+    @FunctionalInterface
+    public interface ParsingFunction {
+        void parse(File file, String outputPath) throws Exception;
+    }
+
+    /**
      * 분석 결과 파일 존재 여부 확인
      * @param sessionUUID 세션 UUID
      * @param projectName 프로젝트명
@@ -299,6 +335,30 @@ public class PlSqlFileParserService {
         boolean already = analysisExists(sessionUUID, projectName, systemName, located.getName());
         if (!already) {
             parseAndSaveStructure(located, located.getName(), sessionUUID, projectName, systemName);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 필요 시 SP 파일 분석 실행 (전략 패턴 지원)
+     * @param sessionUUID 세션 UUID
+     * @param projectName 프로젝트명
+     * @param systemNameHint 시스템명 힌트
+     * @param located 파일 객체
+     * @param parsingFunction 파싱 실행 함수
+     * @return 분석 실행 여부
+     */
+    private boolean analyzeSpIfNeededWithStrategy(String sessionUUID, String projectName, String systemNameHint, File located, ParsingFunction parsingFunction) throws IOException {
+        String bucket = getBucketForFile(sessionUUID, projectName, located);
+        if (!PLSQL_DIR.equals(bucket)) {
+            return false;
+        }
+
+        String systemName = systemNameHint != null ? systemNameHint : detectSystemNameForFile(sessionUUID, projectName, located);
+        boolean already = analysisExists(sessionUUID, projectName, systemName, located.getName());
+        if (!already) {
+            parseAndSaveStructureWithStrategy(located, located.getName(), sessionUUID, projectName, systemName, parsingFunction);
             return true;
         }
         return false;
@@ -384,7 +444,7 @@ public class PlSqlFileParserService {
     }
 
     /**
-     * 시스템별 SP 파싱 처리
+     * 시스템별 SP 파싱 처리 (PL/SQL 전용)
      * - 실패 시 RuntimeException 발생
      * @param sessionUUID 세션 UUID
      * @param projectName 프로젝트명
@@ -422,6 +482,68 @@ public class PlSqlFileParserService {
                 if (located != null) {
                     try {
                         analyzeSpIfNeeded(sessionUUID, projectName, systemName, located);
+                        Map<String, String> info = getFileInfoForFile(sessionUUID, projectName, located);
+                        Map<String, String> ok = new HashMap<>();
+                        ok.put("system", systemName);
+                        ok.put("fileName", info.getOrDefault("fileName", fileName));
+                        ok.put("fileContent", info.getOrDefault("fileContent", ""));
+                        ok.put("analysisExists", info.getOrDefault("analysisExists", "false"));
+                        successFiles.add(ok);
+                    } catch (Exception e) {
+                        throw new RuntimeException("파싱 실패: system=" + systemName + ", file=" + fileName + " - " + e.getMessage(), e);
+                    }
+                } else {
+                    throw new RuntimeException("파일을 찾을 수 없습니다: " + fileName);
+                }
+                long elapsed = System.currentTimeMillis() - start;
+                log.info("  {} ({}ms)", fileName, elapsed);
+            }
+        }
+
+        return Map.of("successFiles", successFiles);
+    }
+
+    /**
+     * 시스템별 SP 파싱 처리 (전략 패턴 지원)
+     * - 실패 시 RuntimeException 발생
+     * @param sessionUUID 세션 UUID
+     * @param projectName 프로젝트명
+     * @param systems systems 배열
+     * @param parsingFunction 파싱 실행 함수
+     * @return {successFiles}
+     * @throws RuntimeException 파싱 실패 시
+     */
+    public Map<String, Object> processParsingBySystemsWithStrategy(String sessionUUID,
+                                                                   String projectName,
+                                                                   List<?> systems,
+                                                                   ParsingFunction parsingFunction) {
+        List<Map<String, String>> successFiles = new ArrayList<>();
+
+        Map<String, File> fileIndex = buildProjectFileIndex(sessionUUID, projectName);
+
+        if (systems == null) return Map.of("successFiles", successFiles);
+
+        for (Object sys : systems) {
+            if (!(sys instanceof Map<?, ?>)) continue;
+            Map<?, ?> sysMap = (Map<?, ?>) sys;
+            String systemName = (String) sysMap.get("name");
+            Object spObj = sysMap.get("sp");
+            if (systemName == null || !(spObj instanceof List<?>)) continue;
+
+            List<?> spArr = (List<?>) spObj;
+            for (Object sp : spArr) {
+                if (!(sp instanceof String)) continue;
+                String fileName = (String) sp;
+                long start = System.currentTimeMillis();
+                File located;
+                try {
+                    located = locateFileByName(sessionUUID, projectName, fileName, fileIndex);
+                } catch (IOException io) {
+                    throw new RuntimeException("파일 검색 실패: system=" + systemName + ", file=" + fileName + " - " + io.getMessage(), io);
+                }
+                if (located != null) {
+                    try {
+                        analyzeSpIfNeededWithStrategy(sessionUUID, projectName, systemName, located, parsingFunction);
                         Map<String, String> info = getFileInfoForFile(sessionUUID, projectName, located);
                         Map<String, String> ok = new HashMap<>();
                         ok.put("system", systemName);
