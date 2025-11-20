@@ -32,8 +32,9 @@ public class AntlrAnalysisTest {
     private PlSqlFileParserService plSqlFileParserService;
 
     private MockHttpServletRequest mockRequest;
-    private static final String TEST_SESSION = "TestSession";
-    private static final String TEST_PROJECT = "text2sql";
+    private static final String TEST_SESSION = "TestSession_2";
+    private static final String TEST_PROJECT = "waterpoc";
+    private static final String TEST_DBMS = "plsql";
 
     // ========================================
     // 테스트 설정
@@ -117,7 +118,7 @@ public class AntlrAnalysisTest {
         
         Map<String, Object> request = new HashMap<>();
         request.put("projectName", TEST_PROJECT);
-        request.put("dbms", "postgres");
+        request.put("dbms", TEST_DBMS);
         request.put("systems", systems);
 
         ResponseEntity<Map<String, Object>> response = fileUploadController.analysisContext(request, mockRequest);

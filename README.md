@@ -108,6 +108,10 @@ Controller (FileUploadController)
           └─ CustomPlSqlListener → Node.toJson()
 ```
 
+- `ParserStrategyFactory`는 DBMS 문자열을 정규화해 `DbmsParserStrategy` 구현체를 선택합니다.
+- 기본 매핑: `oracle`/`plsql` → `PlSqlParserStrategy`, `postgres`/`postgresql`/`pg` → `PostgreSqlParserStrategy`.
+- 각 전략은 `parseFile(File, String)`을 구현해 ANTLR 파서를 교체하며, 동일한 `PlSqlFileParserService` 파이프라인을 공유합니다.
+
 ### 2.3 주요 의존 요소
 
 | 구성 요소 | 역할 | 세부 내용 |
@@ -290,7 +294,14 @@ public ResponseEntity<Map<String, Object>> analysisContext(
 - `analysisExists` : `analysis/{system}/{파일명}.json` 존재 여부 확인
 - 이미 분석된 파일은 재파싱하지 않고 `analysisExists=true`로 응답
 
-### 4.7 Step 6. ANTLR 파싱 실행
+### 4.7 Step 6. DBMS별 파싱 전략 선택
+
+- `ParserStrategyFactory.getStrategy(dbms)`가 요청 본문의 `dbms` 값을 정규화하여 대응되는 `DbmsParserStrategy`를 반환합니다.
+- 미지정 또는 빈 문자열이면 기본적으로 `plsql` 전략(`PlSqlParserStrategy`)을 사용합니다.
+- 현재 매핑: `oracle`/`plsql` → `PlSqlParserStrategy`, `postgres`/`postgresql`/`pg` → `PostgreSqlParserStrategy`.
+- 선택된 전략은 `processParsingBySystemsWithStrategy(...)`를 통해 `PlSqlFileParserService` 파이프라인에 주입되며, 전략별 `parseFile` 구현만 교체됩니다.
+
+### 4.8 Step 7. ANTLR 파싱 실행
 
 - `parseAndSaveStructure` 수행 시 흐름
   1. `CharStreams.fromStream()` → `CaseChangingCharStream`으로 대문자 변환 (Oracle 호환)
@@ -299,7 +310,7 @@ public ResponseEntity<Map<String, Object>> analysisContext(
   4. `CustomPlSqlListener`가 트리를 순회하며 `Node` 구조 구성
   5. `Node.toJson()` 결과를 `{analysis}/{system}/{파일명}.json`에 저장
 
-### 4.8 Step 7. 응답 및 에러 처리
+### 4.9 Step 8. 응답 및 에러 처리
 
 - 모든 파일 처리 성공 시에만 `200 OK`
 - 업로드/파싱 중 하나라도 실패하면 즉시 예외 발생 → `GlobalExceptionHandler`에서 `{"detail":"..."}` 반환
@@ -445,11 +456,13 @@ curl -i http://localhost:8081/
 
 ### 8.2 업로드 예제
 
+> ℹ️ `dbms` 값에 따라 `ParserStrategyFactory`가 DBMS별 파싱 전략을 선택합니다. 기본값은 `plsql`이며, `oracle` 문자열도 동일 전략으로 매핑됩니다. PostgreSQL 파서를 사용하려면 `postgres`, `postgresql`, `pg` 중 하나를 지정하세요.
+
 ```bash
 curl -X POST "http://localhost:8081/fileUpload" \
   -H "Session-UUID: demo-session" \
   -F 'metadata={
-    "dbms": "oracle",
+    "dbms": "plsql",
     "projectName": "DemoProject",
     "systems": [
       {"name": "SYSTEM_A", "sp": ["PROC_A.sql", "FUNC_A.sql"]}
@@ -473,7 +486,7 @@ curl -X POST "http://localhost:8081/parsing" \
   -H "Session-UUID: demo-session" \
   -H "Content-Type: application/json" \
   -d '{
-        "dbms": "oracle",
+        "dbms": "plsql",
         "projectName": "DemoProject",
         "systems": [
           {"name": "SYSTEM_A", "sp": ["PROC_A.sql", "FUNC_A.sql"]}
@@ -511,7 +524,7 @@ Content-Type: application/json
 ### 9.2 IDE 실행 (권장)
 
 - `src/test/java/legacymodernizer/parser/AntlrAnalysisTest.java`를 IDE에서 열고 **Run 버튼을 클릭**하여 실행합니다.
-- 테스트는 하드코딩된 상수(`Session-UUID = TestSession`, `projectName = text2sql`)를 사용하므로, 실행 전에 아래 경로에 샘플 파일을 준비해야 합니다.
+- 테스트는 하드코딩된 상수(`Session-UUID = TestSession`, `projectName = text2sql`, `dbms = plsql`)를 사용하므로, 실행 전에 아래 경로에 샘플 파일을 준비해야 합니다.
   ```
   {BASE_DIR}/TestSession/text2sql/src/{시스템명}/샘플.sql
   ```
