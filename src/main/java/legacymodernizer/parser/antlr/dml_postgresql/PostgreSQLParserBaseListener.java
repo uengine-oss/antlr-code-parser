@@ -1,4 +1,4 @@
-// Generated from PostgreSQLParser.g4 by ANTLR 4.13.2
+// Generated from PostgreSQLParser.g4 by ANTLR 4.13.1
 package legacymodernizer.parser.antlr.dml_postgresql;
 
 import org.antlr.v4.runtime.ParserRuleContext;
