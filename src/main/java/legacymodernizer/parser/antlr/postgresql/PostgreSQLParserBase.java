@@ -116,12 +116,6 @@ public abstract class PostgreSQLParserBase extends Parser {
         Lexer lexer = new PostgreSQLLexer(charStream);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         PostgreSQLParser parser = new PostgreSQLParser(tokens);
-        lexer.removeErrorListeners();
-        parser.removeErrorListeners();
-        LexerDispatchingErrorListener listener_lexer = new LexerDispatchingErrorListener((Lexer)(((CommonTokenStream)(this.getInputStream())).getTokenSource()));
-        ParserDispatchingErrorListener listener_parser = new ParserDispatchingErrorListener(this);
-        lexer.addErrorListener(listener_lexer);
-        parser.addErrorListener(listener_parser);
         return parser;
     }
 
@@ -134,3 +128,4 @@ public abstract class PostgreSQLParserBase extends Parser {
             ;
     }
 }
+

@@ -17,20 +17,20 @@ import org.springframework.web.multipart.MultipartFile;
 import legacymodernizer.parser.antlr.postgresql.CustomPostgreSQLListener;
 import legacymodernizer.parser.antlr.postgresql.PostgreSQLLexer;
 import legacymodernizer.parser.antlr.postgresql.PostgreSQLParser;
-import legacymodernizer.parser.service.PlSqlFileParserService;
+import legacymodernizer.parser.service.DbmsFileParserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * PostgreSQL 파싱 전략 구현체
+ * PostgreSQL (DDL + PL/pgSQL) 파싱 전략
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class PostgreSqlParserStrategy implements DbmsParserStrategy {
-    
-    private final PlSqlFileParserService plSqlFileParserService;
-    
+
+    private final DbmsFileParserService dbmsFileParserService;
+
     @Override
     public Map<String, Object> processUploadByMetadata(String sessionUUID,
                                                       String projectName,
@@ -38,25 +38,23 @@ public class PostgreSqlParserStrategy implements DbmsParserStrategy {
                                                       Object ddlObj,
                                                       Object seqObj,
                                                       Map<String, MultipartFile> nameToFile) {
-        // 파일 업로드 로직은 DBMS에 관계없이 동일하므로 재사용
-        return plSqlFileParserService.processUploadByMetadata(
+        return dbmsFileParserService.processUploadByMetadata(
             sessionUUID, projectName, systemsObj, ddlObj, seqObj, nameToFile
         );
     }
-    
+
     @Override
     public Map<String, Object> processParsingBySystems(String sessionUUID,
                                                       String projectName,
                                                       List<?> systems) {
-        // PostgreSQL 파싱 전략을 사용하여 처리
-        return plSqlFileParserService.processParsingBySystemsWithStrategy(
-            sessionUUID, 
-            projectName, 
-            systems, 
+        return dbmsFileParserService.processParsingBySystemsWithStrategy(
+            sessionUUID,
+            projectName,
+            systems,
             this::parseFile
         );
     }
-    
+
     @Override
     public void parseFile(File file, String outputPath) throws Exception {
         log.debug("      [ANTLR PostgreSQL 파싱 시작]");
@@ -65,15 +63,12 @@ public class PostgreSqlParserStrategy implements DbmsParserStrategy {
             PostgreSQLLexer lexer = new PostgreSQLLexer(charStream);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             PostgreSQLParser parser = new PostgreSQLParser(tokens);
-            
-            // PostgreSQL 파서의 root 규칙 실행
+
             PostgreSQLParser.RootContext tree = parser.root();
-            
-            // CustomPostgreSQLListener로 파싱
+
             CustomPostgreSQLListener listener = new CustomPostgreSQLListener(tokens);
             new ParseTreeWalker().walk(listener, tree);
-            
-            // 분석 결과 저장
+
             File analysisFile = new File(outputPath);
             try (FileWriter writer = new FileWriter(analysisFile)) {
                 writer.write(listener.getRoot().toJson());
@@ -81,7 +76,7 @@ public class PostgreSqlParserStrategy implements DbmsParserStrategy {
             log.debug("      → 분석 결과 저장: {}", analysisFile.getName());
         }
     }
-    
+
     @Override
     public String getSupportedDbmsType() {
         return "postgresql";

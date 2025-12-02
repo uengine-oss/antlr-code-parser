@@ -20,7 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 import legacymodernizer.parser.controller.FileUploadController;
-import legacymodernizer.parser.service.PlSqlFileParserService;
+import legacymodernizer.parser.service.DbmsFileParserService;
 
 @SpringBootTest
 public class AntlrAnalysisTest {
@@ -29,7 +29,7 @@ public class AntlrAnalysisTest {
     private FileUploadController fileUploadController;
     
     @Autowired
-    private PlSqlFileParserService plSqlFileParserService;
+    private DbmsFileParserService dbmsFileParserService;
 
     private MockHttpServletRequest mockRequest;
     private static final String TEST_SESSION = "TestSession_4";
@@ -45,13 +45,13 @@ public class AntlrAnalysisTest {
         mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("Session-UUID", TEST_SESSION);
         
-        String srcDir = plSqlFileParserService.getTargetDirectory(TEST_SESSION, TEST_PROJECT, null);
+        String srcDir = dbmsFileParserService.getTargetDirectory(TEST_SESSION, TEST_PROJECT, null);
         File srcDirFile = new File(srcDir);
         if (!srcDirFile.exists()) {
             srcDirFile.mkdirs();
         }
 
-        String analysisDir = plSqlFileParserService.getAnalysisDirectory(TEST_SESSION, TEST_PROJECT, null);
+        String analysisDir = dbmsFileParserService.getAnalysisDirectory(TEST_SESSION, TEST_PROJECT, null);
         File analysisDirFile = new File(analysisDir);
         if (analysisDirFile.exists()) {
             deleteRecursively(analysisDirFile);
@@ -65,27 +65,27 @@ public class AntlrAnalysisTest {
     
     /**
      * 복잡한 UPDATE 서브쿼리 테스트
-     * - dml_postgresql 전략을 사용하여 깊게 중첩된 서브쿼리 파싱 테스트
+     * - postgresql 전략을 사용하여 깊게 중첩된 서브쿼리 파싱 테스트
      */
     @Test
     void testComplexUpdateWithNestedSubqueries() throws Exception {
         String testSession = "TestSession_4";
         String testProject = "test";
-        String testDbms = "dml_postgresql";
+        String testDbms = "postgresql";
         String testSystem = "sample";
         
         MockHttpServletRequest testRequest = new MockHttpServletRequest();
         testRequest.addHeader("Session-UUID", testSession);
         
         // 테스트 디렉토리 준비
-        String srcDir = plSqlFileParserService.getTargetDirectory(testSession, testProject, testSystem);
+        String srcDir = dbmsFileParserService.getTargetDirectory(testSession, testProject, testSystem);
         File srcDirFile = new File(srcDir);
         if (!srcDirFile.exists()) {
             srcDirFile.mkdirs();
         }
         
         // Analysis 디렉토리 정리
-        String analysisDir = plSqlFileParserService.getAnalysisDirectory(testSession, testProject, testSystem);
+        String analysisDir = dbmsFileParserService.getAnalysisDirectory(testSession, testProject, testSystem);
         File analysisDirFile = new File(analysisDir);
         if (analysisDirFile.exists()) {
             deleteRecursively(analysisDirFile);
@@ -158,7 +158,7 @@ public class AntlrAnalysisTest {
      */
     @Test
     void testAnalysisWithExistingFiles() throws Exception {
-        String srcDir = plSqlFileParserService.getTargetDirectory(TEST_SESSION, TEST_PROJECT, null);
+        String srcDir = dbmsFileParserService.getTargetDirectory(TEST_SESSION, TEST_PROJECT, null);
         File srcDirFile = new File(srcDir);
         
         // src 디렉토리가 존재하는지 확인
@@ -220,7 +220,7 @@ public class AntlrAnalysisTest {
             List<File> files = systemToFiles.get(systemName);
             
             if (files != null) {
-                String analysisDir = plSqlFileParserService.getAnalysisDirectory(TEST_SESSION, TEST_PROJECT, systemName);
+                String analysisDir = dbmsFileParserService.getAnalysisDirectory(TEST_SESSION, TEST_PROJECT, systemName);
                 for (File sqlFile : files) {
                     String baseFileName = sqlFile.getName().substring(0, sqlFile.getName().lastIndexOf('.'));
                     Path found = findJsonRecursively(Paths.get(analysisDir), baseFileName + ".json");

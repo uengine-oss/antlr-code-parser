@@ -88,3 +88,4 @@ public abstract class PostgreSQLLexerBase extends Lexer {
         return  ';' == (char)getInputStream().LA(1);
     }
 }
+

@@ -1,6 +1,5 @@
 // Generated from PostgreSQLParser.g4 by ANTLR 4.13.1
 package legacymodernizer.parser.antlr.postgresql;
-
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.*;
@@ -815,6 +814,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRoot(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRoot(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final RootContext root() throws RecognitionException {
@@ -856,6 +860,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitStmtblock(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitStmtblock(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -903,6 +912,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitStmtmulti(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitStmtmulti(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -1345,6 +1359,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitStmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitStmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -2254,6 +2273,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCallstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCallstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final CallstmtContext callstmt() throws RecognitionException {
@@ -2303,6 +2327,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreaterolestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreaterolestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -2359,6 +2388,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWith_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWith_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final With_Context with_() throws RecognitionException {
@@ -2401,6 +2435,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOptrolelist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOptrolelist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -2457,6 +2496,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlteroptrolelist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlteroptrolelist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -2529,6 +2573,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlteroptroleelem(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlteroptroleelem(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -2679,6 +2728,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateoptroleelem(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateoptroleelem(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final CreateoptroleelemContext createoptroleelem() throws RecognitionException {
@@ -2792,6 +2846,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateuserstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateuserstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final CreateuserstmtContext createuserstmt() throws RecognitionException {
@@ -2857,6 +2916,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterrolestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterrolestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -2925,6 +2989,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIn_database_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIn_database_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final In_database_Context in_database_() throws RecognitionException {
@@ -2978,6 +3047,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterrolesetstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterrolesetstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -3060,6 +3134,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDroprolestmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDroprolestmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final DroprolestmtContext droprolestmt() throws RecognitionException {
@@ -3133,6 +3212,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreategroupstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreategroupstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final CreategroupstmtContext creategroupstmt() throws RecognitionException {
@@ -3199,6 +3283,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAltergroupstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAltergroupstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final AltergroupstmtContext altergroupstmt() throws RecognitionException {
@@ -3247,6 +3336,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAdd_drop(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAdd_drop(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -3311,6 +3405,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateschemastmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateschemastmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -3399,6 +3498,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOptschemaname(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOptschemaname(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final OptschemanameContext optschemaname() throws RecognitionException {
@@ -3441,6 +3545,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOptschemaeltlist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOptschemaeltlist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -3509,6 +3618,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSchema_stmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSchema_stmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -3594,6 +3708,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVariablesetstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVariablesetstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final VariablesetstmtContext variablesetstmt() throws RecognitionException {
@@ -3661,6 +3780,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSet_rest(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSet_rest(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -3737,6 +3861,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGeneric_set(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGeneric_set(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -4269,6 +4398,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSet_rest_more(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSet_rest_more(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Set_rest_moreContext set_rest_more() throws RecognitionException {
@@ -4422,6 +4556,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVar_name(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVar_name(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Var_nameContext var_name() throws RecognitionException {
@@ -4486,6 +4625,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVar_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVar_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Var_listContext var_list() throws RecognitionException {
@@ -4545,6 +4689,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVar_value(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVar_value(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -5032,6 +5181,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIso_level(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIso_level(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Iso_levelContext iso_level() throws RecognitionException {
@@ -5109,6 +5263,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitBoolean_or_string_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitBoolean_or_string_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -5618,6 +5777,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitZone_value(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitZone_value(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Zone_valueContext zone_value() throws RecognitionException {
@@ -5728,6 +5892,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitEncoding_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitEncoding_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Encoding_Context encoding_() throws RecognitionException {
@@ -5788,6 +5957,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitNonreservedword_or_sconst(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitNonreservedword_or_sconst(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -6264,6 +6438,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVariableresetstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVariableresetstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final VariableresetstmtContext variableresetstmt() throws RecognitionException {
@@ -6312,6 +6491,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReset_rest(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReset_rest(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -6388,6 +6572,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGeneric_reset(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGeneric_reset(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -6841,6 +7030,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSetresetclause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSetresetclause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final SetresetclauseContext setresetclause() throws RecognitionException {
@@ -6901,6 +7095,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunctionsetresetclause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunctionsetresetclause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -6967,6 +7166,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVariableshowstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVariableshowstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -7055,6 +7259,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConstraintssetstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConstraintssetstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final ConstraintssetstmtContext constraintssetstmt() throws RecognitionException {
@@ -7101,6 +7310,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConstraints_set_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConstraints_set_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -7549,6 +7763,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConstraints_set_mode(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConstraints_set_mode(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Constraints_set_modeContext constraints_set_mode() throws RecognitionException {
@@ -7596,6 +7815,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCheckpointstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCheckpointstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final CheckpointstmtContext checkpointstmt() throws RecognitionException {
@@ -7638,6 +7862,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDiscardstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDiscardstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -7731,6 +7960,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAltertablestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAltertablestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -8141,6 +8375,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_table_cmds(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_table_cmds(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Alter_table_cmdsContext alter_table_cmds() throws RecognitionException {
@@ -8203,6 +8442,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPartition_cmd(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPartition_cmd(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -8270,6 +8514,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIndex_partition_cmd(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIndex_partition_cmd(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -8426,6 +8675,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_table_cmd(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_table_cmd(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -9430,6 +9684,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_column_default(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_column_default(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Alter_column_defaultContext alter_column_default() throws RecognitionException {
@@ -9490,6 +9749,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDrop_behavior_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDrop_behavior_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Drop_behavior_Context drop_behavior_() throws RecognitionException {
@@ -9540,6 +9804,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCollate_clause_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCollate_clause_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Collate_clause_Context collate_clause_() throws RecognitionException {
@@ -9582,6 +9851,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_using(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_using(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -9629,6 +9903,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReplica_identity(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReplica_identity(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -9705,6 +9984,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReloptions(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReloptions(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final ReloptionsContext reloptions() throws RecognitionException {
@@ -9749,6 +10033,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReloptions_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReloptions_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -9798,6 +10087,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReloption_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReloption_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -9863,6 +10157,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReloption_elem(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReloption_elem(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -9945,6 +10244,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_identity_column_option_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_identity_column_option_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Alter_identity_column_option_listContext alter_identity_column_option_list() throws RecognitionException {
@@ -10009,6 +10313,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_identity_column_option(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_identity_column_option(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -10137,6 +10446,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPartitionboundspec(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPartitionboundspec(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final PartitionboundspecContext partitionboundspec() throws RecognitionException {
@@ -10245,6 +10559,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitHash_partbound_elem(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitHash_partbound_elem(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Hash_partbound_elemContext hash_partbound_elem() throws RecognitionException {
@@ -10293,6 +10612,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitHash_partbound(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitHash_partbound(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -10356,6 +10680,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAltercompositetypestmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAltercompositetypestmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final AltercompositetypestmtContext altercompositetypestmt() throws RecognitionException {
@@ -10408,6 +10737,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_type_cmds(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_type_cmds(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -10487,6 +10821,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_type_cmd(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_type_cmd(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -10630,6 +10969,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCloseportalstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCloseportalstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -11116,6 +11460,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCopystmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCopystmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final CopystmtContext copystmt() throws RecognitionException {
@@ -11269,6 +11618,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCopy_from(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCopy_from(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Copy_fromContext copy_from() throws RecognitionException {
@@ -11316,6 +11670,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitProgram_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitProgram_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Program_Context program_() throws RecognitionException {
@@ -11357,6 +11716,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCopy_file_name(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCopy_file_name(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -11427,6 +11791,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCopy_options(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCopy_options(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -11502,6 +11871,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCopy_opt_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCopy_opt_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Copy_opt_listContext copy_opt_list() throws RecognitionException {
@@ -11572,6 +11946,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCopy_opt_item(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCopy_opt_item(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -11770,6 +12149,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitBinary_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitBinary_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Binary_Context binary_() throws RecognitionException {
@@ -11813,6 +12197,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCopy_delimiter(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCopy_delimiter(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -11865,6 +12254,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitUsing_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitUsing_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Using_Context using_() throws RecognitionException {
@@ -11911,6 +12305,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCopy_generic_opt_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCopy_generic_opt_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -11972,6 +12371,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCopy_generic_opt_elem(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCopy_generic_opt_elem(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Copy_generic_opt_elemContext copy_generic_opt_elem() throws RecognitionException {
@@ -12031,6 +12435,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCopy_generic_opt_arg(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCopy_generic_opt_arg(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -12541,6 +12950,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCopy_generic_opt_arg_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCopy_generic_opt_arg_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Copy_generic_opt_arg_listContext copy_generic_opt_arg_list() throws RecognitionException {
@@ -12597,6 +13011,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCopy_generic_opt_arg_list_item(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCopy_generic_opt_arg_list_item(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -12682,6 +13101,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -12978,6 +13402,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpttemp(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpttemp(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final OpttempContext opttemp() throws RecognitionException {
@@ -13075,6 +13504,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpttableelementlist(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpttableelementlist(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final OpttableelementlistContext opttableelementlist() throws RecognitionException {
@@ -13116,6 +13550,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpttypedtableelementlist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpttypedtableelementlist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -13167,6 +13606,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTableelementlist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTableelementlist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -13232,6 +13676,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTypedtableelementlist(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTypedtableelementlist(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TypedtableelementlistContext typedtableelementlist() throws RecognitionException {
@@ -13294,6 +13743,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTableelement(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTableelement(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -13358,6 +13812,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTypedtableelement(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTypedtableelement(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TypedtableelementContext typedtableelement() throws RecognitionException {
@@ -13420,6 +13879,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitColumnDef(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitColumnDef(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final ColumnDefContext columnDef() throws RecognitionException {
@@ -13480,6 +13944,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitColumnOptions(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitColumnOptions(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final ColumnOptionsContext columnOptions() throws RecognitionException {
@@ -13537,6 +14006,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitColquallist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitColquallist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -13601,6 +14075,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitColconstraint(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitColconstraint(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -13718,6 +14197,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitColconstraintelem(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitColconstraintelem(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -13949,6 +14433,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGenerated_when(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGenerated_when(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Generated_whenContext generated_when() throws RecognitionException {
@@ -14007,6 +14496,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConstraintattr(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConstraintattr(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -14087,6 +14581,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTablelikeclause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTablelikeclause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TablelikeclauseContext tablelikeclause() throws RecognitionException {
@@ -14141,6 +14640,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTablelikeoptionlist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTablelikeoptionlist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -14211,6 +14715,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTablelikeoption(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTablelikeoption(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TablelikeoptionContext tablelikeoption() throws RecognitionException {
@@ -14263,6 +14772,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTableconstraint(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTableconstraint(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -14374,6 +14888,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConstraintelem(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConstraintelem(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -14675,6 +15194,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitNo_inherit_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitNo_inherit_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final No_inherit_Context no_inherit_() throws RecognitionException {
@@ -14718,6 +15242,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitColumn_list_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitColumn_list_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -14769,6 +15298,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitColumnlist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitColumnlist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -14827,6 +15361,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitColumnElem(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitColumnElem(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final ColumnElemContext columnElem() throws RecognitionException {
@@ -14869,6 +15408,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitC_include_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitC_include_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -14916,6 +15460,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitKey_match(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitKey_match(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -14974,6 +15523,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExclusionconstraintlist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExclusionconstraintlist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -15038,6 +15592,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExclusionconstraintelem(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExclusionconstraintelem(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -15106,6 +15665,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExclusionwhereclause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExclusionwhereclause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final ExclusionwhereclauseContext exclusionwhereclause() throws RecognitionException {
@@ -15154,6 +15718,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitKey_actions(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitKey_actions(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -15228,6 +15797,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitKey_update(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitKey_update(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Key_updateContext key_update() throws RecognitionException {
@@ -15273,6 +15847,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitKey_delete(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitKey_delete(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -15321,6 +15900,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitKey_action(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitKey_action(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -15407,6 +15991,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOptinherit(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOptinherit(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final OptinheritContext optinherit() throws RecognitionException {
@@ -15452,6 +16041,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOptpartitionspec(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOptpartitionspec(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -15499,6 +16093,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPartitionspec(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPartitionspec(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -15556,6 +16155,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPart_params(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPart_params(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -15627,6 +16231,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPart_elem(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPart_elem(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -15754,6 +16363,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTable_access_method_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTable_access_method_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Table_access_method_clauseContext table_access_method_clause() throws RecognitionException {
@@ -15798,6 +16412,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOptwith(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOptwith(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -15860,6 +16479,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOncommitoption(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOncommitoption(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -15932,6 +16556,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpttablespace(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpttablespace(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final OpttablespaceContext opttablespace() throws RecognitionException {
@@ -15976,6 +16605,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOptconstablespace(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOptconstablespace(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -16024,6 +16658,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExistingindex(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExistingindex(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -16084,6 +16723,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatestatsstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatestatsstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -16173,6 +16817,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterstatsstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterstatsstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final AlterstatsstmtContext alterstatsstmt() throws RecognitionException {
@@ -16249,6 +16898,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateasstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateasstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -16348,6 +17002,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreate_as_target(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreate_as_target(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Create_as_targetContext create_as_target() throws RecognitionException {
@@ -16439,6 +17098,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWith_data_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWith_data_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final With_data_Context with_data_() throws RecognitionException {
@@ -16514,6 +17178,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatematviewstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatematviewstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -16612,6 +17281,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreate_mv_target(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreate_mv_target(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Create_mv_targetContext create_mv_target() throws RecognitionException {
@@ -16691,6 +17365,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOptnolog(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOptnolog(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final OptnologContext optnolog() throws RecognitionException {
@@ -16739,6 +17418,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRefreshmatviewstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRefreshmatviewstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -16817,6 +17501,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateseqstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateseqstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -16904,6 +17593,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterseqstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterseqstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final AlterseqstmtContext alterseqstmt() throws RecognitionException {
@@ -16962,6 +17656,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOptseqoptlist(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOptseqoptlist(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final OptseqoptlistContext optseqoptlist() throws RecognitionException {
@@ -17003,6 +17702,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOptparenthesizedseqoptlist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOptparenthesizedseqoptlist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -17050,6 +17754,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSeqoptlist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSeqoptlist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -17128,6 +17837,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSeqoptelem(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSeqoptelem(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -17316,6 +18030,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitBy_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitBy_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final By_Context by_() throws RecognitionException {
@@ -17360,6 +18079,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitNumericonly(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitNumericonly(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -17439,6 +18163,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitNumericonly_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitNumericonly_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Numericonly_listContext numericonly_list() throws RecognitionException {
@@ -17516,6 +18245,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateplangstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateplangstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -17622,6 +18356,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTrusted_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTrusted_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Trusted_Context trusted_() throws RecognitionException {
@@ -17664,6 +18403,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitHandler_name(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitHandler_name(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -17717,6 +18461,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitInline_handler_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitInline_handler_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Inline_handler_Context inline_handler_() throws RecognitionException {
@@ -17760,6 +18509,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitValidator_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitValidator_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -17820,6 +18574,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitValidator_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitValidator_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Validator_Context validator_() throws RecognitionException {
@@ -17857,6 +18616,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitProcedural_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitProcedural_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -17909,6 +18673,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatetablespacestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatetablespacestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -17980,6 +18749,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpttablespaceowner(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpttablespaceowner(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final OpttablespaceownerContext opttablespaceowner() throws RecognitionException {
@@ -18025,6 +18799,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDroptablespacestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDroptablespacestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -18092,6 +18871,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateextensionstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateextensionstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -18167,6 +18951,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreate_extension_opt_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreate_extension_opt_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Create_extension_opt_listContext create_extension_opt_list() throws RecognitionException {
@@ -18226,6 +19015,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreate_extension_opt_item(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreate_extension_opt_item(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -18308,6 +19102,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterextensionstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterextensionstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final AlterextensionstmtContext alterextensionstmt() throws RecognitionException {
@@ -18358,6 +19157,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_extension_opt_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_extension_opt_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -18412,6 +19216,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_extension_opt_item(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_extension_opt_item(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -18503,6 +19312,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterextensioncontentsstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterextensioncontentsstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -18800,6 +19614,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatefdwstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatefdwstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final CreatefdwstmtContext createfdwstmt() throws RecognitionException {
@@ -18871,6 +19690,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFdw_option(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFdw_option(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -18950,6 +19774,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFdw_options(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFdw_options(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Fdw_optionsContext fdw_options() throws RecognitionException {
@@ -19003,6 +19832,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFdw_options_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFdw_options_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Fdw_options_Context fdw_options_() throws RecognitionException {
@@ -19055,6 +19889,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterfdwstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterfdwstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -19143,6 +19982,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreate_generic_options(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreate_generic_options(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Create_generic_optionsContext create_generic_options() throws RecognitionException {
@@ -19195,6 +20039,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGeneric_option_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGeneric_option_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -19256,6 +20105,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_generic_options(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_generic_options(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Alter_generic_optionsContext alter_generic_options() throws RecognitionException {
@@ -19308,6 +20162,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_generic_option_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_generic_option_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -19371,6 +20230,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlter_generic_option_elem(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlter_generic_option_elem(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -19448,6 +20312,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGeneric_option_elem(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGeneric_option_elem(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Generic_option_elemContext generic_option_elem() throws RecognitionException {
@@ -19490,6 +20359,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGeneric_option_name(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGeneric_option_name(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Generic_option_nameContext generic_option_name() throws RecognitionException {
@@ -19529,6 +20403,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGeneric_option_arg(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGeneric_option_arg(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -19589,6 +20468,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateforeignserverstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateforeignserverstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -19735,6 +20619,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitType_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitType_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Type_Context type_() throws RecognitionException {
@@ -19778,6 +20667,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitForeign_server_version(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitForeign_server_version(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -19840,6 +20734,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitForeign_server_version_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitForeign_server_version_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Foreign_server_version_Context foreign_server_version_() throws RecognitionException {
@@ -19887,6 +20786,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterforeignserverstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterforeignserverstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -19992,6 +20896,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateforeigntablestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateforeigntablestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -20252,6 +21161,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitImportforeignschemastmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitImportforeignschemastmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final ImportforeignschemastmtContext importforeignschemastmt() throws RecognitionException {
@@ -20329,6 +21243,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitImport_qualification_type(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitImport_qualification_type(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Import_qualification_typeContext import_qualification_type() throws RecognitionException {
@@ -20391,6 +21310,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitImport_qualification(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitImport_qualification(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Import_qualificationContext import_qualification() throws RecognitionException {
@@ -20450,6 +21374,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateusermappingstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateusermappingstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -20555,6 +21484,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAuth_ident(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAuth_ident(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -21039,6 +21973,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDropusermappingstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDropusermappingstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final DropusermappingstmtContext dropusermappingstmt() throws RecognitionException {
@@ -21131,6 +22070,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterusermappingstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterusermappingstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final AlterusermappingstmtContext alterusermappingstmt() throws RecognitionException {
@@ -21205,6 +22149,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatepolicystmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatepolicystmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -21320,6 +22269,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterpolicystmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterpolicystmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final AlterpolicystmtContext alterpolicystmt() throws RecognitionException {
@@ -21402,6 +22356,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRowsecurityoptionalexpr(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRowsecurityoptionalexpr(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final RowsecurityoptionalexprContext rowsecurityoptionalexpr() throws RecognitionException {
@@ -21452,6 +22411,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRowsecurityoptionalwithcheck(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRowsecurityoptionalwithcheck(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final RowsecurityoptionalwithcheckContext rowsecurityoptionalwithcheck() throws RecognitionException {
@@ -21501,6 +22465,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRowsecuritydefaulttorole(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRowsecuritydefaulttorole(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final RowsecuritydefaulttoroleContext rowsecuritydefaulttorole() throws RecognitionException {
@@ -21543,6 +22512,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRowsecurityoptionaltorole(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRowsecurityoptionaltorole(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -21587,6 +22561,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRowsecuritydefaultpermissive(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRowsecuritydefaultpermissive(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final RowsecuritydefaultpermissiveContext rowsecuritydefaultpermissive() throws RecognitionException {
@@ -21629,6 +22608,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRowsecuritydefaultforcmd(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRowsecuritydefaultforcmd(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -21673,6 +22657,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRow_security_cmd(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRow_security_cmd(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -21734,6 +22723,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateamstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateamstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final CreateamstmtContext createamstmt() throws RecognitionException {
@@ -21786,6 +22780,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAm_type(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAm_type(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -21879,6 +22878,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatetrigstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatetrigstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -22043,6 +23047,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTriggeractiontime(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTriggeractiontime(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TriggeractiontimeContext triggeractiontime() throws RecognitionException {
@@ -22114,6 +23123,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTriggerevents(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTriggerevents(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TriggereventsContext triggerevents() throws RecognitionException {
@@ -22175,6 +23189,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTriggeroneevent(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTriggeroneevent(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -22255,6 +23274,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTriggerreferencing(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTriggerreferencing(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TriggerreferencingContext triggerreferencing() throws RecognitionException {
@@ -22299,6 +23323,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTriggertransitions(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTriggertransitions(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -22362,6 +23391,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTriggertransition(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTriggertransition(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TriggertransitionContext triggertransition() throws RecognitionException {
@@ -22416,6 +23450,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTransitionoldornew(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTransitionoldornew(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TransitionoldornewContext transitionoldornew() throws RecognitionException {
@@ -22463,6 +23502,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTransitionrowortable(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTransitionrowortable(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -22513,6 +23557,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTransitionrelname(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTransitionrelname(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TransitionrelnameContext transitionrelname() throws RecognitionException {
@@ -22556,6 +23605,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTriggerforspec(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTriggerforspec(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -22608,6 +23662,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTriggerforopteach(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTriggerforopteach(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TriggerforopteachContext triggerforopteach() throws RecognitionException {
@@ -22646,6 +23705,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTriggerfortype(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTriggerfortype(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -22699,6 +23763,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTriggerwhen(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTriggerwhen(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TriggerwhenContext triggerwhen() throws RecognitionException {
@@ -22743,6 +23812,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunction_or_procedure(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunction_or_procedure(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -22799,6 +23873,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTriggerfuncargs(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTriggerfuncargs(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -23385,6 +24464,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTriggerfuncarg(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTriggerfuncarg(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final TriggerfuncargContext triggerfuncarg() throws RecognitionException {
@@ -23956,6 +25040,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOptconstrfromtable(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOptconstrfromtable(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final OptconstrfromtableContext optconstrfromtable() throws RecognitionException {
@@ -24000,6 +25089,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConstraintattributespec(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConstraintattributespec(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -24058,6 +25152,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConstraintattributeElem(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConstraintattributeElem(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -24170,6 +25269,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateeventtrigstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateeventtrigstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final CreateeventtrigstmtContext createeventtrigstmt() throws RecognitionException {
@@ -24274,6 +25378,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitEvent_trigger_when_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitEvent_trigger_when_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Event_trigger_when_listContext event_trigger_when_list() throws RecognitionException {
@@ -24337,6 +25446,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitEvent_trigger_when_item(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitEvent_trigger_when_item(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Event_trigger_when_itemContext event_trigger_when_item() throws RecognitionException {
@@ -24391,6 +25505,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitEvent_trigger_value_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitEvent_trigger_value_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -24455,6 +25574,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAltereventtrigstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAltereventtrigstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final AltereventtrigstmtContext altereventtrigstmt() throws RecognitionException {
@@ -24503,6 +25627,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitEnable_trigger(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitEnable_trigger(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -24585,6 +25714,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateassertionstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateassertionstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -24686,6 +25820,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDefinestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDefinestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -25023,6 +26162,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDefinition(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDefinition(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final DefinitionContext definition() throws RecognitionException {
@@ -25073,6 +26217,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDef_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDef_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -25134,6 +26283,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDef_elem(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDef_elem(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -25200,6 +26354,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDef_arg(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDef_arg(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -25284,6 +26443,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOld_aggr_definition(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOld_aggr_definition(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Old_aggr_definitionContext old_aggr_definition() throws RecognitionException {
@@ -25334,6 +26498,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOld_aggr_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOld_aggr_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -25396,6 +26565,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOld_aggr_elem(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOld_aggr_elem(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Old_aggr_elemContext old_aggr_elem() throws RecognitionException {
@@ -25439,6 +26613,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitEnum_val_list_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitEnum_val_list_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -25486,6 +26665,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitEnum_val_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitEnum_val_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -25560,6 +26744,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterenumstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterenumstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -25711,6 +26900,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIf_not_exists_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIf_not_exists_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final If_not_exists_Context if_not_exists_() throws RecognitionException {
@@ -25776,6 +26970,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateopclassstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateopclassstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -25865,6 +27064,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpclass_item_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpclass_item_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Opclass_item_listContext opclass_item_list() throws RecognitionException {
@@ -25947,6 +27151,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpclass_item(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpclass_item(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -26085,6 +27294,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDefault_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDefault_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Default_Context default_() throws RecognitionException {
@@ -26125,6 +27339,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpfamily_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpfamily_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -26171,6 +27390,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpclass_purpose(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpclass_purpose(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -26231,6 +27455,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRecheck_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRecheck_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Recheck_Context recheck_() throws RecognitionException {
@@ -26277,6 +27506,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateopfamilystmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateopfamilystmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -26342,6 +27576,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlteropfamilystmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlteropfamilystmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -26431,6 +27670,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpclass_drop_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpclass_drop_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Opclass_drop_listContext opclass_drop_list() throws RecognitionException {
@@ -26494,6 +27738,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpclass_drop(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpclass_drop(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -26577,6 +27826,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDropopclassstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDropopclassstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -26688,6 +27942,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDropopfamilystmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDropopfamilystmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final DropopfamilystmtContext dropopfamilystmt() throws RecognitionException {
@@ -26792,6 +28051,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDropownedstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDropownedstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final DropownedstmtContext dropownedstmt() throws RecognitionException {
@@ -26855,6 +28119,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReassignownedstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReassignownedstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -26937,6 +28206,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDropstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDropstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -27278,6 +28552,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitObject_type_any_name(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitObject_type_any_name(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Object_type_any_nameContext object_type_any_name() throws RecognitionException {
@@ -27432,6 +28711,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitObject_type_name(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitObject_type_name(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Object_type_nameContext object_type_name() throws RecognitionException {
@@ -27527,6 +28811,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDrop_type_name(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDrop_type_name(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -27645,6 +28934,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitObject_type_name_on_any_name(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitObject_type_name_on_any_name(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Object_type_name_on_any_nameContext object_type_name_on_any_name() throws RecognitionException {
@@ -27700,6 +28994,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAny_name_list_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAny_name_list_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -27761,6 +29060,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAny_name(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAny_name(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Any_nameContext any_name() throws RecognitionException {
@@ -27817,6 +29121,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAttrs(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAttrs(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -27886,6 +29195,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitType_name_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitType_name_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Type_name_listContext type_name_list() throws RecognitionException {
@@ -27952,6 +29266,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTruncatestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTruncatestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -28025,6 +29344,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRestart_seqs_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRestart_seqs_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -28144,6 +29468,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCommentstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCommentstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -28533,6 +29862,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitComment_text(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitComment_text(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Comment_textContext comment_text() throws RecognitionException {
@@ -28630,6 +29964,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSeclabelstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSeclabelstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -28964,6 +30303,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitProvider_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitProvider_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Provider_Context provider_() throws RecognitionException {
@@ -29006,6 +30350,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSecurity_label(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSecurity_label(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -29066,6 +30415,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFetchstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFetchstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -29143,6 +30497,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFetch_args(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFetch_args(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -29477,6 +30836,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFrom_in(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFrom_in(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final From_inContext from_in() throws RecognitionException {
@@ -29525,6 +30889,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFrom_in_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFrom_in_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -29577,6 +30946,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGrantstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGrantstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -29653,6 +31027,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRevokestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRevokestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -29761,6 +31140,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPrivileges(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPrivileges(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final PrivilegesContext privileges() throws RecognitionException {
@@ -29858,6 +31242,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPrivilege_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPrivilege_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Privilege_listContext privilege_list() throws RecognitionException {
@@ -29920,6 +31309,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPrivilege(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPrivilege(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -30460,6 +31854,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPrivilege_target(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPrivilege_target(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Privilege_targetContext privilege_target() throws RecognitionException {
@@ -30722,6 +32121,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGrantee_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGrantee_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Grantee_listContext grantee_list() throws RecognitionException {
@@ -30779,6 +32183,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGrantee(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGrantee(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -31255,6 +32664,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGrant_grant_option_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGrant_grant_option_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Grant_grant_option_Context grant_grant_option_() throws RecognitionException {
@@ -31309,6 +32723,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGrantrolestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGrantrolestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -31390,6 +32809,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRevokerolestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRevokerolestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -31503,6 +32927,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGrant_admin_option_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGrant_admin_option_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Grant_admin_option_Context grant_admin_option_() throws RecognitionException {
@@ -31548,6 +32977,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGranted_by_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGranted_by_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -31599,6 +33033,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterdefaultprivilegesstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterdefaultprivilegesstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final AlterdefaultprivilegesstmtContext alterdefaultprivilegesstmt() throws RecognitionException {
@@ -31649,6 +33088,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDefacloptionlist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDefacloptionlist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -31710,6 +33154,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDefacloption(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDefacloption(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -31801,6 +33250,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDefaclaction(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDefaclaction(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -31932,6 +33386,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDefacl_privilege_target(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDefacl_privilege_target(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Defacl_privilege_targetContext defacl_privilege_target() throws RecognitionException {
@@ -32018,6 +33477,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIndexstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIndexstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -32253,6 +33717,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitUnique_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitUnique_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Unique_Context unique_() throws RecognitionException {
@@ -32293,6 +33762,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSingle_name_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSingle_name_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Single_name_Context single_name_() throws RecognitionException {
@@ -32330,6 +33804,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConcurrently_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConcurrently_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -32371,6 +33850,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIndex_name_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIndex_name_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Index_name_Context index_name_() throws RecognitionException {
@@ -32411,6 +33895,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAccess_method_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAccess_method_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -32460,6 +33949,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIndex_params(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIndex_params(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -32532,6 +34026,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIndex_elem_options(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIndex_elem_options(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -32668,6 +34167,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIndex_elem(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIndex_elem(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Index_elemContext index_elem() throws RecognitionException {
@@ -32741,6 +34245,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitInclude_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitInclude_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Include_Context include_() throws RecognitionException {
@@ -32793,6 +34302,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIndex_including_params(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIndex_including_params(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -32852,6 +34366,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCollate_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCollate_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Collate_Context collate_() throws RecognitionException {
@@ -32894,6 +34413,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitClass_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitClass_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Class_Context class_() throws RecognitionException {
@@ -32932,6 +34456,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAsc_desc_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAsc_desc_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -32981,6 +34510,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitNulls_order_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitNulls_order_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -33060,6 +34594,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatefunctionstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatefunctionstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -33535,6 +35074,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOr_replace_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOr_replace_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Or_replace_Context or_replace_() throws RecognitionException {
@@ -33578,6 +35122,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_args(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_args(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -33638,6 +35187,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_args_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_args_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -33702,6 +35256,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunction_with_argtypes_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunction_with_argtypes_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -33771,6 +35330,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunction_with_argtypes(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunction_with_argtypes(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -33847,6 +35411,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_args_with_defaults(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_args_with_defaults(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Func_args_with_defaultsContext func_args_with_defaults() throws RecognitionException {
@@ -33906,6 +35475,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_args_with_defaults_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_args_with_defaults_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -33969,6 +35543,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_arg(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_arg(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -34056,6 +35635,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitArg_class(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitArg_class(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Arg_classContext arg_class() throws RecognitionException {
@@ -34136,6 +35720,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitParam_name(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitParam_name(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Param_nameContext param_name() throws RecognitionException {
@@ -34175,6 +35764,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_return(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_return(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -34224,6 +35818,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_type(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_type(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -34300,6 +35899,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_arg_with_default(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_arg_with_default(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Func_arg_with_defaultContext func_arg_with_default() throws RecognitionException {
@@ -34361,6 +35965,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAggr_arg(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAggr_arg(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Aggr_argContext aggr_arg() throws RecognitionException {
@@ -34408,6 +36017,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAggr_args(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAggr_args(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -34496,6 +36110,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAggr_args_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAggr_args_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Aggr_args_listContext aggr_args_list() throws RecognitionException {
@@ -34556,6 +36175,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAggregate_with_argtypes(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAggregate_with_argtypes(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Aggregate_with_argtypesContext aggregate_with_argtypes() throws RecognitionException {
@@ -34604,6 +36228,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAggregate_with_argtypes_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAggregate_with_argtypes_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -34664,6 +36293,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatefunc_opt_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatefunc_opt_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -34749,6 +36383,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCommon_func_opt_item(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCommon_func_opt_item(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -34957,6 +36596,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatefunc_opt_item(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatefunc_opt_item(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Createfunc_opt_itemContext createfunc_opt_item() throws RecognitionException {
@@ -35059,6 +36703,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_as(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_as(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Func_asContext func_as() throws RecognitionException {
@@ -35131,6 +36780,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTransform_type_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTransform_type_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Transform_type_listContext transform_type_list() throws RecognitionException {
@@ -35197,6 +36851,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDefinition_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDefinition_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Definition_Context definition_() throws RecognitionException {
@@ -35241,6 +36900,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTable_func_column(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTable_func_column(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -35290,6 +36954,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTable_func_column_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTable_func_column_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -35357,6 +37026,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterfunctionstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterfunctionstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -35426,6 +37100,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterfunc_opt_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterfunc_opt_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Alterfunc_opt_listContext alterfunc_opt_list() throws RecognitionException {
@@ -35477,6 +37156,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRestrict_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRestrict_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Restrict_Context restrict_() throws RecognitionException {
@@ -35525,6 +37209,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRemovefuncstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRemovefuncstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -35711,6 +37400,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRemoveaggrstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRemoveaggrstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final RemoveaggrstmtContext removeaggrstmt() throws RecognitionException {
@@ -35804,6 +37498,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRemoveoperstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRemoveoperstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final RemoveoperstmtContext removeoperstmt() throws RecognitionException {
@@ -35896,6 +37595,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOper_argtypes(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOper_argtypes(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -36002,6 +37706,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAny_operator(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAny_operator(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Any_operatorContext any_operator() throws RecognitionException {
@@ -36066,6 +37775,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOperator_with_argtypes_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOperator_with_argtypes_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Operator_with_argtypes_listContext operator_with_argtypes_list() throws RecognitionException {
@@ -36126,6 +37840,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOperator_with_argtypes(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOperator_with_argtypes(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Operator_with_argtypesContext operator_with_argtypes() throws RecognitionException {
@@ -36168,6 +37887,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDostmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDostmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -36213,6 +37937,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDostmt_opt_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDostmt_opt_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -36270,6 +37999,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDostmt_opt_item(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDostmt_opt_item(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -36348,6 +38082,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatecaststmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatecaststmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -36490,6 +38229,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCast_context(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCast_context(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Cast_contextContext cast_context() throws RecognitionException {
@@ -36560,6 +38304,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDropcaststmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDropcaststmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -36633,6 +38382,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIf_exists_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIf_exists_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final If_exists_Context if_exists_() throws RecognitionException {
@@ -36689,6 +38443,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatetransformstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatetransformstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -36774,6 +38533,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTransform_element_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTransform_element_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -36911,6 +38675,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDroptransformstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDroptransformstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final DroptransformstmtContext droptransformstmt() throws RecognitionException {
@@ -37001,6 +38770,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReindexstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReindexstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -37142,6 +38916,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReindex_target_relation(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReindex_target_relation(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Reindex_target_relationContext reindex_target_relation() throws RecognitionException {
@@ -37189,6 +38968,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReindex_target_all(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReindex_target_all(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -37241,6 +39025,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReindex_option_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReindex_option_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Reindex_option_listContext reindex_option_list() throws RecognitionException {
@@ -37291,6 +39080,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAltertblspcstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAltertblspcstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -37442,6 +39236,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRenamestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRenamestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -38662,6 +40461,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitColumn_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitColumn_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Column_Context column_() throws RecognitionException {
@@ -38700,6 +40504,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSet_data_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSet_data_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -38768,6 +40577,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterobjectdependsstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterobjectdependsstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -38987,6 +40801,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitNo_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitNo_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final No_Context no_() throws RecognitionException {
@@ -39077,6 +40896,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterobjectschemastmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterobjectschemastmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -39640,6 +41464,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlteroperatorstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlteroperatorstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final AlteroperatorstmtContext alteroperatorstmt() throws RecognitionException {
@@ -39698,6 +41527,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOperator_def_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOperator_def_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -39760,6 +41594,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOperator_def_elem(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOperator_def_elem(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -39833,6 +41672,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOperator_def_arg(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOperator_def_arg(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -39915,6 +41759,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAltertypestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAltertypestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -40022,6 +41871,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterownerstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterownerstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -40517,6 +42371,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatepublicationstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatepublicationstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final CreatepublicationstmtContext createpublicationstmt() throws RecognitionException {
@@ -40582,6 +42441,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPublication_for_tables_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPublication_for_tables_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Publication_for_tables_Context publication_for_tables_() throws RecognitionException {
@@ -40625,6 +42489,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPublication_for_tables(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPublication_for_tables(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -40698,6 +42567,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterpublicationstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterpublicationstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -40817,6 +42691,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatesubscriptionstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatesubscriptionstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final CreatesubscriptionstmtContext createsubscriptionstmt() throws RecognitionException {
@@ -40887,6 +42766,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPublication_name_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPublication_name_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Publication_name_listContext publication_name_list() throws RecognitionException {
@@ -40943,6 +42827,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPublication_name_item(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPublication_name_item(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -41003,6 +42892,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAltersubscriptionstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAltersubscriptionstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -41159,6 +43053,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDropsubscriptionstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDropsubscriptionstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final DropsubscriptionstmtContext dropsubscriptionstmt() throws RecognitionException {
@@ -41269,6 +43168,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRulestmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRulestmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final RulestmtContext rulestmt() throws RecognitionException {
@@ -41364,6 +43268,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRuleactionlist(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRuleactionlist(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final RuleactionlistContext ruleactionlist() throws RecognitionException {
@@ -41434,6 +43343,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRuleactionmulti(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRuleactionmulti(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -41520,6 +43434,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRuleactionstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRuleactionstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final RuleactionstmtContext ruleactionstmt() throws RecognitionException {
@@ -41594,6 +43513,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRuleactionstmtOrEmpty(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRuleactionstmtOrEmpty(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final RuleactionstmtOrEmptyContext ruleactionstmtOrEmpty() throws RecognitionException {
@@ -41634,6 +43558,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitEvent(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitEvent(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -41682,6 +43611,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitInstead_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitInstead_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -41735,6 +43669,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitNotifystmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitNotifystmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -41790,6 +43729,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitNotify_payload(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitNotify_payload(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Notify_payloadContext notify_payload() throws RecognitionException {
@@ -41832,6 +43776,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitListenstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitListenstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -41876,6 +43825,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitUnlistenstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitUnlistenstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -41957,6 +43911,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTransactionstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTransactionstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -42257,6 +44216,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTransaction_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTransaction_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Transaction_Context transaction_() throws RecognitionException {
@@ -42312,6 +44276,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTransaction_mode_item(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTransaction_mode_item(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -42404,6 +44373,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTransaction_mode_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTransaction_mode_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Transaction_mode_listContext transaction_mode_list() throws RecognitionException {
@@ -42469,6 +44443,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTransaction_mode_list_or_empty(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTransaction_mode_list_or_empty(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Transaction_mode_list_or_emptyContext transaction_mode_list_or_empty() throws RecognitionException {
@@ -42508,6 +44487,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTransaction_chain_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTransaction_chain_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -42587,6 +44571,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitViewstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitViewstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -42727,6 +44716,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCheck_option_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCheck_option_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Check_option_Context check_option_() throws RecognitionException {
@@ -42791,6 +44785,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitLoadstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitLoadstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final LoadstmtContext loadstmt() throws RecognitionException {
@@ -42840,6 +44839,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatedbstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatedbstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -42906,6 +44910,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatedb_opt_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatedb_opt_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Createdb_opt_listContext createdb_opt_list() throws RecognitionException {
@@ -42948,6 +44957,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatedb_opt_items(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatedb_opt_items(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -43011,6 +45025,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatedb_opt_item(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatedb_opt_item(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -43522,6 +45541,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatedb_opt_name(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatedb_opt_name(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Createdb_opt_nameContext createdb_opt_name() throws RecognitionException {
@@ -43615,6 +45639,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitEqual_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitEqual_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Equal_Context equal_() throws RecognitionException {
@@ -43665,6 +45694,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterdatabasestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterdatabasestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -43773,6 +45807,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterdatabasesetstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterdatabasesetstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final AlterdatabasesetstmtContext alterdatabasesetstmt() throws RecognitionException {
@@ -43830,6 +45869,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDropdbstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDropdbstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -43919,6 +45963,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDrop_option_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDrop_option_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Drop_option_listContext drop_option_list() throws RecognitionException {
@@ -43974,6 +46023,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDrop_option(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDrop_option(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Drop_optionContext drop_option() throws RecognitionException {
@@ -44017,6 +46071,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAltercollationstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAltercollationstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -44069,6 +46128,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAltersystemstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAltersystemstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -44135,6 +46199,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreatedomainstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreatedomainstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -44217,6 +46286,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlterdomainstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlterdomainstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -44341,6 +46415,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAs_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAs_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final As_Context as_() throws RecognitionException {
@@ -44387,6 +46466,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAltertsdictionarystmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAltertsdictionarystmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -44463,6 +46547,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAltertsconfigurationstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAltertsconfigurationstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -44663,6 +46752,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAny_with(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAny_with(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Any_withContext any_with() throws RecognitionException {
@@ -44719,6 +46813,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCreateconversionstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCreateconversionstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -44797,6 +46896,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitClusterstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitClusterstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -44908,6 +47012,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCluster_index_specification(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCluster_index_specification(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Cluster_index_specificationContext cluster_index_specification() throws RecognitionException {
@@ -44967,6 +47076,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVacuumstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVacuumstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -45099,6 +47213,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAnalyzestmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAnalyzestmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final AnalyzestmtContext analyzestmt() throws RecognitionException {
@@ -45196,6 +47315,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitUtility_option_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitUtility_option_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Utility_option_listContext utility_option_list() throws RecognitionException {
@@ -45260,6 +47384,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVac_analyze_option_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVac_analyze_option_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Vac_analyze_option_listContext vac_analyze_option_list() throws RecognitionException {
@@ -45316,6 +47445,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAnalyze_keyword(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAnalyze_keyword(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Analyze_keywordContext analyze_keyword() throws RecognitionException {
@@ -45367,6 +47501,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitUtility_option_elem(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitUtility_option_elem(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -45422,6 +47561,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitUtility_option_name(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitUtility_option_name(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -45904,6 +48048,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitUtility_option_arg(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitUtility_option_arg(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -46392,6 +48541,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVac_analyze_option_elem(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVac_analyze_option_elem(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Vac_analyze_option_elemContext vac_analyze_option_elem() throws RecognitionException {
@@ -46445,6 +48599,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVac_analyze_option_name(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVac_analyze_option_name(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -46920,6 +49079,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVac_analyze_option_arg(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVac_analyze_option_arg(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -47405,6 +49569,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAnalyze_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAnalyze_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Analyze_Context analyze_() throws RecognitionException {
@@ -47442,6 +49611,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVerbose_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVerbose_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -47481,6 +49655,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFull_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFull_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Full_Context full_() throws RecognitionException {
@@ -47518,6 +49697,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFreeze_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFreeze_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -47560,6 +49744,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitName_list_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitName_list_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -47607,6 +49796,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVacuum_relation(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVacuum_relation(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -47666,6 +49860,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVacuum_relation_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVacuum_relation_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Vacuum_relation_listContext vacuum_relation_list() throws RecognitionException {
@@ -47723,6 +49922,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVacuum_relation_list_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVacuum_relation_list_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Vacuum_relation_list_Context vacuum_relation_list_() throws RecognitionException {
@@ -47775,6 +49979,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExplainstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExplainstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -47896,6 +50105,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExplainablestmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExplainablestmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final ExplainablestmtContext explainablestmt() throws RecognitionException {
@@ -48005,6 +50219,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExplain_option_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExplain_option_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Explain_option_listContext explain_option_list() throws RecognitionException {
@@ -48065,6 +50284,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExplain_option_elem(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExplain_option_elem(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Explain_option_elemContext explain_option_elem() throws RecognitionException {
@@ -48118,6 +50342,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExplain_option_name(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExplain_option_name(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -48593,6 +50822,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExplain_option_arg(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExplain_option_arg(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -49086,6 +51320,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPreparestmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPreparestmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final PreparestmtContext preparestmt() throws RecognitionException {
@@ -49145,6 +51384,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPrep_type_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPrep_type_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Prep_type_clauseContext prep_type_clause() throws RecognitionException {
@@ -49197,6 +51441,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPreparablestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPreparablestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -49283,6 +51532,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExecutestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExecutestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -49445,6 +51699,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExecute_param_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExecute_param_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Execute_param_clauseContext execute_param_clause() throws RecognitionException {
@@ -49491,6 +51750,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDeallocatestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDeallocatestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -49585,6 +51849,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitInsertstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitInsertstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final InsertstmtContext insertstmt() throws RecognitionException {
@@ -49666,6 +51935,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitInsert_target(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitInsert_target(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Insert_targetContext insert_target() throws RecognitionException {
@@ -49730,6 +52004,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitInsert_rest(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitInsert_rest(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -49826,6 +52105,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOverride_kind(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOverride_kind(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Override_kindContext override_kind() throws RecognitionException {
@@ -49881,6 +52165,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitInsert_column_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitInsert_column_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -49942,6 +52231,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitInsert_column_item(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitInsert_column_item(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Insert_column_itemContext insert_column_item() throws RecognitionException {
@@ -49995,6 +52289,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOn_conflict_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOn_conflict_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -50093,6 +52392,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConf_expr_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConf_expr_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Conf_expr_Context conf_expr_() throws RecognitionException {
@@ -50168,6 +52472,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReturning_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReturning_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Returning_clauseContext returning_clause() throws RecognitionException {
@@ -50237,6 +52546,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitMergestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitMergestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -50788,6 +53102,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitMerge_insert_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitMerge_insert_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Merge_insert_clauseContext merge_insert_clause() throws RecognitionException {
@@ -50882,6 +53201,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitMerge_update_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitMerge_update_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Merge_update_clauseContext merge_update_clause() throws RecognitionException {
@@ -50954,6 +53278,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitMerge_delete_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitMerge_delete_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Merge_delete_clauseContext merge_delete_clause() throws RecognitionException {
@@ -51022,6 +53351,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDeletestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDeletestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -51109,6 +53443,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitUsing_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitUsing_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Using_clauseContext using_clause() throws RecognitionException {
@@ -51160,6 +53499,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitLockstmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitLockstmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -51236,6 +53580,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitLock_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitLock_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Lock_Context lock_() throws RecognitionException {
@@ -51281,6 +53630,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitLock_type(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitLock_type(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -51394,6 +53748,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitNowait_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitNowait_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Nowait_Context nowait_() throws RecognitionException {
@@ -51433,6 +53792,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitNowait_or_skip_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitNowait_or_skip_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -51507,6 +53871,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitUpdatestmt(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitUpdatestmt(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -51602,6 +53971,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSet_clause_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSet_clause_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Set_clause_listContext set_clause_list() throws RecognitionException {
@@ -51667,6 +54041,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSet_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSet_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -52131,6 +54510,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSet_target(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSet_target(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Set_targetContext set_target() throws RecognitionException {
@@ -52179,6 +54563,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSet_target_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSet_target_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -52249,6 +54638,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDeclarecursorstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDeclarecursorstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final DeclarecursorstmtContext declarecursorstmt() throws RecognitionException {
@@ -52310,6 +54704,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCursor_name(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCursor_name(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Cursor_nameContext cursor_name() throws RecognitionException {
@@ -52362,6 +54761,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCursor_options(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCursor_options(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -52444,6 +54848,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitHold_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitHold_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Hold_Context hold_() throws RecognitionException {
@@ -52506,6 +54915,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSelectstmt(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSelectstmt(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final SelectstmtContext selectstmt() throws RecognitionException {
@@ -52563,6 +54977,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSelect_with_parens(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSelect_with_parens(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -52642,6 +55061,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSelect_no_parens(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSelect_no_parens(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -52841,6 +55265,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSelect_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSelect_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Select_clauseContext select_clause() throws RecognitionException {
@@ -52928,6 +55357,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSimple_select_intersect(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSimple_select_intersect(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -53033,6 +55467,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSimple_select_pramary(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSimple_select_pramary(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -53745,6 +56184,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWith_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWith_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final With_clauseContext with_clause() throws RecognitionException {
@@ -53803,6 +56247,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCte_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCte_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -53873,6 +56322,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCommon_table_expr(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCommon_table_expr(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Common_table_exprContext common_table_expr() throws RecognitionException {
@@ -53941,6 +56395,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitMaterialized_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitMaterialized_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Materialized_Context materialized_() throws RecognitionException {
@@ -53998,6 +56457,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWith_clause_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWith_clause_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final With_clause_Context with_clause_() throws RecognitionException {
@@ -54039,6 +56503,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitInto_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitInto_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Into_clauseContext into_clause() throws RecognitionException {
@@ -54078,6 +56547,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitStrict_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitStrict_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -54127,6 +56601,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpttempTableName(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpttempTableName(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -54246,6 +56725,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTable_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTable_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Table_Context table_() throws RecognitionException {
@@ -54284,6 +56768,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAll_or_distinct(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAll_or_distinct(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -54337,6 +56826,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDistinct_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDistinct_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -54393,6 +56887,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAll_clause_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAll_clause_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final All_clause_Context all_clause_() throws RecognitionException {
@@ -54432,6 +56931,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSort_clause_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSort_clause_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -54474,6 +56978,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSort_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSort_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -54525,6 +57034,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSortby_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSortby_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -54592,6 +57106,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSortby(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSortby(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -54696,6 +57215,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSelect_limit(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSelect_limit(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Select_limitContext select_limit() throws RecognitionException {
@@ -54773,6 +57297,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSelect_limit_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSelect_limit_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Select_limit_Context select_limit_() throws RecognitionException {
@@ -54830,6 +57359,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitLimit_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitLimit_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -54968,6 +57502,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOffset_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOffset_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Offset_clauseContext offset_clause() throws RecognitionException {
@@ -55026,6 +57565,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSelect_limit_value(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSelect_limit_value(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -55534,6 +58078,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSelect_offset_value(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSelect_offset_value(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Select_offset_valueContext select_offset_value() throws RecognitionException {
@@ -55578,6 +58127,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSelect_fetch_first_value(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSelect_fetch_first_value(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -56096,6 +58650,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitI_or_f_const(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitI_or_f_const(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final I_or_f_constContext i_or_f_const() throws RecognitionException {
@@ -56153,6 +58712,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRow_or_rows(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRow_or_rows(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Row_or_rowsContext row_or_rows() throws RecognitionException {
@@ -56200,6 +58764,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFirst_or_next(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFirst_or_next(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -56252,6 +58821,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGroup_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGroup_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Group_clauseContext group_clause() throws RecognitionException {
@@ -56302,6 +58876,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGroup_by_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGroup_by_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -56371,6 +58950,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGroup_by_item(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGroup_by_item(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -56445,6 +59029,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitEmpty_grouping_set(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitEmpty_grouping_set(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Empty_grouping_setContext empty_grouping_set() throws RecognitionException {
@@ -56489,6 +59078,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRollup_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRollup_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -56538,6 +59132,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCube_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCube_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -56589,6 +59188,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGrouping_sets_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGrouping_sets_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Grouping_sets_clauseContext grouping_sets_clause() throws RecognitionException {
@@ -56638,6 +59242,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitHaving_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitHaving_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Having_clauseContext having_clause() throws RecognitionException {
@@ -56682,6 +59291,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFor_locking_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFor_locking_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -56740,6 +59354,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFor_locking_clause_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFor_locking_clause_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final For_locking_clause_Context for_locking_clause_() throws RecognitionException {
@@ -56782,6 +59401,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFor_locking_items(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFor_locking_items(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -56841,6 +59465,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFor_locking_item(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFor_locking_item(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -56904,6 +59533,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFor_locking_strength(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFor_locking_strength(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -56989,6 +59623,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitLocked_rels_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitLocked_rels_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Locked_rels_listContext locked_rels_list() throws RecognitionException {
@@ -57046,6 +59685,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitValues_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitValues_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -57115,6 +59759,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFrom_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFrom_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final From_clauseContext from_clause() throws RecognitionException {
@@ -57163,6 +59812,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFrom_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFrom_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -57271,6 +59925,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTable_ref(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTable_ref(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -57608,6 +60267,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAlias_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAlias_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Alias_clauseContext alias_clause() throws RecognitionException {
@@ -57681,6 +60345,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_alias_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_alias_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -58163,6 +60832,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJoin_type(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJoin_type(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Join_typeContext join_type() throws RecognitionException {
@@ -58228,6 +60902,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJoin_qual(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJoin_qual(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -58295,6 +60974,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRelation_expr(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRelation_expr(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -59177,6 +61861,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRelation_expr_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRelation_expr_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Relation_expr_listContext relation_expr_list() throws RecognitionException {
@@ -59237,6 +61926,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRelation_expr_opt_alias(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRelation_expr_opt_alias(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -59308,6 +62002,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTablesample_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTablesample_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Tablesample_clauseContext tablesample_clause() throws RecognitionException {
@@ -59370,6 +62069,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRepeatable_clause_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRepeatable_clause_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Repeatable_clause_Context repeatable_clause_() throws RecognitionException {
@@ -59425,6 +62129,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_table(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_table(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -59510,6 +62219,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRowsfrom_item(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRowsfrom_item(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Rowsfrom_itemContext rowsfrom_item() throws RecognitionException {
@@ -59567,6 +62281,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRowsfrom_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRowsfrom_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -59628,6 +62347,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCol_def_list_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCol_def_list_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Col_def_list_Context col_def_list_() throws RecognitionException {
@@ -59673,6 +62397,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOrdinality_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOrdinality_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Ordinality_Context ordinality_() throws RecognitionException {
@@ -59715,6 +62444,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWhere_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWhere_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -59763,6 +62497,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWhere_or_current_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWhere_or_current_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -59824,6 +62563,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpttablefuncelementlist(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpttablefuncelementlist(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final OpttablefuncelementlistContext opttablefuncelementlist() throws RecognitionException {
@@ -59870,6 +62614,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTablefuncelementlist(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTablefuncelementlist(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -59933,6 +62682,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTablefuncelement(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTablefuncelement(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -60007,6 +62761,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXmltable(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXmltable(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -60097,6 +62856,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXmltable_column_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXmltable_column_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Xmltable_column_listContext xmltable_column_list() throws RecognitionException {
@@ -60161,6 +62925,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXmltable_column_el(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXmltable_column_el(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -60610,6 +63379,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXmltable_column_option_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXmltable_column_option_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Xmltable_column_option_listContext xmltable_column_option_list() throws RecognitionException {
@@ -60668,6 +63442,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXmltable_column_option_el(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXmltable_column_option_el(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -60754,6 +63533,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXml_namespace_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXml_namespace_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Xml_namespace_listContext xml_namespace_list() throws RecognitionException {
@@ -60815,6 +63599,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXml_namespace_el(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXml_namespace_el(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -60884,6 +63673,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTypename(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTypename(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -60976,6 +63770,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpt_array_bounds(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpt_array_bounds(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -61070,6 +63869,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSimpletypename(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSimpletypename(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -61199,6 +64003,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConsttypename(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConsttypename(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final ConsttypenameContext consttypename() throws RecognitionException {
@@ -61296,6 +64105,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitGenerictype(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitGenerictype(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final GenerictypeContext generictype() throws RecognitionException {
@@ -61358,6 +64172,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitType_modifiers_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitType_modifiers_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Type_modifiers_Context type_modifiers_() throws RecognitionException {
@@ -61416,6 +64235,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitNumeric(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitNumeric(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -61579,6 +64403,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFloat_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFloat_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Float_Context float_() throws RecognitionException {
@@ -61625,6 +64454,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitBit(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitBit(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -61681,6 +64515,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConstbit(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConstbit(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -61741,6 +64580,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitBitwithlength(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitBitwithlength(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final BitwithlengthContext bitwithlength() throws RecognitionException {
@@ -61799,6 +64643,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitBitwithoutlength(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitBitwithoutlength(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final BitwithoutlengthContext bitwithoutlength() throws RecognitionException {
@@ -61853,6 +64702,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCharacter(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCharacter(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -61913,6 +64767,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConstcharacter(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConstcharacter(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final ConstcharacterContext constcharacter() throws RecognitionException {
@@ -61972,6 +64831,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCharacter_c(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCharacter_c(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -62074,6 +64938,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitVarying_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitVarying_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Varying_Context varying_() throws RecognitionException {
@@ -62120,6 +64989,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConstdatetime(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConstdatetime(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -62192,6 +65066,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitConstinterval(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitConstinterval(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final ConstintervalContext constinterval() throws RecognitionException {
@@ -62232,6 +65111,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTimezone_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTimezone_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -62301,6 +65185,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitInterval_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitInterval_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -62468,6 +65357,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitInterval_second(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitInterval_second(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Interval_secondContext interval_second() throws RecognitionException {
@@ -62520,6 +65414,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJsonType(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJsonType(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final JsonTypeContext jsonType() throws RecognitionException {
@@ -62560,6 +65459,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitEscape_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitEscape_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -62603,6 +65507,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final A_exprContext a_expr() throws RecognitionException {
@@ -62645,6 +65554,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_qual(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_qual(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -62712,6 +65626,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_lessless(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_lessless(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -62788,6 +65707,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_or(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_or(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final A_expr_orContext a_expr_or() throws RecognitionException {
@@ -62854,6 +65778,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_and(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_and(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final A_expr_andContext a_expr_and() throws RecognitionException {
@@ -62919,6 +65848,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_between(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_between(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -63002,6 +65936,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_in(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_in(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final A_expr_inContext a_expr_in() throws RecognitionException {
@@ -63066,6 +66005,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_unary_not(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_unary_not(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final A_expr_unary_notContext a_expr_unary_not() throws RecognitionException {
@@ -63118,6 +66062,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_isnull(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_isnull(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -63199,6 +66148,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_is_not(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_is_not(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -63362,6 +66316,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_compare(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_compare(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final A_expr_compareContext a_expr_compare() throws RecognitionException {
@@ -63461,6 +66420,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_like(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_like(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -63568,6 +66532,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_qual_op(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_qual_op(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final A_expr_qual_opContext a_expr_qual_op() throws RecognitionException {
@@ -63630,6 +66599,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_unary_qualop(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_unary_qualop(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final A_expr_unary_qualopContext a_expr_unary_qualop() throws RecognitionException {
@@ -63690,6 +66664,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_add(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_add(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -63774,6 +66753,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_mul(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_mul(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final A_expr_mulContext a_expr_mul() throws RecognitionException {
@@ -63846,6 +66830,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_caret(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_caret(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final A_expr_caretContext a_expr_caret() throws RecognitionException {
@@ -63899,6 +66888,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_unary_sign(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_unary_sign(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -63965,6 +66959,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_at_time_zone(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_at_time_zone(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final A_expr_at_time_zoneContext a_expr_at_time_zone() throws RecognitionException {
@@ -64024,6 +67023,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_collate(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_collate(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -64086,6 +67090,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitA_expr_typecast(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitA_expr_typecast(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -64181,6 +67190,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitB_expr(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitB_expr(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -64453,6 +67467,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitC_expr_exists(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitC_expr_exists(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class C_expr_caseContext extends C_exprContext {
@@ -64467,6 +67486,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitC_expr_case(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitC_expr_case(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 	@SuppressWarnings("CheckReturnValue")
@@ -64527,6 +67551,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitC_expr_expr(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitC_expr_expr(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -64735,6 +67764,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPlsqlvariablename(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPlsqlvariablename(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final PlsqlvariablenameContext plsqlvariablename() throws RecognitionException {
@@ -64790,6 +67824,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_application(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_application(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -65391,6 +68430,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_expr(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_expr(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Func_exprContext func_expr() throws RecognitionException {
@@ -65476,6 +68520,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_expr_windowless(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_expr_windowless(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -65686,6 +68735,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_expr_common_subexpr(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_expr_common_subexpr(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -66692,6 +69746,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXml_root_version(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXml_root_version(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Xml_root_versionContext xml_root_version() throws RecognitionException {
@@ -66752,6 +69811,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXml_root_standalone_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXml_root_standalone_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -66830,6 +69894,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXml_attributes(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXml_attributes(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Xml_attributesContext xml_attributes() throws RecognitionException {
@@ -66882,6 +69951,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXml_attribute_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXml_attribute_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -66944,6 +70018,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXml_attribute_el(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXml_attribute_el(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Xml_attribute_elContext xml_attribute_el() throws RecognitionException {
@@ -66996,6 +70075,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitDocument_or_content(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitDocument_or_content(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Document_or_contentContext document_or_content() throws RecognitionException {
@@ -67044,6 +70128,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXml_whitespace_option(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXml_whitespace_option(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -67110,6 +70199,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXmlexists_argument(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXmlexists_argument(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -67194,6 +70288,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXml_passing_mech(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXml_passing_mech(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Xml_passing_mechContext xml_passing_mech() throws RecognitionException {
@@ -67249,6 +70348,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWithin_group_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWithin_group_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Within_group_clauseContext within_group_clause() throws RecognitionException {
@@ -67301,6 +70405,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFilter_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFilter_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Filter_clauseContext filter_clause() throws RecognitionException {
@@ -67350,6 +70459,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWindow_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWindow_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Window_clauseContext window_clause() throws RecognitionException {
@@ -67398,6 +70512,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWindow_definition_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWindow_definition_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -67460,6 +70579,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWindow_definition(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWindow_definition(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Window_definitionContext window_definition() throws RecognitionException {
@@ -67507,6 +70631,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOver_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOver_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -67970,6 +71099,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWindow_specification(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWindow_specification(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Window_specificationContext window_specification() throws RecognitionException {
@@ -68053,6 +71187,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExisting_window_name_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExisting_window_name_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Existing_window_name_Context existing_window_name_() throws RecognitionException {
@@ -68094,6 +71233,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPartition_clause_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPartition_clause_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -68144,6 +71288,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFrame_clause_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFrame_clause_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -68249,6 +71398,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFrame_extent(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFrame_extent(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Frame_extentContext frame_extent() throws RecognitionException {
@@ -68312,6 +71466,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFrame_bound(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFrame_bound(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -68400,6 +71559,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWindow_exclusion_clause_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWindow_exclusion_clause_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Window_exclusion_clause_Context window_exclusion_clause_() throws RecognitionException {
@@ -68480,6 +71644,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRow(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRow(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -68562,6 +71731,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExplicit_row(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExplicit_row(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Explicit_rowContext explicit_row() throws RecognitionException {
@@ -68623,6 +71797,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitImplicit_row(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitImplicit_row(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Implicit_rowContext implicit_row() throws RecognitionException {
@@ -68670,6 +71849,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSub_type(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSub_type(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -68720,6 +71904,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAll_op(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAll_op(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -68796,6 +71985,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitMathop(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitMathop(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final MathopContext mathop() throws RecognitionException {
@@ -68848,6 +72042,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitQual_op(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitQual_op(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -68915,6 +72114,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitQual_all_op(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitQual_all_op(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -68997,6 +72201,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSubquery_Op(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSubquery_Op(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -69096,6 +72305,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExpr_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExpr_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Expr_listContext expr_list() throws RecognitionException {
@@ -69162,6 +72376,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_arg_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_arg_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Func_arg_listContext func_arg_list() throws RecognitionException {
@@ -69225,6 +72444,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_arg_expr(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_arg_expr(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -69299,6 +72523,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitType_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitType_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Type_listContext type_list() throws RecognitionException {
@@ -69360,6 +72589,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitArray_expr(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitArray_expr(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -69882,6 +73116,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitArray_expr_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitArray_expr_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Array_expr_listContext array_expr_list() throws RecognitionException {
@@ -69943,6 +73182,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExtract_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExtract_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Extract_listContext extract_list() throws RecognitionException {
@@ -69995,6 +73239,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitExtract_arg(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitExtract_arg(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -70100,6 +73349,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitUnicode_normal_form(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitUnicode_normal_form(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Unicode_normal_formContext unicode_normal_form() throws RecognitionException {
@@ -70154,6 +73408,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOverlay_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOverlay_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -70220,6 +73479,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitPosition_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitPosition_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Position_listContext position_list() throws RecognitionException {
@@ -70270,6 +73534,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSubstr_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSubstr_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -70381,6 +73650,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTrim_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTrim_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Trim_listContext trim_list() throws RecognitionException {
@@ -70458,6 +73732,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIn_expr_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIn_expr_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class In_expr_selectContext extends In_exprContext {
@@ -70472,6 +73751,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIn_expr_select(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIn_expr_select(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -70539,6 +73823,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCase_expr(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCase_expr(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -70608,6 +73897,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWhen_clause_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWhen_clause_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final When_clause_listContext when_clause_list() throws RecognitionException {
@@ -70666,6 +73960,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitWhen_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitWhen_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final When_clauseContext when_clause() throws RecognitionException {
@@ -70713,6 +74012,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCase_default(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCase_default(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Case_defaultContext case_default() throws RecognitionException {
@@ -70754,6 +74058,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCase_arg(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCase_arg(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -70797,6 +74106,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitColumnref(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitColumnref(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -70861,6 +74175,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIndirection_el(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIndirection_el(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -71469,6 +74788,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSlice_bound_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSlice_bound_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Slice_bound_Context slice_bound_() throws RecognitionException {
@@ -71511,6 +74835,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIndirection(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIndirection(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -71574,6 +74903,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitOpt_indirection(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitOpt_indirection(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Opt_indirectionContext opt_indirection() throws RecognitionException {
@@ -71630,6 +74964,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_passing_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_passing_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Json_passing_clauseContext json_passing_clause() throws RecognitionException {
@@ -71675,6 +75014,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_arguments(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_arguments(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -71756,6 +75100,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_argument(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_argument(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Json_argumentContext json_argument() throws RecognitionException {
@@ -71802,6 +75151,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_wrapper_behavior(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_wrapper_behavior(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -71939,6 +75293,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_behavior(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_behavior(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Json_behaviorContext json_behavior() throws RecognitionException {
@@ -72005,6 +75364,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_behavior_type(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_behavior_type(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -72114,6 +75478,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_behavior_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_behavior_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Json_behavior_clauseContext json_behavior_clause() throws RecognitionException {
@@ -72194,6 +75563,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_on_error_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_on_error_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Json_on_error_clauseContext json_on_error_clause() throws RecognitionException {
@@ -72240,6 +75614,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_value_expr(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_value_expr(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -72293,6 +75672,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_format_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_format_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -72357,6 +75741,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_quotes_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_quotes_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -72449,6 +75838,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_returning_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_returning_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Json_returning_clauseContext json_returning_clause() throws RecognitionException {
@@ -72503,6 +75897,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_predicate_type_constraint(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_predicate_type_constraint(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -72587,6 +75986,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_key_uniqueness_constraint(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_key_uniqueness_constraint(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Json_key_uniqueness_constraintContext json_key_uniqueness_constraint() throws RecognitionException {
@@ -72669,6 +76073,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_name_and_value_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_name_and_value_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -72754,6 +76163,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_name_and_value(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_name_and_value(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Json_name_and_valueContext json_name_and_value() throws RecognitionException {
@@ -72817,6 +76231,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_object_constructor_null_clause(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_object_constructor_null_clause(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -72884,6 +76303,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_array_constructor_null_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_array_constructor_null_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Json_array_constructor_null_clauseContext json_array_constructor_null_clause() throws RecognitionException {
@@ -72950,6 +76374,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_value_expr_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_value_expr_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -73048,6 +76477,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_aggregate_func(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_aggregate_func(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -73163,6 +76597,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitJson_array_aggregate_order_by_clause(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitJson_array_aggregate_order_by_clause(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Json_array_aggregate_order_by_clauseContext json_array_aggregate_order_by_clause() throws RecognitionException {
@@ -73206,6 +76645,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTarget_list_(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTarget_list_(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -73253,6 +76697,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTarget_list(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTarget_list(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -73327,6 +76776,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTarget_label(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTarget_label(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class Target_starContext extends Target_elContext {
@@ -73339,6 +76793,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitTarget_star(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitTarget_star(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -74358,6 +77817,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitQualified_name_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitQualified_name_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Qualified_name_listContext qualified_name_list() throws RecognitionException {
@@ -74418,6 +77882,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitQualified_name(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitQualified_name(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Qualified_nameContext qualified_name() throws RecognitionException {
@@ -74476,6 +77945,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitName_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitName_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Name_listContext name_list() throws RecognitionException {
@@ -74533,6 +78007,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitName(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitName(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final NameContext name() throws RecognitionException {
@@ -74573,6 +78052,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAttr_name(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAttr_name(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Attr_nameContext attr_name() throws RecognitionException {
@@ -74612,6 +78096,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFile_name(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFile_name(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -74658,6 +78147,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFunc_name(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFunc_name(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -74748,6 +78242,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAexprconst(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAexprconst(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -74940,6 +78439,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitXconst(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitXconst(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final XconstContext xconst() throws RecognitionException {
@@ -74978,6 +78482,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitBconst(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitBconst(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final BconstContext bconst() throws RecognitionException {
@@ -75015,6 +78524,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitFconst(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitFconst(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -75056,6 +78570,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIconst(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIconst(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -75108,6 +78627,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSconst(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSconst(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -75164,6 +78688,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAnysconst(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAnysconst(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -75252,6 +78781,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitUescape_(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitUescape_(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Uescape_Context uescape_() throws RecognitionException {
@@ -75295,6 +78829,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitSignediconst(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitSignediconst(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -75365,6 +78904,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRoleid(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRoleid(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final RoleidContext roleid() throws RecognitionException {
@@ -75406,6 +78950,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRolespec(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRolespec(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -75892,6 +79441,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitRole_list(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitRole_list(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Role_listContext role_list() throws RecognitionException {
@@ -75954,6 +79508,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitColid(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitColid(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -76414,6 +79973,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitType_function_name(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitType_function_name(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Type_function_nameContext type_function_name() throws RecognitionException {
@@ -76835,6 +80399,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitNonreservedword(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitNonreservedword(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -77330,6 +80899,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitColLabel(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitColLabel(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -77906,6 +81480,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitBareColLabel(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitBareColLabel(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -78740,6 +82319,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitUnreserved_keyword(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitUnreserved_keyword(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Unreserved_keywordContext unreserved_keyword() throws RecognitionException {
@@ -78850,6 +82434,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitCol_name_keyword(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitCol_name_keyword(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -79351,6 +82940,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitType_func_name_keyword(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitType_func_name_keyword(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Type_func_name_keywordContext type_func_name_keyword() throws RecognitionException {
@@ -79474,6 +83068,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitReserved_keyword(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitReserved_keyword(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -79973,6 +83572,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitBare_label_keyword(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitBare_label_keyword(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Bare_label_keywordContext bare_label_keyword() throws RecognitionException {
@@ -80022,6 +83626,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitAny_identifier(this);
 		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitAny_identifier(this);
+			else return visitor.visitChildren(this);
+		}
 	}
 
 	public final Any_identifierContext any_identifier() throws RecognitionException {
@@ -80065,6 +83674,11 @@ public class PostgreSQLParser extends PostgreSQLParserBase {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof PostgreSQLParserListener ) ((PostgreSQLParserListener)listener).exitIdentifier(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof PostgreSQLParserVisitor ) return ((PostgreSQLParserVisitor<? extends T>)visitor).visitIdentifier(this);
+			else return visitor.visitChildren(this);
 		}
 	}
 

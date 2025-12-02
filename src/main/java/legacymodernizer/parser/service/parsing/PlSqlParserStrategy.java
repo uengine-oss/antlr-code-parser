@@ -16,10 +16,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import legacymodernizer.parser.antlr.CaseChangingCharStream;
-import legacymodernizer.parser.antlr.CustomPlSqlListener;
+import legacymodernizer.parser.antlr.plsql.CustomPlSqlListener;
 import legacymodernizer.parser.antlr.plsql.PlSqlLexer;
 import legacymodernizer.parser.antlr.plsql.PlSqlParser;
-import legacymodernizer.parser.service.PlSqlFileParserService;
+import legacymodernizer.parser.service.DbmsFileParserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,7 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class PlSqlParserStrategy implements DbmsParserStrategy {
     
-    private final PlSqlFileParserService plSqlFileParserService;
+    private final DbmsFileParserService dbmsFileParserService;
     
     @Override
     public Map<String, Object> processUploadByMetadata(String sessionUUID,
@@ -40,7 +40,7 @@ public class PlSqlParserStrategy implements DbmsParserStrategy {
                                                       Object ddlObj,
                                                       Object seqObj,
                                                       Map<String, MultipartFile> nameToFile) {
-        return plSqlFileParserService.processUploadByMetadata(
+        return dbmsFileParserService.processUploadByMetadata(
             sessionUUID, projectName, systemsObj, ddlObj, seqObj, nameToFile
         );
     }
@@ -50,7 +50,7 @@ public class PlSqlParserStrategy implements DbmsParserStrategy {
                                                       String projectName,
                                                       List<?> systems) {
         // PL/SQL 파싱 전략을 사용하여 처리
-        return plSqlFileParserService.processParsingBySystemsWithStrategy(
+        return dbmsFileParserService.processParsingBySystemsWithStrategy(
             sessionUUID, 
             projectName, 
             systems, 

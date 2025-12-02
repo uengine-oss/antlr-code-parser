@@ -79,7 +79,7 @@ Legacy Modernizer 플랫폼의 첫 번째 게이트웨이로, **원본 PL/SQL �
 │  │  ├─ POST /fileUpload                               │   │
 │  │  └─ POST /parsing                                  │   │
 │  ├────────────────────────────────────────────────────┤   │
-│  │ PlSqlFileParserService                             │   │
+│  │ DbmsFileParserService                              │   │
 │  │  ├─ 파일 인덱싱/저장/읽기                           │   │
 │  │  └─ ANTLR 파싱 및 JSON 저장                         │   │
 │  └────────────────────────────────────────────────────┘   │
@@ -112,15 +112,15 @@ Controller (FileUploadController)
    │
    └─ DbmsParserStrategy.processParsingBySystems()
           ├─ locateFileByName()
-          ├─ analyzeSpIfNeeded() → parseFile()
-          │      ├─ [Oracle] PlSqlLexer/Parser + CustomPlSqlListener
-          │      └─ [PostgreSQL] PostgreSQLLexer/Parser + CustomPostgreSQLListener
+         ├─ analyzeSpIfNeeded() → parseFile()
+         │      ├─ [Oracle] PlSqlLexer/Parser + CustomPlSqlListener
+         │      └─ [PostgreSQL] PostgreSQLLexer/Parser + CustomPostgreSQLListener (+ PlpgsqlLexer/Parser)
           └─ Node.toJson() → JSON 파일 저장
 ```
 
 - `ParserStrategyFactory`는 DBMS 문자열을 정규화해 `DbmsParserStrategy` 구현체를 선택합니다.
 - 기본 매핑: `oracle`/`plsql` → `PlSqlParserStrategy`, `postgres`/`postgresql`/`pg` → `PostgreSqlParserStrategy`.
-- 각 전략은 `parseFile(File, String)`을 구현해 ANTLR 파서를 교체하며, 동일한 `PlSqlFileParserService` 파이프라인을 공유합니다.
+- 각 전략은 `parseFile(File, String)`을 구현해 ANTLR 파서를 교체하며, 동일한 `DbmsFileParserService` 파이프라인을 공유합니다.
 
 ### 2.3 주요 의존 요소
 
@@ -139,7 +139,7 @@ Controller (FileUploadController)
 | DBMS | 전략 클래스 | dbms 파라미터 | Lexer/Parser |
 |------|------------|--------------|--------------|
 | **Oracle** | PlSqlParserStrategy | "oracle", "plsql" | PlSqlLexer/Parser + CustomPlSqlListener |
-| **PostgreSQL** | PostgreSqlParserStrategy | "postgresql", "postgres", "pg" | PostgreSQLLexer/Parser + CustomPostgreSQLListener |
+| **PostgreSQL + PL/pgSQL** | PostgreSqlParserStrategy | "postgresql", "postgres", "pg" | PostgreSQLLexer/Parser + CustomPostgreSQLListener (+ PlpgsqlLexer/Parser) |
 
 > 새로운 DBMS 지원 추가 시:
 > 1. `DbmsParserStrategy` 인터페이스를 구현하는 새 전략 클래스 생성
@@ -157,7 +157,7 @@ Controller (FileUploadController)
 | 1 | `DOCKER_COMPOSE_CONTEXT` 환경 변수 | Docker 배포 환경에서 마운트된 볼륨 활용 |
 | 2 | `<프로젝트 루트>/../data` | 로컬 개발 기본 경로 |
 
-> `PlSqlFileParserService`의 `BASE_DIR` 상수에서 위 우선순위가 반영됩니다.
+> `DbmsFileParserService`의 `BASE_DIR` 상수에서 위 우선순위가 반영됩니다.
 
 ### 3.2 세션 디렉터리 레이아웃
 
@@ -266,7 +266,7 @@ Map<String, Object> result = strategy.processUploadByMetadata(...);
 | 입력 값 | 선택되는 전략 |
 |---------|---------------|
 | "oracle", "plsql" | PlSqlParserStrategy (Oracle PL/SQL) |
-| "postgresql", "postgres", "pg" | PostgreSqlParserStrategy (PostgreSQL) |
+| "postgresql", "postgres", "pg" | PostgreSqlParserStrategy (PostgreSQL + PL/pgSQL) |
 | null 또는 빈 문자열 | PlSqlParserStrategy (기본값) |
 | 기타 | 예외 발생 |
 
@@ -358,12 +358,12 @@ public ResponseEntity<Map<String, Object>> analysisContext(
 4. `CustomPlSqlListener`가 트리를 순회하며 `Node` 구조 구성
 5. `Node.toJson()` 결과를 `{analysis}/{system}/{파일명}.json`에 저장
 
-#### 4.8.2 PostgreSQL 파싱 (PostgreSqlParserStrategy)
+#### 4.8.2 PostgreSQL + PL/pgSQL 파싱 (PostgreSqlParserStrategy)
 
-1. `CharStreams.fromStream()` → 원본 그대로 사용 (PostgreSQL은 대소문자 구분)
+1. `CharStreams.fromStream()` → 원본 그대로 사용
 2. `PostgreSQLLexer` → `CommonTokenStream`
 3. `PostgreSQLParser.root()`로 파스 트리 생성
-4. `CustomPostgreSQLListener`가 트리를 순회하며 `Node` 구조 구성
+4. `CustomPostgreSQLListener`가 DDL/DML 트리를 구성하고, FUNCTION/DO 본문은 `PlpgsqlLexer/Parser` + `CustomPlpgsqlVisitor`로 재파싱
 5. `Node.toJson()` 결과를 `{analysis}/{system}/{파일명}.json`에 저장
 
 ### 4.9 Step 7. 응답 및 에러 처리
@@ -383,7 +383,7 @@ public ResponseEntity<Map<String, Object>> analysisContext(
 sequenceDiagram
     participant FE as Frontend
     participant CTRL as FileUploadController
-    participant SRV as PlSqlFileParserService
+    participant SRV as DbmsFileParserService
     participant FS as FileSystem
     participant ANTLR as ANTLR Runtime
 
@@ -427,7 +427,7 @@ sequenceDiagram
 - `Session-UUID` 헤더 필수 확인
 - 모든 예외는 `ResponseStatusException`으로 래핑하여 글로벌 핸들러에 전달
 
-### 6.3 `service/PlSqlFileParserService.java`
+### 6.3 `service/DbmsFileParserService.java`
 
 - 전체 비즈니스 로직 핵심
 - 5개 섹션으로 구성
@@ -444,7 +444,7 @@ sequenceDiagram
 | `DbmsParserStrategy.java` | DBMS별 파싱 전략 인터페이스 | `processUploadByMetadata()`, `processParsingBySystems()`, `parseFile()` 정의 |
 | `ParserStrategyFactory.java` | 전략 팩토리 클래스 | dbms 타입에 따라 적절한 전략 반환 |
 | `PlSqlParserStrategy.java` | Oracle PL/SQL 전략 구현 | PlSqlLexer/Parser + CustomPlSqlListener 사용 |
-| `PostgreSqlParserStrategy.java` | PostgreSQL 전략 구현 | PostgreSQLLexer/Parser + CustomPostgreSQLListener 사용 |
+| `PostgreSqlParserStrategy.java` | PostgreSQL + PL/pgSQL 전략 구현 | PostgreSQLLexer/Parser + CustomPostgreSQLListener (내부적으로 PlpgsqlVisitor 사용) |
 
 > **새 DBMS 지원 추가 방법**:
 > 1. `DbmsParserStrategy`를 구현하는 새 클래스 생성
@@ -456,11 +456,13 @@ sequenceDiagram
 | 파일 | 설명 |
 |------|------|
 | `CaseChangingCharStream.java` | Lexer 입력을 대문자로 변환 (Oracle용) |
-| `CustomPlSqlListener.java` | PL/SQL 파스 트리를 순회하며 `Node` 구성 |
 | `Node.java` | AST 노드 표현 및 `toJson()` 직렬화 |
+| `plsql/CustomPlSqlListener.java` | PL/SQL 파스 트리를 순회하며 `Node` 구성 |
 | `plsql/` | ANTLR가 생성한 Oracle Lexer/Parser/Listener 파일 (수정 금지) |
-| `postgresql/CustomPostgreSQLListener.java` | PostgreSQL 파스 트리를 순회하며 `Node` 구성 |
+| `postgresql/CustomPostgreSQLListener.java` | PostgreSQL DDL/DML + PL/pgSQL 본문 처리 (내부적으로 plpgsql Visitor 사용) |
 | `postgresql/` | ANTLR가 생성한 PostgreSQL Lexer/Parser/Listener 파일 (수정 금지) |
+| `plpgsql/CustomPlpgsqlVisitor.java` | PL/pgSQL 블록 내부를 `Node` 트리로 재구성 (PostgreSQL 전략에서 호출) |
+| `plpgsql/` | PL/pgSQL Lexer/Parser (수정 금지) |
 
 ### 6.6 `config/WebConfig.java`
 
@@ -553,7 +555,7 @@ curl -X POST "http://localhost:8081/fileUpload" \
 
 > **dbms 파라미터**: 이 값에 따라 파싱 전략이 자동 선택됩니다.
 > - Oracle: `"oracle"` 또는 `"plsql"`
-> - PostgreSQL: `"postgresql"`, `"postgres"`, `"pg"`
+> - PostgreSQL (PL/pgSQL 포함): `"postgresql"`, `"postgres"`, `"pg"`
 >
 > **testmode**: `true`이면 업로드 없이 기존 파일만 확인합니다.
 
@@ -574,7 +576,7 @@ curl -X POST "http://localhost:8081/parsing" \
 
 > **dbms 파라미터 필수**: 이 값으로 적절한 ANTLR 파서가 선택됩니다.
 > - Oracle → PlSqlLexer/Parser + CustomPlSqlListener
-> - PostgreSQL → PostgreSQLLexer/Parser + CustomPostgreSQLListener
+> - PostgreSQL → PostgreSQLLexer/Parser + CustomPostgreSQLListener (+ CustomPlpgsqlVisitor)
 
 ### 8.4 에러 응답 샘플
 

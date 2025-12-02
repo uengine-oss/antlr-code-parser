@@ -26,14 +26,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import legacymodernizer.parser.antlr.CaseChangingCharStream;
-import legacymodernizer.parser.antlr.CustomPlSqlListener;
+import legacymodernizer.parser.antlr.plsql.CustomPlSqlListener;
 import legacymodernizer.parser.antlr.plsql.PlSqlLexer;
 import legacymodernizer.parser.antlr.plsql.PlSqlParser;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-public class PlSqlFileParserService {
+public class DbmsFileParserService {
 
     private static final String BASE_DIR = System.getenv("DOCKER_COMPOSE_CONTEXT") != null ?
             System.getenv("DOCKER_COMPOSE_CONTEXT") :

@@ -1,5 +1,5 @@
 // Generated from PostgreSQLParser.g4 by ANTLR 4.13.1
-package legacymodernizer.parser.antlr.dml_postgresql;
+package legacymodernizer.parser.antlr.postgresql;
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
 /**

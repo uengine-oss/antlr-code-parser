@@ -20,7 +20,6 @@ public class ParserStrategyFactory {
     
     private final PlSqlParserStrategy plSqlParserStrategy;
     private final PostgreSqlParserStrategy postgreSqlParserStrategy;
-    private final DmlPostgreSqlParserStrategy dmlPostgreSqlParserStrategy;
     
     private Map<String, DbmsParserStrategy> strategyMap;
     
@@ -65,9 +64,6 @@ public class ParserStrategyFactory {
         strategyMap.put("postgresql", postgreSqlParserStrategy);
         strategyMap.put("postgres", postgreSqlParserStrategy);
         strategyMap.put("pg", postgreSqlParserStrategy);
-        strategyMap.put("dml_postgresql", dmlPostgreSqlParserStrategy);
-        strategyMap.put("dml_postgres", dmlPostgreSqlParserStrategy);
-        strategyMap.put("dml_pg", dmlPostgreSqlParserStrategy);
     }
     
     /**

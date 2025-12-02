@@ -5,6 +5,9 @@ import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
 import legacymodernizer.parser.antlr.Node;
+import legacymodernizer.parser.antlr.plpgsql.CustomPlpgsqlVisitor;
+import legacymodernizer.parser.antlr.plpgsql.PlpgsqlLexer;
+import legacymodernizer.parser.antlr.plpgsql.PlpgsqlParser;
 
 public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     private TokenStream tokens;
