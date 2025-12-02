@@ -1,6 +1,0 @@
-{
-    "java.jdt.ls.vmargs": "-Xmx2G -XX:+UseG1GC -XX:+UseStringDeduplication -Xms128m -Xss4m",
-    "java.compile.nullAnalysis.mode": "disabled",
-    "java.debug.settings.onBuildFailureProceed": true
-}
-

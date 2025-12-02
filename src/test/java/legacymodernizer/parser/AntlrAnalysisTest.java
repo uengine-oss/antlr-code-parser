@@ -32,9 +32,9 @@ public class AntlrAnalysisTest {
     private PlSqlFileParserService plSqlFileParserService;
 
     private MockHttpServletRequest mockRequest;
-    private static final String TEST_SESSION = "TestSession_2";
-    private static final String TEST_PROJECT = "waterpoc";
-    private static final String TEST_DBMS = "plsql";
+    private static final String TEST_SESSION = "TestSession_4";
+    private static final String TEST_PROJECT = "test";
+    private static final String TEST_DBMS = "postgresql";
 
     // ========================================
     // 테스트 설정
@@ -69,7 +69,7 @@ public class AntlrAnalysisTest {
      */
     @Test
     void testComplexUpdateWithNestedSubqueries() throws Exception {
-        String testSession = "TestSession_3";
+        String testSession = "TestSession_4";
         String testProject = "test";
         String testDbms = "dml_postgresql";
         String testSystem = "sample";
