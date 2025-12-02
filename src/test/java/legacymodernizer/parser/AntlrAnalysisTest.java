@@ -15,6 +15,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -32,9 +33,21 @@ public class AntlrAnalysisTest {
     private DbmsFileParserService dbmsFileParserService;
 
     private MockHttpServletRequest mockRequest;
-    private static final String TEST_SESSION = "TestSession_4";
-    private static final String TEST_PROJECT = "test";
-    private static final String TEST_DBMS = "postgresql";
+    
+    @Value("${test.session:TestSession}")
+    private String TEST_SESSION;
+    
+    @Value("${test.project:test}")
+    private String TEST_PROJECT;
+    
+    @Value("${test.dbms:postgresql}")
+    private String TEST_DBMS;
+    
+    @Value("${test.system:sample}")
+    private String TEST_SYSTEM;
+    
+    @Value("${test.sql.file:test.sql}")
+    private String TEST_SQL_FILE;
 
     // ========================================
     // 테스트 설정
@@ -69,23 +82,18 @@ public class AntlrAnalysisTest {
      */
     @Test
     void testComplexUpdateWithNestedSubqueries() throws Exception {
-        String testSession = "TestSession_4";
-        String testProject = "test";
-        String testDbms = "postgresql";
-        String testSystem = "sample";
-        
         MockHttpServletRequest testRequest = new MockHttpServletRequest();
-        testRequest.addHeader("Session-UUID", testSession);
+        testRequest.addHeader("Session-UUID", TEST_SESSION);
         
         // 테스트 디렉토리 준비
-        String srcDir = dbmsFileParserService.getTargetDirectory(testSession, testProject, testSystem);
+        String srcDir = dbmsFileParserService.getTargetDirectory(TEST_SESSION, TEST_PROJECT, TEST_SYSTEM);
         File srcDirFile = new File(srcDir);
         if (!srcDirFile.exists()) {
             srcDirFile.mkdirs();
         }
         
         // Analysis 디렉토리 정리
-        String analysisDir = dbmsFileParserService.getAnalysisDirectory(testSession, testProject, testSystem);
+        String analysisDir = dbmsFileParserService.getAnalysisDirectory(TEST_SESSION, TEST_PROJECT, TEST_SYSTEM);
         File analysisDirFile = new File(analysisDir);
         if (analysisDirFile.exists()) {
             deleteRecursively(analysisDirFile);
@@ -93,12 +101,12 @@ public class AntlrAnalysisTest {
         analysisDirFile.mkdirs();
         
         // 테스트 SQL 파일 복사 (프로젝트 루트의 test_complex_update.sql을 사용)
-        File testSqlFile = new File("test_complex_update.sql");
+        File testSqlFile = new File(TEST_SQL_FILE);
         if (!testSqlFile.exists()) {
-            fail("테스트 파일이 없습니다: test_complex_update.sql");
+            fail("테스트 파일이 없습니다: " + TEST_SQL_FILE);
         }
         
-        File targetFile = new File(srcDir, "test_complex_update.sql");
+        File targetFile = new File(srcDir, TEST_SQL_FILE);
         Files.copy(testSqlFile.toPath(), targetFile.toPath(), 
                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         
@@ -107,13 +115,13 @@ public class AntlrAnalysisTest {
         // 분석 요청 준비
         List<Map<String, Object>> systems = new ArrayList<>();
         Map<String, Object> system = new HashMap<>();
-        system.put("name", testSystem);
-        system.put("sp", List.of("test_complex_update.sql"));
+        system.put("name", TEST_SYSTEM);
+        system.put("sp", List.of(TEST_SQL_FILE));
         systems.add(system);
         
         Map<String, Object> request = new HashMap<>();
-        request.put("projectName", testProject);
-        request.put("dbms", testDbms);
+        request.put("projectName", TEST_PROJECT);
+        request.put("dbms", TEST_DBMS);
         request.put("systems", systems);
         
         // 분석 실행
@@ -134,9 +142,6 @@ public class AntlrAnalysisTest {
         
         System.out.println("========================================");
         System.out.println("복잡한 UPDATE 서브쿼리 테스트 성공!");
-        System.out.println("세션: " + testSession);
-        System.out.println("프로젝트: " + testProject);
-        System.out.println("DBMS: " + testDbms);
         System.out.println("결과 파일: " + jsonFile);
         System.out.println("JSON 크기: " + jsonContent.length() + " bytes");
         System.out.println("========================================");
@@ -267,4 +272,5 @@ public class AntlrAnalysisTest {
                 .orElse(null);
         }
     }
+
 }
