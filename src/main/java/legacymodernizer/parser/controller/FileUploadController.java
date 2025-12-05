@@ -15,7 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
-import legacymodernizer.parser.service.parsing.DbmsParserStrategy;
+import legacymodernizer.parser.service.parsing.TargetParserStrategy;
 import legacymodernizer.parser.service.parsing.ParserStrategyFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,11 +36,11 @@ public class FileUploadController {
      * - testmode=true: 기존 파일만 조회
      * - testmode=false: 업로드 파일 저장
      * 
-     * @param metadata    JSON 메타데이터 {dbms, projectName, systems, ddl, sequence,
+     * @param metadata    JSON 메타데이터 {target, projectName, systems, ddl, sequence,
      *                    testmode}
      * @param files       업로드 파일 배열
      * @param httpRequest HTTP 요청 (Session-UUID 헤더 사용)
-     * @return {dbms, successFiles}
+     * @return {target, successFiles}
      */
     @PostMapping(value = "/fileUpload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> fileUpload(@RequestPart("metadata") String metadata,
@@ -61,7 +61,7 @@ public class FileUploadController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "metadata 파싱 실패: " + e.getMessage());
         }
 
-        String dbms = (String) request.getOrDefault("dbms", "");
+        String target = (String) request.getOrDefault("target", "");
         String projectName = (String) request.getOrDefault("projectName", "");
         Object systemsObj = request.get("systems");
         Object ddlObj = request.get("ddl");
@@ -75,8 +75,8 @@ public class FileUploadController {
                 "================================================================================\n" +
                 " [파일 업로드]\n" +
                 "================================================================================\n" +
-                "  DBMS: {}  |  프로젝트: {}  |  파일: {}개  |  시스템: {}개",
-                dbms, projectName, filesCount, systemsCount);
+                "  Target: {}  |  프로젝트: {}  |  파일: {}개  |  시스템: {}개",
+                target, projectName, filesCount, systemsCount);
 
         Map<String, MultipartFile> nameToFile = new HashMap<>();
         if (!testMode) {
@@ -98,8 +98,8 @@ public class FileUploadController {
             }
         }
 
-        // DBMS 타입에 따른 구현체 선택
-        DbmsParserStrategy strategy = parserStrategyFactory.getStrategy(dbms);
+        // Target 타입에 따른 구현체 선택
+        TargetParserStrategy strategy = parserStrategyFactory.getStrategy(target);
 
         Map<String, Object> result = strategy.processUploadByMetadata(
                 sessionUUID, projectName, systemsObj, ddlObj, seqObj, nameToFile);
@@ -108,15 +108,15 @@ public class FileUploadController {
 
         log.info("\n  업로드 완료 - 총 {}개 파일", successFiles.size());
         log.info("================================================================================\n");
-        return ResponseEntity.ok(Map.of("dbms", dbms, "successFiles", successFiles));
+        return ResponseEntity.ok(Map.of("target", target, "successFiles", successFiles));
     }
 
     /**
      * 파일 파싱 (ANTLR 분석)
      * 
-     * @param request     {dbms, projectName, systems:[{name, sp:[]}]}
+     * @param request     {target, projectName, systems:[{name, sp:[]}]}
      * @param httpRequest HTTP 요청 (Session-UUID 헤더 사용)
-     * @return {dbms, successFiles}
+     * @return {target, successFiles}
      */
     @PostMapping("/parsing")
     public ResponseEntity<Map<String, Object>> analysisContext(@RequestBody Map<String, Object> request,
@@ -127,7 +127,7 @@ public class FileUploadController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "세션 정보가 없습니다");
         }
 
-        String dbms = (String) request.getOrDefault("dbms", "");
+        String target = (String) request.getOrDefault("target", "");
         String projectName = (String) request.getOrDefault("projectName", "");
         Object systemsObj = request.get("systems");
         if (!(systemsObj instanceof List<?>)) {
@@ -137,12 +137,12 @@ public class FileUploadController {
 
         List<?> systems = (List<?>) systemsObj;
 
-        // DBMS 타입에 따른 구현체 선택
-        DbmsParserStrategy strategy = parserStrategyFactory.getStrategy(dbms);
+        // Target 타입에 따른 구현체 선택
+        TargetParserStrategy strategy = parserStrategyFactory.getStrategy(target);
 
         Map<String, Object> result = strategy.processParsingBySystems(sessionUUID, projectName, systems);
         @SuppressWarnings("unchecked")
         List<Map<String, String>> successFiles = (List<Map<String, String>>) result.get("successFiles");
-        return ResponseEntity.ok(Map.of("dbms", dbms, "successFiles", successFiles));
+        return ResponseEntity.ok(Map.of("target", target, "successFiles", successFiles));
     }
 }

@@ -19,7 +19,7 @@ import legacymodernizer.parser.antlr.CaseChangingCharStream;
 import legacymodernizer.parser.antlr.plsql.CustomPlSqlListener;
 import legacymodernizer.parser.antlr.plsql.PlSqlLexer;
 import legacymodernizer.parser.antlr.plsql.PlSqlParser;
-import legacymodernizer.parser.service.DbmsFileParserService;
+import legacymodernizer.parser.service.FileParserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,9 +29,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class PlSqlParserStrategy implements DbmsParserStrategy {
+public class PlSqlParserStrategy implements TargetParserStrategy {
     
-    private final DbmsFileParserService dbmsFileParserService;
+    private final FileParserService fileParserService;
     
     @Override
     public Map<String, Object> processUploadByMetadata(String sessionUUID,
@@ -40,7 +40,7 @@ public class PlSqlParserStrategy implements DbmsParserStrategy {
                                                       Object ddlObj,
                                                       Object seqObj,
                                                       Map<String, MultipartFile> nameToFile) {
-        return dbmsFileParserService.processUploadByMetadata(
+        return fileParserService.processUploadByMetadata(
             sessionUUID, projectName, systemsObj, ddlObj, seqObj, nameToFile
         );
     }
@@ -49,8 +49,7 @@ public class PlSqlParserStrategy implements DbmsParserStrategy {
     public Map<String, Object> processParsingBySystems(String sessionUUID,
                                                       String projectName,
                                                       List<?> systems) {
-        // PL/SQL 파싱 전략을 사용하여 처리
-        return dbmsFileParserService.processParsingBySystemsWithStrategy(
+        return fileParserService.processParsingBySystemsWithStrategy(
             sessionUUID, 
             projectName, 
             systems, 
@@ -80,8 +79,7 @@ public class PlSqlParserStrategy implements DbmsParserStrategy {
     }
     
     @Override
-    public String getSupportedDbmsType() {
+    public String getSupportedTargetType() {
         return "oracle";
     }
 }
-

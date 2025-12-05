@@ -14,20 +14,23 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import legacymodernizer.parser.antlr.postgresql.CustomPostgreSQLListener;
-import legacymodernizer.parser.antlr.postgresql.PostgreSQLLexer;
-import legacymodernizer.parser.antlr.postgresql.PostgreSQLParser;
+import legacymodernizer.parser.antlr.java.CustomJavaListener;
+import legacymodernizer.parser.antlr.java.Java20Lexer;
+import legacymodernizer.parser.antlr.java.Java20Parser;
 import legacymodernizer.parser.service.FileParserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * PostgreSQL (DDL + PL/pgSQL) 파싱 전략
+ * Java 파싱 전략 구현체
+ * - 클래스/인터페이스 구조 분석
+ * - 메서드/필드 추출
+ * - 의존 관계 (메서드 호출, 객체 생성) 추출
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class PostgreSqlParserStrategy implements TargetParserStrategy {
+public class JavaParserStrategy implements TargetParserStrategy {
 
     private final FileParserService fileParserService;
 
@@ -57,16 +60,16 @@ public class PostgreSqlParserStrategy implements TargetParserStrategy {
 
     @Override
     public void parseFile(File file, String outputPath) throws Exception {
-        log.debug("      [ANTLR PostgreSQL 파싱 시작]");
+        log.debug("      [ANTLR Java 파싱 시작] - {}", file.getName());
         try (InputStream in = new FileInputStream(file)) {
             CharStream charStream = CharStreams.fromStream(in);
-            PostgreSQLLexer lexer = new PostgreSQLLexer(charStream);
+            Java20Lexer lexer = new Java20Lexer(charStream);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
-            PostgreSQLParser parser = new PostgreSQLParser(tokens);
+            Java20Parser parser = new Java20Parser(tokens);
 
-            PostgreSQLParser.RootContext tree = parser.root();
+            Java20Parser.Start_Context tree = parser.start_();
 
-            CustomPostgreSQLListener listener = new CustomPostgreSQLListener(tokens);
+            CustomJavaListener listener = new CustomJavaListener(tokens);
             new ParseTreeWalker().walk(listener, tree);
 
             File analysisFile = new File(outputPath);
@@ -79,6 +82,7 @@ public class PostgreSqlParserStrategy implements TargetParserStrategy {
 
     @Override
     public String getSupportedTargetType() {
-        return "postgresql";
+        return "java";
     }
 }
+

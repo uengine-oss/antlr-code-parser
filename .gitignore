@@ -34,3 +34,6 @@ build/
 
 ### ect ###
 result
+
+### Local config ###
+src/main/resources/application.properties

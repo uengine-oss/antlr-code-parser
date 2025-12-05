@@ -6,10 +6,10 @@ import java.util.Map;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * DBMS별 파싱 전략 인터페이스
- * - 전략 패턴을 통해 DBMS 종류에 따른 파싱 로직을 캡슐화
+ * Target별 파싱 전략 인터페이스
+ * - 전략 패턴을 통해 Target 종류에 따른 파싱 로직을 캡슐화
  */
-public interface DbmsParserStrategy {
+public interface TargetParserStrategy {
     
     /**
      * 메타데이터 기반 파일 업로드 처리
@@ -40,16 +40,16 @@ public interface DbmsParserStrategy {
                                                 List<?> systems);
     
     /**
-     * ANTLR 파싱 실행 (DBMS별 구현)
+     * ANTLR 파싱 실행 (Target별 구현)
      * @param file 파싱 대상 파일
      * @param outputPath 출력 JSON 파일 경로
      */
     void parseFile(File file, String outputPath) throws Exception;
     
     /**
-     * 지원하는 DBMS 타입 반환
-     * @return DBMS 타입 (예: "oracle", "postgresql")
+     * 지원하는 Target 타입 반환
+     * @return Target 타입 (예: "oracle", "postgresql", "java")
      */
-    String getSupportedDbmsType();
+    String getSupportedTargetType();
 }
 
