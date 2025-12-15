@@ -33,11 +33,8 @@ public class FileUploadController {
 
     /**
      * 파일 업로드
-     * - testmode=true: 기존 파일만 조회
-     * - testmode=false: 업로드 파일 저장
      * 
-     * @param metadata    JSON 메타데이터 {target, projectName, systems, ddl, sequence,
-     *                    testmode}
+     * @param metadata    JSON 메타데이터 {target, projectName, systems, ddl, sequence}
      * @param files       업로드 파일 배열
      * @param httpRequest HTTP 요청 (Session-UUID 헤더 사용)
      * @return {target, successFiles}
@@ -66,7 +63,6 @@ public class FileUploadController {
         Object systemsObj = request.get("systems");
         Object ddlObj = request.get("ddl");
         Object seqObj = request.get("sequence");
-        boolean testMode = Boolean.TRUE.equals(request.get("testmode")) || Boolean.TRUE.equals(request.get("testMode"));
 
         int filesCount = files != null ? files.length : 0;
         int systemsCount = (systemsObj instanceof List<?>) ? ((List<?>) systemsObj).size() : 0;
@@ -78,24 +74,23 @@ public class FileUploadController {
                 "  Target: {}  |  프로젝트: {}  |  파일: {}개  |  시스템: {}개",
                 target, projectName, filesCount, systemsCount);
 
+        if (files == null || files.length == 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "업로드 파일이 필요합니다");
+        }
+
         Map<String, MultipartFile> nameToFile = new HashMap<>();
-        if (!testMode) {
-            if (files == null || files.length == 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "files가 필요합니다 (testmode=false)");
+        boolean hasNonEmpty = false;
+        for (MultipartFile f : files) {
+            if (f == null || f.isEmpty())
+                continue;
+            String key = f.getOriginalFilename() != null ? f.getOriginalFilename().toLowerCase() : null;
+            if (key != null) {
+                nameToFile.put(key, f);
+                hasNonEmpty = true;
             }
-            boolean hasNonEmpty = false;
-            for (MultipartFile f : files) {
-                if (f == null || f.isEmpty())
-                    continue;
-                String key = f.getOriginalFilename() != null ? f.getOriginalFilename().toLowerCase() : null;
-                if (key != null) {
-                    nameToFile.put(key, f);
-                    hasNonEmpty = true;
-                }
-            }
-            if (!hasNonEmpty) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "모든 업로드 파일이 비어있습니다 (testmode=false)");
-            }
+        }
+        if (!hasNonEmpty) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "모든 업로드 파일이 비어있습니다");
         }
 
         // Target 타입에 따른 구현체 선택

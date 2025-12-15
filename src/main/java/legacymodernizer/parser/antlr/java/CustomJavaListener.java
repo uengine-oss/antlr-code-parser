@@ -154,20 +154,6 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     }
     
     // ========================================
-    // 어노테이션 사용
-    // ========================================
-    
-    @Override
-    public void enterAnnotation(Java20Parser.AnnotationContext ctx) {
-        enterStatement("ANNOTATION", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitAnnotation(Java20Parser.AnnotationContext ctx) {
-        exitStatement("ANNOTATION", ctx.getStop().getLine());
-    }
-    
-    // ========================================
     // 필드/변수
     // ========================================
     
@@ -183,12 +169,22 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     
     @Override
     public void enterLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
-        enterStatement("LOCAL_VARIABLE", ctx.getStart().getLine());
+        enterStatement("VARIABLE", ctx.getStart().getLine());
     }
     
     @Override
     public void exitLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
-        exitStatement("LOCAL_VARIABLE", ctx.getStop().getLine());
+        exitStatement("VARIABLE", ctx.getStop().getLine());
+    }
+    
+    @Override
+    public void enterAssignment(Java20Parser.AssignmentContext ctx) {
+        enterStatement("ASSIGN", ctx.getStart().getLine());
+    }
+    
+    @Override
+    public void exitAssignment(Java20Parser.AssignmentContext ctx) {
+        exitStatement("ASSIGN", ctx.getStop().getLine());
     }
     
     // ========================================
@@ -226,30 +222,6 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     }
     
     // ========================================
-    // Static/Instance 초기화 블록
-    // ========================================
-    
-    @Override
-    public void enterStaticInitializer(Java20Parser.StaticInitializerContext ctx) {
-        enterStatement("STATIC_INIT", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitStaticInitializer(Java20Parser.StaticInitializerContext ctx) {
-        exitStatement("STATIC_INIT", ctx.getStop().getLine());
-    }
-    
-    @Override
-    public void enterInstanceInitializer(Java20Parser.InstanceInitializerContext ctx) {
-        enterStatement("INSTANCE_INIT", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitInstanceInitializer(Java20Parser.InstanceInitializerContext ctx) {
-        exitStatement("INSTANCE_INIT", ctx.getStop().getLine());
-    }
-    
-    // ========================================
     // 메서드 호출/참조
     // ========================================
     
@@ -265,12 +237,12 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     
     @Override
     public void enterMethodReference(Java20Parser.MethodReferenceContext ctx) {
-        enterStatement("METHOD_REFERENCE", ctx.getStart().getLine());
+        enterStatement("METHOD_CALL", ctx.getStart().getLine());
     }
     
     @Override
     public void exitMethodReference(Java20Parser.MethodReferenceContext ctx) {
-        exitStatement("METHOD_REFERENCE", ctx.getStop().getLine());
+        exitStatement("METHOD_CALL", ctx.getStop().getLine());
     }
     
     // ========================================
@@ -287,15 +259,15 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         exitStatement("NEW_INSTANCE", ctx.getStop().getLine());
     }
     
-    @Override
-    public void enterArrayCreationExpression(Java20Parser.ArrayCreationExpressionContext ctx) {
-        enterStatement("NEW_ARRAY", ctx.getStart().getLine());
-    }
+    // @Override
+    // public void enterArrayCreationExpression(Java20Parser.ArrayCreationExpressionContext ctx) {
+    //     enterStatement("NEW_ARRAY", ctx.getStart().getLine());
+    // }
     
-    @Override
-    public void exitArrayCreationExpression(Java20Parser.ArrayCreationExpressionContext ctx) {
-        exitStatement("NEW_ARRAY", ctx.getStop().getLine());
-    }
+    // @Override
+    // public void exitArrayCreationExpression(Java20Parser.ArrayCreationExpressionContext ctx) {
+    //     exitStatement("NEW_ARRAY", ctx.getStop().getLine());
+    // }
     
     // ========================================
     // 제어 흐름
@@ -361,16 +333,6 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         exitStatement("SWITCH", ctx.getStop().getLine());
     }
     
-    @Override
-    public void enterSwitchExpression(Java20Parser.SwitchExpressionContext ctx) {
-        enterStatement("SWITCH_EXPR", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitSwitchExpression(Java20Parser.SwitchExpressionContext ctx) {
-        exitStatement("SWITCH_EXPR", ctx.getStop().getLine());
-    }
-    
     // ========================================
     // 예외 처리
     // ========================================
@@ -427,74 +389,6 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     @Override
     public void exitReturnStatement(Java20Parser.ReturnStatementContext ctx) {
         exitStatement("RETURN", ctx.getStop().getLine());
-    }
-    
-    @Override
-    public void enterBreakStatement(Java20Parser.BreakStatementContext ctx) {
-        enterStatement("BREAK", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitBreakStatement(Java20Parser.BreakStatementContext ctx) {
-        exitStatement("BREAK", ctx.getStop().getLine());
-    }
-    
-    @Override
-    public void enterContinueStatement(Java20Parser.ContinueStatementContext ctx) {
-        enterStatement("CONTINUE", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitContinueStatement(Java20Parser.ContinueStatementContext ctx) {
-        exitStatement("CONTINUE", ctx.getStop().getLine());
-    }
-    
-    @Override
-    public void enterYieldStatement(Java20Parser.YieldStatementContext ctx) {
-        enterStatement("YIELD", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitYieldStatement(Java20Parser.YieldStatementContext ctx) {
-        exitStatement("YIELD", ctx.getStop().getLine());
-    }
-    
-    // ========================================
-    // 동기화/Assert
-    // ========================================
-    
-    @Override
-    public void enterSynchronizedStatement(Java20Parser.SynchronizedStatementContext ctx) {
-        enterStatement("SYNCHRONIZED", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitSynchronizedStatement(Java20Parser.SynchronizedStatementContext ctx) {
-        exitStatement("SYNCHRONIZED", ctx.getStop().getLine());
-    }
-    
-    @Override
-    public void enterAssertStatement(Java20Parser.AssertStatementContext ctx) {
-        enterStatement("ASSERT", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitAssertStatement(Java20Parser.AssertStatementContext ctx) {
-        exitStatement("ASSERT", ctx.getStop().getLine());
-    }
-    
-    // ========================================
-    // 람다/익명 클래스
-    // ========================================
-    
-    @Override
-    public void enterLambdaExpression(Java20Parser.LambdaExpressionContext ctx) {
-        enterStatement("LAMBDA", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitLambdaExpression(Java20Parser.LambdaExpressionContext ctx) {
-        exitStatement("LAMBDA", ctx.getStop().getLine());
     }
     
     // ========================================

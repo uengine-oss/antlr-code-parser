@@ -544,8 +544,7 @@ curl -X POST "http://localhost:8081/fileUpload" \
       {"name": "SYSTEM_A", "sp": ["PROC_A.sql", "FUNC_A.sql"]}
     ],
     "ddl": ["DDL_TABLE.sql"],
-    "sequence": ["SEQ_USER.sql"],
-    "testmode": false
+    "sequence": ["SEQ_USER.sql"]
   }' \
   -F "files=@/path/to/PROC_A.sql" \
   -F "files=@/path/to/FUNC_A.sql" \
@@ -556,8 +555,6 @@ curl -X POST "http://localhost:8081/fileUpload" \
 > **dbms 파라미터**: 이 값에 따라 파싱 전략이 자동 선택됩니다.
 > - Oracle: `"oracle"` 또는 `"plsql"`
 > - PostgreSQL (PL/pgSQL 포함): `"postgresql"`, `"postgres"`, `"pg"`
->
-> **testmode**: `true`이면 업로드 없이 기존 파일만 확인합니다.
 
 ### 8.3 파싱 요청 예제
 
