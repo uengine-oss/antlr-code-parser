@@ -55,18 +55,24 @@ public class AntlrAnalysisTest {
         mockRequest = new MockHttpServletRequest();
         mockRequest.addHeader("Session-UUID", TEST_SESSION);
         
-        String srcDir = fileParserService.getTargetDirectory(TEST_SESSION, TEST_PROJECT, null);
-        File srcDirFile = new File(srcDir);
-        if (!srcDirFile.exists()) {
-            srcDirFile.mkdirs();
+        // 프로젝트 루트 생성
+        String projectRoot = fileParserService.getProjectRoot(TEST_SESSION, TEST_PROJECT);
+        File projectDir = new File(projectRoot);
+        if (!projectDir.exists()) {
+            projectDir.mkdirs();
         }
 
-        String analysisDir = fileParserService.getAnalysisDirectory(TEST_SESSION, TEST_PROJECT, null);
-        File analysisDirFile = new File(analysisDir);
-        if (analysisDirFile.exists()) {
-            deleteRecursively(analysisDirFile);
+        // 기존 analysis 폴더 정리 (시스템별)
+        File[] systemDirs = projectDir.listFiles(File::isDirectory);
+        if (systemDirs != null) {
+            for (File systemDir : systemDirs) {
+                File analysisDir = new File(systemDir, "analysis");
+                if (analysisDir.exists()) {
+                    deleteRecursively(analysisDir);
+                }
+            }
         }
-        System.out.println("Analysis 디렉토리 정리 완료: " + analysisDir);
+        System.out.println("Analysis 디렉토리 정리 완료");
     }
 
     // ========================================
@@ -75,37 +81,42 @@ public class AntlrAnalysisTest {
     
     /**
      * 폴더 내 모든 파일 분석 테스트
-     * - src 디렉터리의 파일들을 파싱
-     * - 분석 결과 JSON 파일 생성 검증
+     * 
+     * 저장 구조:
+     * data/{session}/{project}/{system}/src/파일
+     * data/{session}/{project}/{system}/analysis/파일.json
      */
     @Test
     void testAnalysisWithExistingFiles() throws Exception {
-        String srcDir = fileParserService.getTargetDirectory(TEST_SESSION, TEST_PROJECT, null);
-        File srcDirFile = new File(srcDir);
+        String projectRoot = fileParserService.getProjectRoot(TEST_SESSION, TEST_PROJECT);
+        File projectDir = new File(projectRoot);
         
         System.out.println("========================================");
         System.out.println("Target: " + TEST_TARGET);
         System.out.println("Project: " + TEST_PROJECT);
-        System.out.println("Source Dir: " + srcDir);
+        System.out.println("Project Dir: " + projectRoot);
         System.out.println("========================================");
         
-        // src 디렉토리가 존재하는지 확인
-        assertTrue(srcDirFile.exists(), "src 디렉토리가 존재하지 않습니다: " + srcDir);
-        assertTrue(srcDirFile.isDirectory(), "src 경로가 디렉토리가 아닙니다: " + srcDir);
+        assertTrue(projectDir.exists(), "프로젝트 디렉토리가 존재하지 않습니다: " + projectRoot);
         
-        // 시스템별 폴더 및 파일을 동적으로 탐지
+        // 시스템별 폴더 탐색 (각 시스템 안에 src 폴더가 있어야 함)
         List<Map<String, Object>> systems = new ArrayList<>();
         Map<String, List<File>> systemToFiles = new HashMap<>();
         
-        File[] systemDirs = srcDirFile.listFiles(File::isDirectory);
+        File[] systemDirs = projectDir.listFiles(File::isDirectory);
         assertNotNull(systemDirs, "시스템 폴더를 찾을 수 없습니다");
-        assertTrue(systemDirs.length > 0, "시스템 폴더가 없습니다");
         
-        // 각 폴더를 시스템명으로 인식 (확장자 무관, 모든 파일 대상)
         for (File systemDir : systemDirs) {
             String systemName = systemDir.getName();
-            File[] files = systemDir.listFiles(File::isFile);
             
+            // ddl 폴더는 스킵
+            if ("ddl".equalsIgnoreCase(systemName)) continue;
+            
+            // 시스템/src 폴더에서 파일 찾기
+            File srcDir = new File(systemDir, "src");
+            if (!srcDir.exists() || !srcDir.isDirectory()) continue;
+            
+            File[] files = srcDir.listFiles(File::isFile);
             if (files != null && files.length > 0) {
                 List<File> fileList = new ArrayList<>();
                 List<String> spList = new ArrayList<>();
@@ -134,10 +145,10 @@ public class AntlrAnalysisTest {
 
         System.out.println("\n파싱 시작...\n");
         
-        ResponseEntity<Map<String, Object>> response = fileUploadController.analysisContext(request, mockRequest);
+        ResponseEntity<Map<String, Object>> response = fileUploadController.parsing(request, mockRequest);
 
-        assertEquals(200, response.getStatusCode().value(), "분석이 실패했습니다");
-        assertTrue(response.getBody().containsKey("successFiles"), "successFiles가 없습니다");
+        assertEquals(200, response.getStatusCode().value(), "파싱이 실패했습니다");
+        assertTrue(response.getBody().containsKey("files"), "files가 없습니다");
         
         System.out.println("\n========================================");
         System.out.println("파싱 결과:");
@@ -150,7 +161,7 @@ public class AntlrAnalysisTest {
             List<File> files = systemToFiles.get(systemName);
             
             if (files != null) {
-                String analysisDir = fileParserService.getAnalysisDirectory(TEST_SESSION, TEST_PROJECT, systemName);
+                String analysisDir = fileParserService.getSystemAnalysisDir(TEST_SESSION, TEST_PROJECT, systemName);
                 for (File file : files) {
                     String baseFileName = file.getName().substring(0, file.getName().lastIndexOf('.'));
                     Path found = findJsonRecursively(Paths.get(analysisDir), baseFileName + ".json");
@@ -193,6 +204,7 @@ public class AntlrAnalysisTest {
      * JSON 파일 재귀 검색
      */
     private static Path findJsonRecursively(Path root, String fileName) throws Exception {
+        if (!Files.exists(root)) return null;
         try (Stream<Path> stream = Files.walk(root)) {
             return stream
                 .filter(Files::isRegularFile)
@@ -201,5 +213,4 @@ public class AntlrAnalysisTest {
                 .orElse(null);
         }
     }
-
 }
