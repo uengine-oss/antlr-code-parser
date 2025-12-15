@@ -12,7 +12,7 @@ import legacymodernizer.parser.antlr.plpgsql.PlpgsqlParser;
 public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     private TokenStream tokens;
     private Stack<Node> nodeStack = new Stack<>();
-    private Node root = new Node("ROOT", 0, null);
+    private Node root = new Node("FILE", 0, null);
     private boolean insideInsert = false;
     private boolean insideExplain = false;
     private boolean plpgsqlLogErrors = false; // PL/pgSQL 파싱 에러 로그 출력 여부
@@ -41,7 +41,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     // CREATE FUNCTION
     @Override
     public void enterCreatefunctionstmt(PostgreSQLParser.CreatefunctionstmtContext ctx) {
-        enterStatement("CREATE_FUNCTION", ctx.getStart().getLine());
+        enterStatement("PROCEDURE", ctx.getStart().getLine());
         
         int dollarLineNumber = findDollarStringLine(ctx);
         
@@ -81,7 +81,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
 
     @Override
     public void exitCreatefunctionstmt(PostgreSQLParser.CreatefunctionstmtContext ctx) {
-        exitStatement("CREATE_FUNCTION", ctx.getStop().getLine());
+        exitStatement("PROCEDURE", ctx.getStop().getLine());
     }
 
     // DO (익명 코드 블록)

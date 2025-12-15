@@ -3,7 +3,8 @@ package legacymodernizer.parser.antlr.plpgsql;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
-
+import java.util.HashMap;
+import java.util.Map;
 import legacymodernizer.parser.antlr.Node;
 
 /**
@@ -15,6 +16,20 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
     private int baseLineNumber;  // $$ 시작 라인 번호
     private CommonTokenStream tokens;
     private Node currentBlockNode;
+    private Map<String, CursorInfo> activeCursors = new HashMap<>();  // 커서 이름 -> 커서 정보 매핑
+    
+    /**
+     * 커서 정보 저장 클래스
+     */
+    private static class CursorInfo {
+        Node cursorNode;      // CURSOR 노드
+        Node previousBlock;   // 이전 블록 노드
+        
+        CursorInfo(Node cursorNode, Node previousBlock) {
+            this.cursorNode = cursorNode;
+            this.previousBlock = previousBlock;
+        }
+    }
 
     public CustomPlpgsqlVisitor(Node parentNode, int baseLineNumber, CommonTokenStream tokens) {
         this.parentNode = parentNode;
@@ -182,15 +197,61 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
     }
 
     // ========== 커서 관련 문법 ==========
+    
+    /**
+     * 커서 이름 추출 헬퍼 메서드
+     */
+    private String extractCursorName(ParserRuleContext ctx) {
+        if (ctx == null) return null;
+        
+        // OPEN, CLOSE, FETCH 문에서 커서 이름 찾기
+        // 간단한 방법: 첫 번째 식별자가 커서 이름일 가능성이 높음
+        // OPEN cursor_name FOR ... 또는 CLOSE cursor_name 형태
+        if (ctx.getChildCount() >= 2) {
+            String cursorName = ctx.getChild(1).getText();
+            return cursorName;
+        }
+        
+        return null;
+    }
 
     @Override
     public Node visitOpenCursorStmt(PlpgsqlParser.OpenCursorStmtContext ctx) {
-        return createNode("OPEN", ctx, currentBlockNode);
+        String cursorName = extractCursorName(ctx);
+        
+        // CURSOR 노드 생성
+        Node cursorNode = createNode("CURSOR", ctx, currentBlockNode);
+        
+        // 현재 블록을 저장하고 CURSOR 블록으로 전환
+        Node previousBlock = currentBlockNode;
+        
+        if (cursorName != null) {
+            activeCursors.put(cursorName, new CursorInfo(cursorNode, previousBlock));
+        }
+        
+        // currentBlockNode를 CURSOR 노드로 변경하여 이후 statement들이 자식으로 추가되도록 함
+        currentBlockNode = cursorNode;
+        
+        return cursorNode;
     }
 
     @Override
     public Node visitCloseCursorStmt(PlpgsqlParser.CloseCursorStmtContext ctx) {
-        return createNode("CLOSE", ctx, currentBlockNode);
+        String cursorName = extractCursorName(ctx);
+        
+        // 활성 커서에서 제거하고 CURSOR 노드의 endLine 업데이트 및 블록 복원
+        if (cursorName != null && activeCursors.containsKey(cursorName)) {
+            CursorInfo cursorInfo = activeCursors.get(cursorName);
+            cursorInfo.cursorNode.endLine = getActualEndLineNumber(ctx);
+            
+            // 이전 블록으로 복원
+            currentBlockNode = cursorInfo.previousBlock;
+            
+            activeCursors.remove(cursorName);
+        }
+        
+        // CLOSE는 별도 노드를 만들지 않고 CURSOR에 포함됨
+        return null;
     }
 
     @Override
