@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Oracle PL/SQL 파싱 전략 구현체
+ * Oracle PL/SQL 파싱 전략
  */
 @Slf4j
 @Component
@@ -32,34 +32,29 @@ import lombok.extern.slf4j.Slf4j;
 public class PlSqlParserStrategy implements TargetParserStrategy {
     
     private final FileParserService fileParserService;
-    
+
     @Override
-    public Map<String, Object> processUploadByMetadata(String sessionUUID,
-                                                      String projectName,
-                                                      Object systemsObj,
-                                                      Object ddlObj,
-                                                      Object seqObj,
-                                                      Map<String, MultipartFile> nameToFile) {
-        return fileParserService.processUploadByMetadata(
-            sessionUUID, projectName, systemsObj, ddlObj, seqObj, nameToFile
-        );
+    public Map<String, Object> upload(String sessionUUID,
+                                       String projectName,
+                                       List<?> systems,
+                                       List<?> ddlList,
+                                       Map<String, MultipartFile> nameToFile) {
+        var systemFiles = fileParserService.uploadSystemFiles(sessionUUID, projectName, systems, nameToFile);
+        var ddlFiles = fileParserService.uploadDdlFiles(sessionUUID, projectName, ddlList, nameToFile);
+        return Map.of("systemFiles", systemFiles, "ddlFiles", ddlFiles);
     }
-    
+
     @Override
-    public Map<String, Object> processParsingBySystems(String sessionUUID,
-                                                      String projectName,
-                                                      List<?> systems) {
-        return fileParserService.processParsingBySystemsWithStrategy(
-            sessionUUID, 
-            projectName, 
-            systems, 
-            this::parseFile
-        );
+    public Map<String, Object> parse(String sessionUUID,
+                                      String projectName,
+                                      List<?> systems) {
+        var files = fileParserService.parseSystemFiles(sessionUUID, projectName, systems, this::parseFile);
+        return Map.of("files", files);
     }
     
     @Override
     public void parseFile(File file, String outputPath) throws Exception {
-        log.debug("      [ANTLR PL/SQL 파싱 시작]");
+        log.debug("[ANTLR PL/SQL] 파싱: {}", file.getName());
         try (InputStream in = new FileInputStream(file)) {
             CharStream s = CharStreams.fromStream(in);
             CaseChangingCharStream upper = new CaseChangingCharStream(s, true);
@@ -70,11 +65,9 @@ public class PlSqlParserStrategy implements TargetParserStrategy {
             CustomPlSqlListener listener = new CustomPlSqlListener(tokens);
             new ParseTreeWalker().walk(listener, tree);
             
-            File analysisFile = new File(outputPath);
-            try (FileWriter writer = new FileWriter(analysisFile)) {
+            try (FileWriter writer = new FileWriter(outputPath)) {
                 writer.write(listener.getRoot().toJson());
             }
-            log.debug("      → 분석 결과 저장: {}", analysisFile.getName());
         }
     }
     

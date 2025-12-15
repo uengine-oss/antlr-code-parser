@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * PostgreSQL (DDL + PL/pgSQL) 파싱 전략
+ * PostgreSQL 파싱 전략
  */
 @Slf4j
 @Component
@@ -32,32 +32,27 @@ public class PostgreSqlParserStrategy implements TargetParserStrategy {
     private final FileParserService fileParserService;
 
     @Override
-    public Map<String, Object> processUploadByMetadata(String sessionUUID,
-                                                      String projectName,
-                                                      Object systemsObj,
-                                                      Object ddlObj,
-                                                      Object seqObj,
-                                                      Map<String, MultipartFile> nameToFile) {
-        return fileParserService.processUploadByMetadata(
-            sessionUUID, projectName, systemsObj, ddlObj, seqObj, nameToFile
-        );
+    public Map<String, Object> upload(String sessionUUID,
+                                       String projectName,
+                                       List<?> systems,
+                                       List<?> ddlList,
+                                       Map<String, MultipartFile> nameToFile) {
+        var systemFiles = fileParserService.uploadSystemFiles(sessionUUID, projectName, systems, nameToFile);
+        var ddlFiles = fileParserService.uploadDdlFiles(sessionUUID, projectName, ddlList, nameToFile);
+        return Map.of("systemFiles", systemFiles, "ddlFiles", ddlFiles);
     }
 
     @Override
-    public Map<String, Object> processParsingBySystems(String sessionUUID,
-                                                      String projectName,
-                                                      List<?> systems) {
-        return fileParserService.processParsingBySystemsWithStrategy(
-            sessionUUID,
-            projectName,
-            systems,
-            this::parseFile
-        );
+    public Map<String, Object> parse(String sessionUUID,
+                                      String projectName,
+                                      List<?> systems) {
+        var files = fileParserService.parseSystemFiles(sessionUUID, projectName, systems, this::parseFile);
+        return Map.of("files", files);
     }
 
     @Override
     public void parseFile(File file, String outputPath) throws Exception {
-        log.debug("      [ANTLR PostgreSQL 파싱 시작]");
+        log.debug("[ANTLR PostgreSQL] 파싱: {}", file.getName());
         try (InputStream in = new FileInputStream(file)) {
             CharStream charStream = CharStreams.fromStream(in);
             PostgreSQLLexer lexer = new PostgreSQLLexer(charStream);
@@ -69,11 +64,9 @@ public class PostgreSqlParserStrategy implements TargetParserStrategy {
             CustomPostgreSQLListener listener = new CustomPostgreSQLListener(tokens);
             new ParseTreeWalker().walk(listener, tree);
 
-            File analysisFile = new File(outputPath);
-            try (FileWriter writer = new FileWriter(analysisFile)) {
+            try (FileWriter writer = new FileWriter(outputPath)) {
                 writer.write(listener.getRoot().toJson());
             }
-            log.debug("      → 분석 결과 저장: {}", analysisFile.getName());
         }
     }
 

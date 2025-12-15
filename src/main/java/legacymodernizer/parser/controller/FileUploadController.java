@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,118 +25,141 @@ import lombok.extern.slf4j.Slf4j;
 public class FileUploadController {
 
     private final ParserStrategyFactory parserStrategyFactory;
-
-    // ========================================
-    // API 엔드포인트
-    // ========================================
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 파일 업로드
      * 
-     * @param metadata    JSON 메타데이터 {target, projectName, systems, ddl, sequence}
-     * @param files       업로드 파일 배열
-     * @param httpRequest HTTP 요청 (Session-UUID 헤더 사용)
-     * @return {target, successFiles}
+     * 성공 (200): {projectName, systemFiles, ddlFiles}
+     * 실패 (400): {error}
      */
     @PostMapping(value = "/fileUpload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> fileUpload(@RequestPart("metadata") String metadata,
             @RequestPart("files") MultipartFile[] files,
             HttpServletRequest httpRequest) {
+        
         String sessionUUID = httpRequest.getHeader("Session-UUID");
-        log.debug("세션 UUID: {}", sessionUUID);
         if (sessionUUID == null || sessionUUID.trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "세션 정보가 없습니다");
+            return error("세션 정보 없음");
         }
 
-        Map<String, Object> request = new HashMap<>();
+        Map<String, Object> request;
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            request = mapper.readValue(metadata, new TypeReference<Map<String, Object>>() {
-            });
+            request = objectMapper.readValue(metadata, new TypeReference<>() {});
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "metadata 파싱 실패: " + e.getMessage());
+            return error("metadata 형식 오류");
         }
 
-        String target = (String) request.getOrDefault("target", "");
-        String projectName = (String) request.getOrDefault("projectName", "");
+        String target = (String) request.get("target");
+        String projectName = (String) request.get("projectName");
         Object systemsObj = request.get("systems");
         Object ddlObj = request.get("ddl");
-        Object seqObj = request.get("sequence");
 
-        int filesCount = files != null ? files.length : 0;
-        int systemsCount = (systemsObj instanceof List<?>) ? ((List<?>) systemsObj).size() : 0;
-
-        log.info("\n" +
-                "================================================================================\n" +
-                " [파일 업로드]\n" +
-                "================================================================================\n" +
-                "  Target: {}  |  프로젝트: {}  |  파일: {}개  |  시스템: {}개",
-                target, projectName, filesCount, systemsCount);
-
+        if (target == null || target.isBlank()) {
+            return error("target 필수");
+        }
+        if (projectName == null || projectName.isBlank()) {
+            return error("projectName 필수");
+        }
+        if (!(systemsObj instanceof List<?>)) {
+            return error("systems 필수");
+        }
         if (files == null || files.length == 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "업로드 파일이 필요합니다");
+            return error("파일 필수");
         }
 
         Map<String, MultipartFile> nameToFile = new HashMap<>();
-        boolean hasNonEmpty = false;
         for (MultipartFile f : files) {
-            if (f == null || f.isEmpty())
-                continue;
-            String key = f.getOriginalFilename() != null ? f.getOriginalFilename().toLowerCase() : null;
+            if (f == null || f.isEmpty()) continue;
+            String key = f.getOriginalFilename();
             if (key != null) {
-                nameToFile.put(key, f);
-                hasNonEmpty = true;
+                nameToFile.put(key.toLowerCase(), f);
             }
         }
-        if (!hasNonEmpty) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "모든 업로드 파일이 비어있습니다");
+        if (nameToFile.isEmpty()) {
+            return error("유효한 파일 없음");
         }
 
-        // Target 타입에 따른 구현체 선택
-        TargetParserStrategy strategy = parserStrategyFactory.getStrategy(target);
+        try {
+            TargetParserStrategy strategy = parserStrategyFactory.getStrategy(target);
+            List<?> systems = (List<?>) systemsObj;
+            List<?> ddlList = ddlObj instanceof List<?> ? (List<?>) ddlObj : null;
 
-        Map<String, Object> result = strategy.processUploadByMetadata(
-                sessionUUID, projectName, systemsObj, ddlObj, seqObj, nameToFile);
-        @SuppressWarnings("unchecked")
-        List<Map<String, String>> successFiles = (List<Map<String, String>>) result.get("successFiles");
+            Map<String, Object> result = strategy.upload(sessionUUID, projectName, systems, ddlList, nameToFile);
 
-        log.info("\n  업로드 완료 - 총 {}개 파일", successFiles.size());
-        log.info("================================================================================\n");
-        return ResponseEntity.ok(Map.of("target", target, "successFiles", successFiles));
+            log.info("[업로드] 프로젝트: {}, 시스템파일: {}개, DDL: {}개",
+                    projectName,
+                    ((List<?>) result.get("systemFiles")).size(),
+                    ((List<?>) result.get("ddlFiles")).size());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("projectName", projectName);
+            response.put("systemFiles", result.get("systemFiles"));
+            response.put("ddlFiles", result.get("ddlFiles"));
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            return error("지원하지 않는 target: " + target);
+        } catch (RuntimeException e) {
+            log.error("[업로드 실패] {}", e.getMessage());
+            return error(e.getMessage());
+        }
     }
 
     /**
-     * 파일 파싱 (ANTLR 분석)
+     * 파싱 (ANTLR 분석)
      * 
-     * @param request     {target, projectName, systems:[{name, sp:[]}]}
-     * @param httpRequest HTTP 요청 (Session-UUID 헤더 사용)
-     * @return {target, successFiles}
+     * 성공 (200): {projectName, files}
+     * 실패 (400): {error}
      */
     @PostMapping("/parsing")
-    public ResponseEntity<Map<String, Object>> analysisContext(@RequestBody Map<String, Object> request,
+    public ResponseEntity<Map<String, Object>> parsing(@RequestBody Map<String, Object> request,
             HttpServletRequest httpRequest) {
+        
         String sessionUUID = httpRequest.getHeader("Session-UUID");
         if (sessionUUID == null || sessionUUID.trim().isEmpty()) {
-            log.warn("[parsing] 세션 UUID가 없습니다");
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "세션 정보가 없습니다");
+            return error("세션 정보 없음");
         }
 
-        String target = (String) request.getOrDefault("target", "");
-        String projectName = (String) request.getOrDefault("projectName", "");
+        String target = (String) request.get("target");
+        String projectName = (String) request.get("projectName");
         Object systemsObj = request.get("systems");
+
+        if (target == null || target.isBlank()) {
+            return error("target 필수");
+        }
+        if (projectName == null || projectName.isBlank()) {
+            return error("projectName 필수");
+        }
         if (!(systemsObj instanceof List<?>)) {
-            log.warn("[parsing] systems 정보가 없거나 형식이 올바르지 않습니다");
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "systems 정보가 없습니다");
+            return error("systems 필수");
         }
 
-        List<?> systems = (List<?>) systemsObj;
+        try {
+            TargetParserStrategy strategy = parserStrategyFactory.getStrategy(target);
+            List<?> systems = (List<?>) systemsObj;
 
-        // Target 타입에 따른 구현체 선택
-        TargetParserStrategy strategy = parserStrategyFactory.getStrategy(target);
+            Map<String, Object> result = strategy.parse(sessionUUID, projectName, systems);
 
-        Map<String, Object> result = strategy.processParsingBySystems(sessionUUID, projectName, systems);
-        @SuppressWarnings("unchecked")
-        List<Map<String, String>> successFiles = (List<Map<String, String>>) result.get("successFiles");
-        return ResponseEntity.ok(Map.of("target", target, "successFiles", successFiles));
+            log.info("[파싱] 프로젝트: {}, 파일: {}개",
+                    projectName,
+                    ((List<?>) result.get("files")).size());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("projectName", projectName);
+            response.put("files", result.get("files"));
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            return error("지원하지 않는 target: " + target);
+        } catch (RuntimeException e) {
+            log.error("[파싱 실패] {}", e.getMessage());
+            return error(e.getMessage());
+        }
+    }
+
+    private ResponseEntity<Map<String, Object>> error(String message) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", message));
     }
 }
