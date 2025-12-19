@@ -9,9 +9,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Map;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,196 +23,133 @@ import lombok.extern.slf4j.Slf4j;
  * 파일 저장/파싱 서비스
  * 
  * 저장 구조:
- * data/{sessionUUID}/{projectName}/
- *   ├── ddl/              → DDL 파일
- *   └── {systemName}/     → 시스템별 폴더
- *       ├── src/          → 소스 파일
- *       └── analysis/     → 파싱 결과 JSON
+ *   data/{sessionUUID}/{projectName}/
+ *     ├── source/   → 소스 파일 (원본 폴더 구조 유지)
+ *     ├── ddl/      → DDL 파일 (원본 폴더 구조 유지)
+ *     └── analysis/ → 파싱 결과 JSON (source와 동일 구조)
  */
 @Slf4j
 @Service
 public class FileParserService {
 
-    private static final String BASE_DIR = System.getenv("DOCKER_COMPOSE_CONTEXT") != null ?
-            System.getenv("DOCKER_COMPOSE_CONTEXT") :
-            new File(System.getProperty("user.dir")).getParent() + File.separator + "data";
+    private static final String BASE_DIR = resolveBaseDir();
+    private static final String SOURCE = "source";
+    private static final String DDL = "ddl";
+    private static final String ANALYSIS = "analysis";
 
-    private static final String SRC_DIR = "src";
-    private static final String DDL_DIR = "ddl";
-    private static final String ANALYSIS_DIR = "analysis";
-
-    // ========================================
-    // 경로 유틸리티
-    // ========================================
-
-    private static String toBaseName(String name) {
-        if (name == null) return null;
-        return Paths.get(name).getFileName().toString();
-    }
-
-    private static String toBaseNameWithoutExt(String name) {
-        String base = toBaseName(name);
-        if (base == null) return null;
-        int idx = base.lastIndexOf('.');
-        return idx > 0 ? base.substring(0, idx) : base;
-    }
-
-    /**
-     * 프로젝트 루트: data/{session}/{project}
-     */
-    public String getProjectRoot(String sessionUUID, String projectName) {
-        return BASE_DIR + File.separator + sessionUUID + File.separator + projectName;
-    }
-
-    /**
-     * 시스템 소스 디렉토리: data/{session}/{project}/{system}/src
-     */
-    public String getSystemSrcDir(String sessionUUID, String projectName, String systemName) {
-        return getProjectRoot(sessionUUID, projectName) + File.separator + systemName + File.separator + SRC_DIR;
-    }
-
-    /**
-     * 시스템 분석 디렉토리: data/{session}/{project}/{system}/analysis
-     */
-    public String getSystemAnalysisDir(String sessionUUID, String projectName, String systemName) {
-        return getProjectRoot(sessionUUID, projectName) + File.separator + systemName + File.separator + ANALYSIS_DIR;
-    }
-
-    /**
-     * DDL 디렉토리: data/{session}/{project}/ddl
-     */
-    public String getDdlDir(String sessionUUID, String projectName) {
-        return getProjectRoot(sessionUUID, projectName) + File.separator + DDL_DIR;
-    }
-
-    private void createDirectoryIfNotExists(String path) throws IOException {
-        Path dirPath = Paths.get(path);
-        if (!Files.exists(dirPath)) {
-            Files.createDirectories(dirPath);
+    private static String resolveBaseDir() {
+        String dockerContext = System.getenv("DOCKER_COMPOSE_CONTEXT");
+        if (dockerContext != null) {
+            return dockerContext;
         }
+        return new File(System.getProperty("user.dir")).getParent() + File.separator + "data";
     }
 
-    // ========================================
-    // 파일 I/O
-    // ========================================
+    // ═══════════════════════════════════════════════════════════════════
+    // 경로
+    // ═══════════════════════════════════════════════════════════════════
 
-    public String readFileContent(File file) throws IOException {
-        try {
-            return Files.readString(file.toPath(), StandardCharsets.UTF_8);
-        } catch (MalformedInputException e) {
-            try {
-                return Files.readString(file.toPath(), Charset.forName("EUC-KR"));
-            } catch (Exception e2) {
-                return Files.readString(file.toPath(), Charset.forName("MS949"));
-            }
-        }
+    public Path projectRoot(String session, String project) {
+        return Paths.get(BASE_DIR, session, project);
     }
 
-    public String readAnalysisResult(String sessionUUID, String projectName, String systemName, String fileName) throws IOException {
-        String analysisDir = getSystemAnalysisDir(sessionUUID, projectName, systemName);
-        String baseNoExt = toBaseNameWithoutExt(fileName);
-        File analysisFile = new File(analysisDir, baseNoExt + ".json");
-        if (analysisFile.exists()) {
-            return Files.readString(analysisFile.toPath(), StandardCharsets.UTF_8);
-        }
-        return null;
+    public Path sourceDir(String session, String project) {
+        return projectRoot(session, project).resolve(SOURCE);
     }
 
-    // ========================================
-    // 업로드 처리
-    // ========================================
+    public Path ddlDir(String session, String project) {
+        return projectRoot(session, project).resolve(DDL);
+    }
+
+    public Path analysisDir(String session, String project) {
+        return projectRoot(session, project).resolve(ANALYSIS);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 파일 업로드
+    // ═══════════════════════════════════════════════════════════════════
 
     /**
-     * 시스템별 소스 파일 업로드
-     * @return 성공한 파일 목록 [{system, fileName, fileContent}]
+     * 파일 업로드
+     * 
+     * @param session 세션 UUID
+     * @param project 프로젝트명
+     * @param files   업로드 파일들 (filename: {project}/{상대경로})
+     * @return {projectName, files: [...], ddlFiles: [...]}
      */
-    public List<Map<String, String>> uploadSystemFiles(String sessionUUID,
-                                                        String projectName,
-                                                        List<?> systems,
-                                                        Map<String, MultipartFile> nameToFile) {
-        List<Map<String, String>> result = new ArrayList<>();
+    public Map<String, Object> uploadFiles(String session, String project, MultipartFile[] files) {
+        List<Map<String, String>> srcList = new ArrayList<>();
+        List<Map<String, String>> ddlList = new ArrayList<>();
 
-        for (Object sys : systems) {
-            if (!(sys instanceof Map<?, ?>)) continue;
-            Map<?, ?> sysMap = (Map<?, ?>) sys;
-            String systemName = (String) sysMap.get("name");
-            Object spObj = sysMap.get("sp");
-            if (systemName == null || systemName.isBlank() || !(spObj instanceof List<?>)) continue;
+        Path sourceBase = sourceDir(session, project);
+        Path ddlBase = ddlDir(session, project);
+        String prefix = project + "/";
 
-            String srcDir = getSystemSrcDir(sessionUUID, projectName, systemName);
-            
-            for (Object sp : (List<?>) spObj) {
-                if (!(sp instanceof String)) continue;
-                String fileName = (String) sp;
-                String baseName = toBaseName(fileName);
-
-                MultipartFile mf = nameToFile.getOrDefault(baseName.toLowerCase(), null);
-                if (mf == null || mf.isEmpty()) {
-                    throw new RuntimeException("파일 없음: " + fileName);
-                }
-
-                try {
-                    createDirectoryIfNotExists(srcDir);
-                    File outFile = new File(srcDir, baseName);
-                    Files.copy(mf.getInputStream(), outFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    
-                    String content = readFileContent(outFile);
-                    result.add(Map.of(
-                        "system", systemName,
-                        "fileName", baseName,
-                        "fileContent", content
-                    ));
-                } catch (IOException e) {
-                    throw new RuntimeException("저장 실패: " + fileName, e);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * DDL 파일 업로드
-     * @return 성공한 파일 목록 [{fileName, fileContent}]
-     */
-    public List<Map<String, String>> uploadDdlFiles(String sessionUUID,
-                                                     String projectName,
-                                                     List<?> ddlList,
-                                                     Map<String, MultipartFile> nameToFile) {
-        List<Map<String, String>> result = new ArrayList<>();
-        if (ddlList == null) return result;
-
-        String ddlDir = getDdlDir(sessionUUID, projectName);
-
-        for (Object obj : ddlList) {
-            if (!(obj instanceof String)) continue;
-            String fileName = (String) obj;
-            String baseName = toBaseName(fileName);
-
-            MultipartFile mf = nameToFile.getOrDefault(baseName.toLowerCase(), null);
+        for (MultipartFile mf : files) {
             if (mf == null || mf.isEmpty()) continue;
 
+            String originalName = mf.getOriginalFilename();
+            if (originalName == null || originalName.isBlank()) continue;
+
+            // {project}/ 접두사 제거 → 상대 경로
+            String relativePath = originalName.startsWith(prefix)
+                    ? originalName.substring(prefix.length())
+                    : originalName;
+
+            // ddl/ 로 시작하면 DDL, 아니면 소스
+            boolean isDdl = relativePath.startsWith("ddl/") || relativePath.startsWith("ddl\\");
+
             try {
-                createDirectoryIfNotExists(ddlDir);
-                File outFile = new File(ddlDir, baseName);
-                Files.copy(mf.getInputStream(), outFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                
-                String content = readFileContent(outFile);
-                result.add(Map.of(
-                    "fileName", baseName,
-                    "fileContent", content
-                ));
+                if (isDdl) {
+                    String ddlPath = relativePath.substring(4); // "ddl/" 제거
+                    Path dest = ddlBase.resolve(ddlPath);
+                    saveFile(mf, dest);
+
+                    ddlList.add(Map.of(
+                            "fileName", relativePath,
+                            "fileContent", readContent(dest)));
+                    log.debug("  [DDL] {}", relativePath);
+                } else {
+                    Path dest = sourceBase.resolve(relativePath);
+                    saveFile(mf, dest);
+
+                    srcList.add(Map.of(
+                            "fileName", relativePath,
+                            "fileContent", readContent(dest)));
+                    log.debug("  [SOURCE] {}", relativePath);
+                }
             } catch (IOException e) {
-                throw new RuntimeException("DDL 저장 실패: " + fileName, e);
+                throw new RuntimeException("파일 저장 실패: " + originalName, e);
             }
         }
 
+        Map<String, Object> result = new HashMap<>();
+        result.put("projectName", project);
+        result.put("files", srcList);
+        result.put("ddlFiles", ddlList);
         return result;
     }
 
-    // ========================================
-    // 파싱 처리
-    // ========================================
+    private void saveFile(MultipartFile mf, Path dest) throws IOException {
+        Files.createDirectories(dest.getParent());
+        Files.copy(mf.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    private String readContent(Path path) throws IOException {
+        try {
+            return Files.readString(path, StandardCharsets.UTF_8);
+        } catch (MalformedInputException e) {
+            try {
+                return Files.readString(path, Charset.forName("EUC-KR"));
+            } catch (Exception e2) {
+                return Files.readString(path, Charset.forName("MS949"));
+            }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 파싱
+    // ═══════════════════════════════════════════════════════════════════
 
     @FunctionalInterface
     public interface ParsingFunction {
@@ -219,56 +157,43 @@ public class FileParserService {
     }
 
     /**
-     * 시스템별 파싱 수행
-     * @return 성공한 파일 목록 [{system, fileName, analysisResult}]
+     * source/ 하위 모든 파일을 파싱하여 analysis/ 에 동일 구조로 JSON 저장
      */
-    public List<Map<String, String>> parseSystemFiles(String sessionUUID,
-                                                       String projectName,
-                                                       List<?> systems,
-                                                       ParsingFunction parsingFunction) {
-        List<Map<String, String>> result = new ArrayList<>();
+    public void parseProject(String session, String project, ParsingFunction parser) {
+        Path sourceBase = sourceDir(session, project);
+        Path analysisBase = analysisDir(session, project);
 
-        for (Object sys : systems) {
-            if (!(sys instanceof Map<?, ?>)) continue;
-            Map<?, ?> sysMap = (Map<?, ?>) sys;
-            String systemName = (String) sysMap.get("name");
-            Object spObj = sysMap.get("sp");
-            if (systemName == null || !(spObj instanceof List<?>)) continue;
-
-            String srcDir = getSystemSrcDir(sessionUUID, projectName, systemName);
-            String analysisDir = getSystemAnalysisDir(sessionUUID, projectName, systemName);
-
-            for (Object sp : (List<?>) spObj) {
-                if (!(sp instanceof String)) continue;
-                String fileName = (String) sp;
-                String baseName = toBaseName(fileName);
-
-                File srcFile = new File(srcDir, baseName);
-                if (!srcFile.exists()) {
-                    throw new RuntimeException("파일 없음: " + systemName + "/" + baseName);
-                }
-
-                try {
-                    createDirectoryIfNotExists(analysisDir);
-                    String baseNoExt = toBaseNameWithoutExt(baseName);
-                    String outputPath = analysisDir + File.separator + baseNoExt + ".json";
-
-                    parsingFunction.parse(srcFile, outputPath);
-
-                    String analysisResult = Files.readString(new File(outputPath).toPath(), StandardCharsets.UTF_8);
-                    result.add(Map.of(
-                        "system", systemName,
-                        "fileName", baseName,
-                        "analysisResult", analysisResult
-                    ));
-
-                    log.info("  파싱 완료: {}/{}", systemName, baseName);
-                } catch (Exception e) {
-                    throw new RuntimeException("파싱 실패: " + systemName + "/" + baseName + " - " + e.getMessage(), e);
-                }
-            }
+        if (!Files.exists(sourceBase)) {
+            throw new RuntimeException("소스 디렉토리 없음: " + sourceBase);
         }
 
-        return result;
+        try {
+            Files.walk(sourceBase)
+                    .filter(Files::isRegularFile)
+                    .forEach(file -> parseFile(file, sourceBase, analysisBase, parser));
+        } catch (IOException e) {
+            throw new RuntimeException("디렉토리 탐색 실패: " + sourceBase, e);
+        }
+    }
+
+    private void parseFile(Path file, Path sourceBase, Path analysisBase, ParsingFunction parser) {
+        try {
+            // 상대 경로 유지
+            Path relative = sourceBase.relativize(file);
+
+            // 확장자 → .json
+            String relStr = relative.toString();
+            int dot = relStr.lastIndexOf('.');
+            String jsonPath = (dot > 0 ? relStr.substring(0, dot) : relStr) + ".json";
+
+            Path output = analysisBase.resolve(jsonPath);
+            Files.createDirectories(output.getParent());
+
+            parser.parse(file.toFile(), output.toString());
+            log.info("  [PARSED] {}", relative);
+
+        } catch (Exception e) {
+            throw new RuntimeException("파싱 실패: " + file, e);
+        }
     }
 }

@@ -167,15 +167,15 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         exitStatement("FIELD", ctx.getStop().getLine());
     }
     
-    @Override
-    public void enterLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
-        enterStatement("VARIABLE", ctx.getStart().getLine());
-    }
+    // @Override
+    // public void enterLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
+    //     enterStatement("VARIABLE", ctx.getStart().getLine());
+    // }
     
-    @Override
-    public void exitLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
-        exitStatement("VARIABLE", ctx.getStop().getLine());
-    }
+    // @Override
+    // public void exitLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
+    //     exitStatement("VARIABLE", ctx.getStop().getLine());
+    // }
     
     @Override
     public void enterAssignment(Java20Parser.AssignmentContext ctx) {
@@ -199,6 +199,16 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     @Override
     public void exitMethodDeclaration(Java20Parser.MethodDeclarationContext ctx) {
         exitStatement("METHOD", ctx.getStop().getLine());
+    }
+    
+    @Override
+    public void enterMethodHeader(Java20Parser.MethodHeaderContext ctx) {
+        enterStatement("METHOD_SIGNATURE", ctx.getStart().getLine());
+    }
+    
+    @Override
+    public void exitMethodHeader(Java20Parser.MethodHeaderContext ctx) {
+        exitStatement("METHOD_SIGNATURE", ctx.getStop().getLine());
     }
     
     @Override

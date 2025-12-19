@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
-import java.util.List;
 import java.util.Map;
 
 import org.antlr.v4.runtime.CharStream;
@@ -32,27 +31,19 @@ public class PostgreSqlParserStrategy implements TargetParserStrategy {
     private final FileParserService fileParserService;
 
     @Override
-    public Map<String, Object> upload(String sessionUUID,
-                                       String projectName,
-                                       List<?> systems,
-                                       List<?> ddlList,
-                                       Map<String, MultipartFile> nameToFile) {
-        var systemFiles = fileParserService.uploadSystemFiles(sessionUUID, projectName, systems, nameToFile);
-        var ddlFiles = fileParserService.uploadDdlFiles(sessionUUID, projectName, ddlList, nameToFile);
-        return Map.of("systemFiles", systemFiles, "ddlFiles", ddlFiles);
+    public Map<String, Object> upload(String session, String project, MultipartFile[] files) {
+        return fileParserService.uploadFiles(session, project, files);
     }
 
     @Override
-    public Map<String, Object> parse(String sessionUUID,
-                                      String projectName,
-                                      List<?> systems) {
-        var files = fileParserService.parseSystemFiles(sessionUUID, projectName, systems, this::parseFile);
-        return Map.of("files", files);
+    public void parse(String session, String project) {
+        fileParserService.parseProject(session, project, this::parseFile);
     }
 
     @Override
     public void parseFile(File file, String outputPath) throws Exception {
-        log.debug("[ANTLR PostgreSQL] 파싱: {}", file.getName());
+        log.debug("[PostgreSQL] 파싱: {}", file.getName());
+
         try (InputStream in = new FileInputStream(file)) {
             CharStream charStream = CharStreams.fromStream(in);
             PostgreSQLLexer lexer = new PostgreSQLLexer(charStream);

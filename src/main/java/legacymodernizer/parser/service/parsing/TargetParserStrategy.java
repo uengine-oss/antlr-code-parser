@@ -1,40 +1,36 @@
 package legacymodernizer.parser.service.parsing;
 
 import java.io.File;
-import java.util.List;
 import java.util.Map;
+
 import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Target별 파싱 전략 인터페이스
+ * 
+ * 구현체: JavaParserStrategy, PlSqlParserStrategy, PostgreSqlParserStrategy
  */
 public interface TargetParserStrategy {
-    
+
     /**
-     * 파일 업로드 처리
-     * @return {systemFiles: [{system, fileName, fileContent}], ddlFiles: [{fileName, fileContent}]}
+     * 파일 업로드
+     * 
+     * @return {projectName, files: [{fileName, fileContent}], ddlFiles: [{fileName, fileContent}]}
      */
-    Map<String, Object> upload(String sessionUUID,
-                               String projectName,
-                               List<?> systems,
-                               List<?> ddlList,
-                               Map<String, MultipartFile> nameToFile);
-    
+    Map<String, Object> upload(String session, String project, MultipartFile[] files);
+
     /**
-     * 파싱 처리 (ANTLR 분석)
-     * @return {files: [{system, fileName, analysisResult}]}
+     * 전체 프로젝트 파싱 (source → analysis)
      */
-    Map<String, Object> parse(String sessionUUID,
-                              String projectName,
-                              List<?> systems);
-    
+    void parse(String session, String project);
+
     /**
-     * ANTLR 파싱 실행 (Target별 구현)
+     * 단일 파일 ANTLR 파싱 (구현체별로 다른 파서 사용)
      */
     void parseFile(File file, String outputPath) throws Exception;
-    
+
     /**
-     * 지원하는 Target 타입 반환
+     * 지원하는 target 타입 (예: "java", "plsql", "postgresql")
      */
     String getSupportedTargetType();
 }
