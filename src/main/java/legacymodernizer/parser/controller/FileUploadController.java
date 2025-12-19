@@ -124,7 +124,7 @@ public class FileUploadController {
     /**
      * 파싱 (ANTLR 분석)
      */
-    @PostMapping("/parse")
+    @PostMapping("/parsing")
     public ResponseEntity<Map<String, Object>> parse(
             @RequestBody Map<String, Object> body,
             HttpServletRequest request) {
