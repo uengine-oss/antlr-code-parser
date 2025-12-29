@@ -5,30 +5,27 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.ResponseEntity;
-import org.springframework.mock.web.MockHttpServletRequest;
 
-import legacymodernizer.parser.controller.FileUploadController;
 import legacymodernizer.parser.service.FileParserService;
+import legacymodernizer.parser.service.parsing.ParserStrategyFactory;
+import legacymodernizer.parser.service.parsing.TargetParserStrategy;
 
 @SpringBootTest
 public class AntlrAnalysisTest {
     
     @Autowired
-    private FileUploadController fileUploadController;
+    private ParserStrategyFactory parserStrategyFactory;
     
     @Autowired
     private FileParserService fileParserService;
-
-    private MockHttpServletRequest mockRequest;
     
     @Value("${test.session:TestSession}")
     private String TEST_SESSION;
@@ -45,9 +42,6 @@ public class AntlrAnalysisTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        mockRequest = new MockHttpServletRequest();
-        mockRequest.addHeader("Session-UUID", TEST_SESSION);
-        
         // 프로젝트 루트 생성
         Path projectRoot = fileParserService.projectRoot(TEST_SESSION, TEST_PROJECT);
         Files.createDirectories(projectRoot);
@@ -65,7 +59,7 @@ public class AntlrAnalysisTest {
     // ========================================
     
     /**
-     * source/ 폴더 내 모든 파일 분석 테스트
+     * source/ 폴더 내 모든 파일 분석 테스트 (스트림 방식)
      * 
      * 저장 구조:
      * data/{session}/{project}/source/파일
@@ -104,17 +98,30 @@ public class AntlrAnalysisTest {
         
         System.out.println("발견된 파일 수: " + fileCount);
 
-        Map<String, Object> request = new HashMap<>();
-        request.put("projectName", TEST_PROJECT);
-        request.put("target", TEST_TARGET);
-
-        System.out.println("\n파싱 시작...\n");
+        System.out.println("\n파싱 시작 (스트림 방식)...\n");
         
-        ResponseEntity<Map<String, Object>> response = fileUploadController.parse(request, mockRequest);
-
-        assertEquals(200, response.getStatusCode().value(), "파싱이 실패했습니다");
-        assertTrue(response.getBody().containsKey("projectName"), "projectName이 없습니다");
-        assertTrue(response.getBody().containsKey("status"), "status가 없습니다");
+        // Strategy 직접 호출 (스트림 방식)
+        TargetParserStrategy strategy = parserStrategyFactory.getStrategy(TEST_TARGET);
+        
+        // 스트림 메시지 수집
+        List<String> streamMessages = new ArrayList<>();
+        
+        strategy.parseWithStream(TEST_SESSION, TEST_PROJECT, (type, content) -> {
+            String message = String.format("[%s] %s", type, content != null ? content : "");
+            streamMessages.add(message);
+            System.out.println(message);
+        });
+        
+        System.out.println("\n========================================");
+        System.out.println("스트림 메시지 수: " + streamMessages.size());
+        System.out.println("========================================");
+        
+        // 스트림 메시지 검증
+        assertTrue(streamMessages.size() > 0, "스트림 메시지가 없습니다");
+        assertTrue(streamMessages.stream().anyMatch(m -> m.contains("파싱을 시작합니다")), 
+                "시작 메시지가 없습니다");
+        assertTrue(streamMessages.stream().anyMatch(m -> m.contains("파싱 완료")), 
+                "완료 메시지가 없습니다");
         
         System.out.println("\n========================================");
         System.out.println("파싱 결과:");
@@ -144,6 +151,40 @@ public class AntlrAnalysisTest {
         System.out.println("========================================");
         
         assertTrue(jsonCount > 0, "생성된 JSON 파일이 없습니다");
+    }
+    
+    /**
+     * 기존 방식 파싱 테스트 (비스트림)
+     */
+    @Test
+    void testAnalysisWithoutStream() throws Exception {
+        Path sourceDir = fileParserService.sourceDir(TEST_SESSION, TEST_PROJECT);
+        
+        if (!Files.exists(sourceDir)) {
+            System.out.println("경고: source 디렉토리가 없습니다. 테스트 스킵.");
+            return;
+        }
+        
+        long fileCount = Files.walk(sourceDir)
+                .filter(Files::isRegularFile)
+                .count();
+        
+        if (fileCount == 0) {
+            System.out.println("경고: source 디렉토리에 파일이 없습니다. 테스트 스킵.");
+            return;
+        }
+        
+        System.out.println("파싱 시작 (비스트림 방식)...");
+        
+        // Strategy 직접 호출 (비스트림 방식)
+        TargetParserStrategy strategy = parserStrategyFactory.getStrategy(TEST_TARGET);
+        strategy.parse(TEST_SESSION, TEST_PROJECT);
+        
+        System.out.println("파싱 완료!");
+        
+        // 결과 검증
+        Path analysisDir = fileParserService.analysisDir(TEST_SESSION, TEST_PROJECT);
+        assertTrue(Files.exists(analysisDir), "analysis 디렉토리가 생성되지 않았습니다");
     }
 
     // ========================================

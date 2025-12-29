@@ -17,6 +17,8 @@ import legacymodernizer.parser.antlr.postgresql.CustomPostgreSQLListener;
 import legacymodernizer.parser.antlr.postgresql.PostgreSQLLexer;
 import legacymodernizer.parser.antlr.postgresql.PostgreSQLParser;
 import legacymodernizer.parser.service.FileParserService;
+import legacymodernizer.parser.service.ParseProgressTracker;
+import legacymodernizer.parser.service.StreamCallback;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -41,6 +43,11 @@ public class PostgreSqlParserStrategy implements TargetParserStrategy {
     }
 
     @Override
+    public void parseWithStream(String session, String project, StreamCallback callback) {
+        fileParserService.parseProjectWithStream(session, project, this::parseFileWithStream, callback);
+    }
+
+    @Override
     public void parseFile(File file, String outputPath) throws Exception {
         log.debug("[PostgreSQL] 파싱: {}", file.getName());
 
@@ -53,6 +60,28 @@ public class PostgreSqlParserStrategy implements TargetParserStrategy {
             PostgreSQLParser.RootContext tree = parser.root();
 
             CustomPostgreSQLListener listener = new CustomPostgreSQLListener(tokens);
+            new ParseTreeWalker().walk(listener, tree);
+
+            try (FileWriter writer = new FileWriter(outputPath)) {
+                writer.write(listener.getRoot().toJson());
+            }
+        }
+    }
+
+    @Override
+    public void parseFileWithStream(File file, String outputPath, ParseProgressTracker tracker) throws Exception {
+        log.debug("[PostgreSQL] 파싱 (스트림): {}", file.getName());
+
+        try (InputStream in = new FileInputStream(file)) {
+            CharStream charStream = CharStreams.fromStream(in);
+            PostgreSQLLexer lexer = new PostgreSQLLexer(charStream);
+            CommonTokenStream tokens = new CommonTokenStream(lexer);
+            PostgreSQLParser parser = new PostgreSQLParser(tokens);
+
+            PostgreSQLParser.RootContext tree = parser.root();
+
+            // 스트림 콜백을 전달하는 Listener 사용
+            CustomPostgreSQLListener listener = new CustomPostgreSQLListener(tokens, tracker);
             new ParseTreeWalker().walk(listener, tree);
 
             try (FileWriter writer = new FileWriter(outputPath)) {

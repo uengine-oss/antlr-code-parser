@@ -8,6 +8,7 @@ import legacymodernizer.parser.antlr.Node;
 import legacymodernizer.parser.antlr.plpgsql.CustomPlpgsqlVisitor;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlLexer;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlParser;
+import legacymodernizer.parser.service.ParseProgressTracker;
 
 public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     private TokenStream tokens;
@@ -16,6 +17,9 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     private boolean insideInsert = false;
     private boolean insideExplain = false;
     private boolean plpgsqlLogErrors = false; // PL/pgSQL 파싱 에러 로그 출력 여부
+    
+    /** 진행 상황 추적기 (스트림 파싱 시 사용) */
+    private ParseProgressTracker progressTracker;
 
     public Node getRoot() {
         return root;
@@ -24,6 +28,27 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     public CustomPostgreSQLListener(TokenStream tokens) {
         this.tokens = tokens;
         nodeStack.push(root);
+    }
+    
+    /**
+     * 스트림 파싱용 생성자
+     * 
+     * @param tokens  토큰 스트림
+     * @param tracker 진행 상황 추적기 (500라인마다 알림)
+     */
+    public CustomPostgreSQLListener(TokenStream tokens, ParseProgressTracker tracker) {
+        this(tokens);
+        this.progressTracker = tracker;
+    }
+    
+    /**
+     * 모든 규칙 진입 시 호출 - 라인 체크하여 진행 상황 알림
+     */
+    @Override
+    public void enterEveryRule(ParserRuleContext ctx) {
+        if (progressTracker != null && ctx.getStart() != null) {
+            progressTracker.checkLine(ctx.getStart().getLine());
+        }
     }
 
     private void enterStatement(String statementType, int line) {

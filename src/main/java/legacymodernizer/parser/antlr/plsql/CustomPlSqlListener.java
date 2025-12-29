@@ -1,15 +1,20 @@
 package legacymodernizer.parser.antlr.plsql;
 
 import java.util.Stack;
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.TokenStream;
 
 import legacymodernizer.parser.antlr.Node;
+import legacymodernizer.parser.service.ParseProgressTracker;
 
 public class CustomPlSqlListener extends PlSqlParserBaseListener {
     @SuppressWarnings("unused")
     private TokenStream tokens;
     private Stack<Node> nodeStack = new Stack<>();
     private Node root = new Node("FILE", 0, null); // 루트 노드
+    
+    /** 진행 상황 추적기 (스트림 파싱 시 사용) */
+    private ParseProgressTracker progressTracker;
 
     public Node getRoot() {
         return root;
@@ -18,6 +23,27 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
     public CustomPlSqlListener(TokenStream tokens) {
         this.tokens = tokens;
         nodeStack.push(root); // 초기 상태에서 루트 노드를 스택에 푸시
+    }
+    
+    /**
+     * 스트림 파싱용 생성자
+     * 
+     * @param tokens  토큰 스트림
+     * @param tracker 진행 상황 추적기 (500라인마다 알림)
+     */
+    public CustomPlSqlListener(TokenStream tokens, ParseProgressTracker tracker) {
+        this(tokens);
+        this.progressTracker = tracker;
+    }
+    
+    /**
+     * 모든 규칙 진입 시 호출 - 라인 체크하여 진행 상황 알림
+     */
+    @Override
+    public void enterEveryRule(ParserRuleContext ctx) {
+        if (progressTracker != null && ctx.getStart() != null) {
+            progressTracker.checkLine(ctx.getStart().getLine());
+        }
     }
 
     private void enterStatement(String statementType, int line) {

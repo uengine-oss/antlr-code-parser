@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -157,6 +158,15 @@ public class FileParserService {
     }
 
     /**
+     * 스트림 파싱용 함수 인터페이스
+     * ParseProgressTracker를 통해 진행 상황을 실시간 전달
+     */
+    @FunctionalInterface
+    public interface StreamParsingFunction {
+        void parse(File file, String outputPath, ParseProgressTracker tracker) throws Exception;
+    }
+
+    /**
      * source/ 하위 모든 파일을 파싱하여 analysis/ 에 동일 구조로 JSON 저장
      */
     public void parseProject(String session, String project, ParsingFunction parser) {
@@ -173,6 +183,115 @@ public class FileParserService {
                     .forEach(file -> parseFile(file, sourceBase, analysisBase, parser));
         } catch (IOException e) {
             throw new RuntimeException("디렉토리 탐색 실패: " + sourceBase, e);
+        }
+    }
+
+    /**
+     * source/ 하위 모든 파일을 파싱하며 진행 상황을 스트림으로 전달
+     * 
+     * @param session 세션 UUID
+     * @param project 프로젝트명
+     * @param parser  스트림 파싱 함수
+     * @param callback 스트림 콜백
+     */
+    public void parseProjectWithStream(String session, String project, 
+                                        StreamParsingFunction parser, StreamCallback callback) {
+        Path sourceBase = sourceDir(session, project);
+        Path analysisBase = analysisDir(session, project);
+
+        if (!Files.exists(sourceBase)) {
+            callback.error("소스 디렉토리 없음: " + sourceBase);
+            throw new RuntimeException("소스 디렉토리 없음: " + sourceBase);
+        }
+
+        try {
+            // 파일 목록 수집
+            List<Path> files = Files.walk(sourceBase)
+                    .filter(Files::isRegularFile)
+                    .toList();
+
+            int totalFiles = files.size();
+            AtomicInteger successCount = new AtomicInteger(0);
+            AtomicInteger errorCount = new AtomicInteger(0);
+            AtomicInteger totalLines = new AtomicInteger(0);
+
+            callback.message(String.format("🚀 파싱을 시작합니다. (총 %d개 파일)", totalFiles));
+
+            for (int i = 0; i < files.size(); i++) {
+                Path file = files.get(i);
+                parseFileWithStream(file, sourceBase, analysisBase, parser, callback,
+                        i + 1, totalFiles, successCount, errorCount, totalLines);
+            }
+
+            // 최종 결과 메시지
+            if (errorCount.get() > 0) {
+                callback.message(String.format("⚠️ 파싱 완료 (일부 에러). 성공: %d개, 실패: %d개, 총 %,d라인",
+                        successCount.get(), errorCount.get(), totalLines.get()));
+            } else {
+                callback.message(String.format("🎉 파싱 완료! 총 %d개 파일, %,d라인 처리됨",
+                        successCount.get(), totalLines.get()));
+            }
+
+        } catch (IOException e) {
+            callback.error("디렉토리 탐색 실패: " + sourceBase);
+            throw new RuntimeException("디렉토리 탐색 실패: " + sourceBase, e);
+        }
+    }
+
+    private void parseFileWithStream(Path file, Path sourceBase, Path analysisBase,
+                                      StreamParsingFunction parser, StreamCallback callback,
+                                      int fileIndex, int totalFiles,
+                                      AtomicInteger successCount, AtomicInteger errorCount,
+                                      AtomicInteger totalLines) {
+        Path relative = sourceBase.relativize(file);
+        String fileName = relative.toString();
+
+        try {
+            // 파일 라인 수 계산
+            int lineCount = countLines(file);
+            
+            // 출력 경로 계산
+            String relStr = relative.toString();
+            int dot = relStr.lastIndexOf('.');
+            String jsonPath = (dot > 0 ? relStr.substring(0, dot) : relStr) + ".json";
+            Path output = analysisBase.resolve(jsonPath);
+            Files.createDirectories(output.getParent());
+
+            // 진행 상황 추적기 생성
+            ParseProgressTracker tracker = new ParseProgressTracker(callback, fileName);
+            
+            // 파싱 시작 알림
+            callback.message(String.format("📄 [%d/%d] %s 파싱 시작... (%,d라인)", 
+                    fileIndex, totalFiles, fileName, lineCount));
+
+            // 파싱 실행
+            parser.parse(file.toFile(), output.toString(), tracker);
+
+            // 파싱 완료 알림
+            callback.message(String.format("✅ [%d/%d] %s 완료 (%,d라인)", 
+                    fileIndex, totalFiles, fileName, lineCount));
+            
+            successCount.incrementAndGet();
+            totalLines.addAndGet(lineCount);
+            log.info("  [PARSED] {}", relative);
+
+        } catch (Exception e) {
+            errorCount.incrementAndGet();
+            callback.error(String.format("❌ [%d/%d] %s 파싱 실패: %s", 
+                    fileIndex, totalFiles, fileName, e.getMessage()));
+            log.error("  [PARSE ERROR] {} - {}", relative, e.getMessage());
+        }
+    }
+
+    private int countLines(Path file) {
+        try {
+            return (int) Files.lines(file, StandardCharsets.UTF_8).count();
+        } catch (Exception e) {
+            try {
+                return (int) Files.lines(file, Charset.forName("EUC-KR")).count();
+            } catch (Exception e2) {
+                return 0; // 라인 수를 알 수 없음
+            }
         }
     }
 

@@ -19,6 +19,8 @@ import legacymodernizer.parser.antlr.plsql.CustomPlSqlListener;
 import legacymodernizer.parser.antlr.plsql.PlSqlLexer;
 import legacymodernizer.parser.antlr.plsql.PlSqlParser;
 import legacymodernizer.parser.service.FileParserService;
+import legacymodernizer.parser.service.ParseProgressTracker;
+import legacymodernizer.parser.service.StreamCallback;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -43,6 +45,11 @@ public class PlSqlParserStrategy implements TargetParserStrategy {
     }
 
     @Override
+    public void parseWithStream(String session, String project, StreamCallback callback) {
+        fileParserService.parseProjectWithStream(session, project, this::parseFileWithStream, callback);
+    }
+
+    @Override
     public void parseFile(File file, String outputPath) throws Exception {
         log.debug("[PL/SQL] 파싱: {}", file.getName());
 
@@ -55,6 +62,28 @@ public class PlSqlParserStrategy implements TargetParserStrategy {
             ParserRuleContext tree = parser.sql_script();
 
             CustomPlSqlListener listener = new CustomPlSqlListener(tokens);
+            new ParseTreeWalker().walk(listener, tree);
+
+            try (FileWriter writer = new FileWriter(outputPath)) {
+                writer.write(listener.getRoot().toJson());
+            }
+        }
+    }
+
+    @Override
+    public void parseFileWithStream(File file, String outputPath, ParseProgressTracker tracker) throws Exception {
+        log.debug("[PL/SQL] 파싱 (스트림): {}", file.getName());
+
+        try (InputStream in = new FileInputStream(file)) {
+            CharStream s = CharStreams.fromStream(in);
+            CaseChangingCharStream upper = new CaseChangingCharStream(s, true);
+            PlSqlLexer lexer = new PlSqlLexer(upper);
+            CommonTokenStream tokens = new CommonTokenStream(lexer);
+            PlSqlParser parser = new PlSqlParser(tokens);
+            ParserRuleContext tree = parser.sql_script();
+
+            // 스트림 콜백을 전달하는 Listener 사용
+            CustomPlSqlListener listener = new CustomPlSqlListener(tokens, tracker);
             new ParseTreeWalker().walk(listener, tree);
 
             try (FileWriter writer = new FileWriter(outputPath)) {
