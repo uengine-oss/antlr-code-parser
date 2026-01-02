@@ -193,24 +193,38 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         exitStatement("FIELD", ctx.getStop().getLine());
     }
     
-    // @Override
-    // public void enterLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
-    //     enterStatement("VARIABLE", ctx.getStart().getLine());
-    // }
+    @Override
+    public void enterLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
+        enterStatement("VARIABLE", ctx.getStart().getLine());
+    }
     
-    // @Override
-    // public void exitLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
-    //     exitStatement("VARIABLE", ctx.getStop().getLine());
-    // }
+    @Override
+    public void exitLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
+        exitStatement("VARIABLE", ctx.getStop().getLine());
+    }
     
     @Override
     public void enterAssignment(Java20Parser.AssignmentContext ctx) {
-        enterStatement("ASSIGN", ctx.getStart().getLine());
+        enterStatement("ASSIGNMENT", ctx.getStart().getLine());
     }
     
     @Override
     public void exitAssignment(Java20Parser.AssignmentContext ctx) {
-        exitStatement("ASSIGN", ctx.getStop().getLine());
+        exitStatement("ASSIGNMENT", ctx.getStop().getLine());
+    }
+    
+    // ========================================
+    // 초기화 블록
+    // ========================================
+    
+    @Override
+    public void enterStaticInitializer(Java20Parser.StaticInitializerContext ctx) {
+        enterStatement("STATIC_INITIALIZER", ctx.getStart().getLine());
+    }
+    
+    @Override
+    public void exitStaticInitializer(Java20Parser.StaticInitializerContext ctx) {
+        exitStatement("STATIC_INITIALIZER", ctx.getStop().getLine());
     }
     
     // ========================================
@@ -321,12 +335,12 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     
     @Override
     public void enterIfThenElseStatement(Java20Parser.IfThenElseStatementContext ctx) {
-        enterStatement("IF_ELSE", ctx.getStart().getLine());
+        enterStatement("ELSE", ctx.getStart().getLine());
     }
     
     @Override
     public void exitIfThenElseStatement(Java20Parser.IfThenElseStatementContext ctx) {
-        exitStatement("IF_ELSE", ctx.getStop().getLine());
+        exitStatement("ELSE", ctx.getStop().getLine());
     }
     
     @Override

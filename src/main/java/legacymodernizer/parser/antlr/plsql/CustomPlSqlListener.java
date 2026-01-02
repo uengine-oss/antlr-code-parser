@@ -494,6 +494,15 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
     /* CURSOR 관련 리스너 모음 */
     /* ------------------------------------------------------------ */
     @Override
+    public void enterCursor_declaration(PlSqlParser.Cursor_declarationContext ctx) {
+        enterStatement("CURSOR_VARIABLE", ctx.getStart().getLine());
+    }
+    @Override
+    public void exitCursor_declaration(PlSqlParser.Cursor_declarationContext ctx) {
+        exitStatement("CURSOR_VARIABLE", ctx.getStop().getLine());
+    }
+    
+    @Override
     public void enterOpen_statement(PlSqlParser.Open_statementContext ctx) {
         enterStatement("OPEN_CURSOR", ctx.getStart().getLine());
     }
