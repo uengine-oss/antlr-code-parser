@@ -1,6 +1,6 @@
-# Legacy Modernizer ANTLR Server
+# Robo Analter ANTLR Code Parser
 
-> **다양한 언어(Java, Oracle PL/SQL, PostgreSQL 등)의 소스 파일을 세션 단위로 수집하고 ANTLR로 파싱하여 AST JSON을 제공하는 Spring Boot 기반 백엔드**
+> **robo_analter를 위한 ANTLR 코드 파서 - 다양한 언어(Java, Oracle PL/SQL, PostgreSQL 등)의 소스 파일을 세션 단위로 수집하고 ANTLR로 파싱하여 AST JSON을 제공하는 Spring Boot 기반 백엔드**
 
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.0-6DB33F?style=flat&logo=spring-boot)](https://spring.io/projects/spring-boot)
 [![Java](https://img.shields.io/badge/Java-17-007396?style=flat&logo=openjdk&logoColor=white)](https://www.oracle.com/java/)
@@ -31,8 +31,8 @@
 {projectName}/{상대경로}/{파일명}
 
 예시:
-MyProject/user/UserService.java      ← 소스 파일 → src/user/UserService.java
-MyProject/order/OrderController.java ← 소스 파일 → src/order/OrderController.java
+MyProject/user/UserService.java      ← 소스 파일 → source/user/UserService.java
+MyProject/order/OrderController.java ← 소스 파일 → source/order/OrderController.java
 MyProject/ddl/schema.sql             ← DDL 파일  → ddl/schema.sql
 MyProject/ddl/tables/user.sql        ← DDL 파일  → ddl/tables/user.sql
 ```
@@ -57,9 +57,9 @@ MyProject/ddl/tables/user.sql        ← DDL 파일  → ddl/tables/user.sql
 
 ---
 
-### 2. 파싱 요청 (`POST /antlr/parse`)
+### 2. 파싱 요청 (`POST /antlr/parsing`)
 
-업로드된 파일들을 ANTLR로 파싱하여 AST JSON을 생성합니다.
+업로드된 파일들을 ANTLR로 파싱하여 AST JSON을 생성합니다. 진행 상황을 실시간으로 NDJSON 스트림으로 전달합니다.
 
 #### 요청
 
@@ -77,12 +77,23 @@ MyProject/ddl/tables/user.sql        ← DDL 파일  → ddl/tables/user.sql
 
 #### 응답
 
-```json
-{
-  "projectName": "MyProject",
-  "status": "complete"
-}
+- **Content-Type**: `application/x-ndjson` (NDJSON 스트림)
+- **타임아웃**: 30분 (대용량 파일 대비)
+
+**응답 형식 (NDJSON - 줄바꿈으로 구분)**
 ```
+{"type": "message", "content": "🚀 파싱을 시작합니다. (총 5개 파일)"}
+{"type": "message", "content": "📄 [1/5] user/UserService.java 파싱 시작... (523라인)"}
+{"type": "message", "content": "📍 user/UserService.java - 523라인까지 파싱 중..."}
+{"type": "message", "content": "✅ [1/5] user/UserService.java 완료 (523라인)"}
+{"type": "message", "content": "🎉 파싱 완료! 총 5개 파일, 2,450라인 처리됨"}
+{"type": "complete"}
+```
+
+**타입**
+- `message`: 진행 상황 메시지
+- `complete`: 파싱 완료
+- `error`: 에러 발생 시
 
 > ⚠️ **파싱 결과(AST JSON 내용)는 응답에 포함되지 않습니다.** 파싱 결과는 서버의 `analysis/` 폴더에 저장됩니다.
 
@@ -92,7 +103,7 @@ MyProject/ddl/tables/user.sql        ← DDL 파일  → ddl/tables/user.sql
 
 ```
 data/{sessionUUID}/{projectName}/
-  ├── src/                    ← 소스 파일 (원본 폴더 구조 유지)
+  ├── source/                 ← 소스 파일 (원본 폴더 구조 유지)
   │   ├── user/
   │   │   └── UserService.java
   │   └── order/
@@ -101,7 +112,7 @@ data/{sessionUUID}/{projectName}/
   │   ├── schema.sql
   │   └── tables/
   │       └── user.sql
-  └── analysis/               ← 파싱 결과 JSON (src와 동일 구조)
+  └── analysis/               ← 파싱 결과 JSON (source와 동일 구조)
       ├── user/
       │   └── UserService.json
       └── order/
@@ -132,7 +143,7 @@ data/{sessionUUID}/{projectName}/
 ├─────────────────────────────────────────────────────────────────┤
 │  서버가 filename 경로로 소스/DDL 파일 자동 구분                    │
 │  (ddl/로 시작하면 DDL → ddl/ 폴더에 저장)                         │
-│  (그 외 → src/ 폴더에 저장)                                       │
+│  (그 외 → source/ 폴더에 저장)                                    │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -148,7 +159,7 @@ data/{sessionUUID}/{projectName}/
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              POST /antlr/parse (application/json)                │
+│              POST /antlr/parsing (application/json)               │
 │              Header: Session-UUID: {uuid}                        │
 ├─────────────────────────────────────────────────────────────────┤
 │  { "target": "java", "projectName": "MyProject" }                │
@@ -157,9 +168,11 @@ data/{sessionUUID}/{projectName}/
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      응답 (JSON)                                 │
+│              응답 (NDJSON 스트림 - 실시간 진행 상황)              │
 ├─────────────────────────────────────────────────────────────────┤
-│  { "projectName": "MyProject", "status": "complete" }            │
+│  {"type": "message", "content": "🚀 파싱을 시작합니다..."}        │
+│  {"type": "message", "content": "📄 UserService.java 파싱..."}    │
+│  {"type": "complete"}                                           │
 │  (파싱 결과는 analysis/ 폴더에 저장됨)                            │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -199,7 +212,7 @@ mvn spring-boot:run
 
 ```bash
 # 헬스체크
-curl http://localhost:8081/actuator/health
+curl http://localhost:8081/
 
 # 파일 업로드
 curl -X POST http://localhost:8081/antlr/fileUpload \
@@ -207,8 +220,8 @@ curl -X POST http://localhost:8081/antlr/fileUpload \
   -F 'metadata={"target":"java","projectName":"TestProject"}' \
   -F "files=@TestProject/Main.java;filename=TestProject/Main.java"
 
-# 파싱
-curl -X POST http://localhost:8081/antlr/parse \
+# 파싱 (NDJSON 스트림 응답)
+curl -X POST http://localhost:8081/antlr/parsing \
   -H "Session-UUID: test-session" \
   -H "Content-Type: application/json" \
   -d '{"target":"java","projectName":"TestProject"}'
@@ -222,7 +235,8 @@ curl -X POST http://localhost:8081/antlr/parse \
 src/main/java/legacymodernizer/parser/
 ├── ParserApplication.java          ← Spring Boot 진입점
 ├── controller/
-│   └── FileUploadController.java   ← REST API (/antlr/upload, /antlr/parse)
+│   ├── FileUploadController.java   ← REST API (/antlr/fileUpload, /antlr/parsing)
+│   └── HealthCheckController.java  ← 헬스체크 API (GET /)
 ├── service/
 │   ├── FileParserService.java      ← 파일 저장/파싱 공통 로직
 │   └── parsing/
@@ -249,6 +263,8 @@ src/main/java/legacymodernizer/parser/
 3. **2단계 처리**: 업로드 → 파싱이 분리 (파싱은 메타데이터만 전송)
 4. **파싱 결과**: 응답에 포함되지 않고 `analysis/` 폴더에 저장
 5. **Session-UUID**: 모든 요청에 세션 식별용 헤더 필수
+6. **파싱 스트림**: 파싱 API는 NDJSON 스트림으로 진행 상황을 실시간 전달 (타임아웃 30분)
+7. **파일 크기 제한**: 최대 파일 크기 100MB, 최대 요청 크기 500MB
 
 ---
 
