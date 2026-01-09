@@ -16,17 +16,9 @@ import java.util.Map;
 public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        // 모든 origin 허용 - CORS는 API Gateway에서 통합 관리
         registry.addMapping("/**")
-                .allowedOrigins(
-                    "http://localhost:8080",
-                    "http://localhost:3000",
-                    "http://localhost:5173",
-                    "http://localhost:5174",
-                    "http://127.0.0.1:8080",
-                    "http://127.0.0.1:3000",
-                    "http://127.0.0.1:5173",
-                    "http://127.0.0.1:5174"
-                )
+                .allowedOriginPatterns("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                 .allowedHeaders("*")
                 .exposedHeaders("*")
