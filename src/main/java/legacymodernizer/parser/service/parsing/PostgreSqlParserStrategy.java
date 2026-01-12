@@ -38,34 +38,8 @@ public class PostgreSqlParserStrategy implements TargetParserStrategy {
     }
 
     @Override
-    public void parse(String session, String project) {
-        fileParserService.parseProject(session, project, this::parseFile);
-    }
-
-    @Override
     public void parseWithStream(String session, String project, StreamCallback callback) {
         fileParserService.parseProjectWithStream(session, project, this::parseFileWithStream, callback);
-    }
-
-    @Override
-    public void parseFile(File file, String outputPath) throws Exception {
-        log.debug("[PostgreSQL] 파싱: {}", file.getName());
-
-        try (InputStream in = new FileInputStream(file)) {
-            CharStream charStream = CharStreams.fromStream(in);
-            PostgreSQLLexer lexer = new PostgreSQLLexer(charStream);
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            PostgreSQLParser parser = new PostgreSQLParser(tokens);
-
-            PostgreSQLParser.RootContext tree = parser.root();
-
-            CustomPostgreSQLListener listener = new CustomPostgreSQLListener(tokens);
-            new ParseTreeWalker().walk(listener, tree);
-
-            try (FileWriter writer = new FileWriter(outputPath)) {
-                writer.write(listener.getRoot().toJson());
-            }
-        }
     }
 
     @Override

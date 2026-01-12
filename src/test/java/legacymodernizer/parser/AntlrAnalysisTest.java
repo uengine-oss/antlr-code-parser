@@ -152,40 +152,6 @@ public class AntlrAnalysisTest {
         
         assertTrue(jsonCount > 0, "생성된 JSON 파일이 없습니다");
     }
-    
-    /**
-     * 기존 방식 파싱 테스트 (비스트림)
-     */
-    @Test
-    void testAnalysisWithoutStream() throws Exception {
-        Path sourceDir = fileParserService.sourceDir(TEST_SESSION, TEST_PROJECT);
-        
-        if (!Files.exists(sourceDir)) {
-            System.out.println("경고: source 디렉토리가 없습니다. 테스트 스킵.");
-            return;
-        }
-        
-        long fileCount = Files.walk(sourceDir)
-                .filter(Files::isRegularFile)
-                .count();
-        
-        if (fileCount == 0) {
-            System.out.println("경고: source 디렉토리에 파일이 없습니다. 테스트 스킵.");
-            return;
-        }
-        
-        System.out.println("파싱 시작 (비스트림 방식)...");
-        
-        // Strategy 직접 호출 (비스트림 방식)
-        TargetParserStrategy strategy = parserStrategyFactory.getStrategy(TEST_TARGET);
-        strategy.parse(TEST_SESSION, TEST_PROJECT);
-        
-        System.out.println("파싱 완료!");
-        
-        // 결과 검증
-        Path analysisDir = fileParserService.analysisDir(TEST_SESSION, TEST_PROJECT);
-        assertTrue(Files.exists(analysisDir), "analysis 디렉토리가 생성되지 않았습니다");
-    }
 
     // ========================================
     // 테스트 유틸리티

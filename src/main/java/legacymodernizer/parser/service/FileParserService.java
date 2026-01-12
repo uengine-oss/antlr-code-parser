@@ -152,11 +152,6 @@ public class FileParserService {
     // 파싱
     // ═══════════════════════════════════════════════════════════════════
 
-    @FunctionalInterface
-    public interface ParsingFunction {
-        void parse(File file, String outputPath) throws Exception;
-    }
-
     /**
      * 스트림 파싱용 함수 인터페이스
      * ParseProgressTracker를 통해 진행 상황을 실시간 전달
@@ -164,26 +159,6 @@ public class FileParserService {
     @FunctionalInterface
     public interface StreamParsingFunction {
         void parse(File file, String outputPath, ParseProgressTracker tracker) throws Exception;
-    }
-
-    /**
-     * source/ 하위 모든 파일을 파싱하여 analysis/ 에 동일 구조로 JSON 저장
-     */
-    public void parseProject(String session, String project, ParsingFunction parser) {
-        Path sourceBase = sourceDir(session, project);
-        Path analysisBase = analysisDir(session, project);
-
-        if (!Files.exists(sourceBase)) {
-            throw new RuntimeException("소스 디렉토리 없음: " + sourceBase);
-        }
-
-        try {
-            Files.walk(sourceBase)
-                    .filter(Files::isRegularFile)
-                    .forEach(file -> parseFile(file, sourceBase, analysisBase, parser));
-        } catch (IOException e) {
-            throw new RuntimeException("디렉토리 탐색 실패: " + sourceBase, e);
-        }
     }
 
     /**
@@ -292,27 +267,6 @@ public class FileParserService {
             } catch (Exception e2) {
                 return 0; // 라인 수를 알 수 없음
             }
-        }
-    }
-
-    private void parseFile(Path file, Path sourceBase, Path analysisBase, ParsingFunction parser) {
-        try {
-            // 상대 경로 유지
-            Path relative = sourceBase.relativize(file);
-
-            // 확장자 → .json
-            String relStr = relative.toString();
-            int dot = relStr.lastIndexOf('.');
-            String jsonPath = (dot > 0 ? relStr.substring(0, dot) : relStr) + ".json";
-
-            Path output = analysisBase.resolve(jsonPath);
-            Files.createDirectories(output.getParent());
-
-            parser.parse(file.toFile(), output.toString());
-            log.info("  [PARSED] {}", relative);
-
-        } catch (Exception e) {
-            throw new RuntimeException("파싱 실패: " + file, e);
         }
     }
 }

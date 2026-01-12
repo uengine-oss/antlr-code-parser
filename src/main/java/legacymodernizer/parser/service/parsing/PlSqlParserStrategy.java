@@ -40,34 +40,8 @@ public class PlSqlParserStrategy implements TargetParserStrategy {
     }
 
     @Override
-    public void parse(String session, String project) {
-        fileParserService.parseProject(session, project, this::parseFile);
-    }
-
-    @Override
     public void parseWithStream(String session, String project, StreamCallback callback) {
         fileParserService.parseProjectWithStream(session, project, this::parseFileWithStream, callback);
-    }
-
-    @Override
-    public void parseFile(File file, String outputPath) throws Exception {
-        log.debug("[PL/SQL] 파싱: {}", file.getName());
-
-        try (InputStream in = new FileInputStream(file)) {
-            CharStream s = CharStreams.fromStream(in);
-            CaseChangingCharStream upper = new CaseChangingCharStream(s, true);
-            PlSqlLexer lexer = new PlSqlLexer(upper);
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            PlSqlParser parser = new PlSqlParser(tokens);
-            ParserRuleContext tree = parser.sql_script();
-
-            CustomPlSqlListener listener = new CustomPlSqlListener(tokens);
-            new ParseTreeWalker().walk(listener, tree);
-
-            try (FileWriter writer = new FileWriter(outputPath)) {
-                writer.write(listener.getRoot().toJson());
-            }
-        }
     }
 
     @Override

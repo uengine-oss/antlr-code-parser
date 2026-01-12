@@ -23,11 +23,6 @@ public interface TargetParserStrategy {
     Map<String, Object> upload(String session, String project, MultipartFile[] files);
 
     /**
-     * 전체 프로젝트 파싱 (source → analysis)
-     */
-    void parse(String session, String project);
-
-    /**
      * 전체 프로젝트 파싱 (스트림 방식)
      * 진행 상황을 실시간으로 콜백에 전달
      * 
@@ -36,11 +31,6 @@ public interface TargetParserStrategy {
      * @param callback 스트림 콜백
      */
     void parseWithStream(String session, String project, StreamCallback callback);
-
-    /**
-     * 단일 파일 ANTLR 파싱 (구현체별로 다른 파서 사용)
-     */
-    void parseFile(File file, String outputPath) throws Exception;
 
     /**
      * 단일 파일 ANTLR 파싱 (스트림 방식)
