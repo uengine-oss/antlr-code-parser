@@ -1,6 +1,6 @@
 # Robo Analter ANTLR Code Parser
 
-> **robo_analter를 위한 ANTLR 코드 파서 - 다양한 언어(Java, Oracle PL/SQL, PostgreSQL 등)의 소스 파일을 세션 단위로 수집하고 ANTLR로 파싱하여 AST JSON을 제공하는 Spring Boot 기반 백엔드**
+> **robo_analter를 위한 ANTLR 코드 파서 - 다양한 언어(Java, Oracle PL/SQL, PostgreSQL 등)의 소스 파일을 수집하고 ANTLR로 파싱하여 AST JSON을 제공하는 Spring Boot 기반 백엔드**
 
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.0-6DB33F?style=flat&logo=spring-boot)](https://spring.io/projects/spring-boot)
 [![Java](https://img.shields.io/badge/Java-17-007396?style=flat&logo=openjdk&logoColor=white)](https://www.oracle.com/java/)
@@ -12,38 +12,50 @@
 
 ### 1. 파일 업로드 (`POST /antlr/fileUpload`)
 
-파일을 서버에 업로드하고 저장합니다.
+파일을 서버에 업로드하고 저장합니다. **기존 파일은 모두 삭제되고 새로 업로드된 파일로 대체됩니다.**
 
 #### 요청
 
 | 항목 | 값 |
 |------|-----|
 | **Content-Type** | `multipart/form-data` |
-| **Header** | `Session-UUID: {세션 UUID}` |
+
+| Header | 설명 |
+|--------|------|
+| `Accept-Language` | 언어 설정 (선택, 예: `ko`) |
+| `OpenAI-Api-Key` | OpenAI API 키 (선택) |
 
 | Part | 타입 | 설명 |
 |------|------|------|
-| `metadata` | JSON string | `{"target": "java", "projectName": "MyProject"}` |
-| `files` | File[] | 업로드할 파일들 (파일명에 경로 포함) |
+| `metadata` | JSON string | 파싱 설정 |
+| `files` | File[] | 업로드할 파일들 (파일명에 상대경로 포함) |
+
+**metadata 형식:**
+```json
+{
+  "strategy": "framework",    // "framework" | "dbms"
+  "target": "java",           // "java" | "oracle" | "postgresql"
+  "nameCase": "original"      // "original" | "uppercase" | "lowercase"
+}
+```
 
 **파일명 형식:**
 ```
-{projectName}/{상대경로}/{파일명}
+{상대경로}/{파일명}
 
 예시:
-MyProject/user/UserService.java      ← 소스 파일 → source/user/UserService.java
-MyProject/order/OrderController.java ← 소스 파일 → source/order/OrderController.java
-MyProject/ddl/schema.sql             ← DDL 파일  → ddl/schema.sql
-MyProject/ddl/tables/user.sql        ← DDL 파일  → ddl/tables/user.sql
+user/UserService.java        ← 소스 파일 → source/user/UserService.java
+order/OrderController.java   ← 소스 파일 → source/order/OrderController.java
+ddl/schema.sql               ← DDL 파일  → ddl/schema.sql
+ddl/tables/user.sql          ← DDL 파일  → ddl/tables/user.sql
 ```
 
-> **DDL 구분**: 경로가 `{projectName}/ddl/...`로 시작하면 DDL 파일로 자동 분류
+> **DDL 구분**: 경로가 `ddl/...`로 시작하면 DDL 파일로 자동 분류
 
 #### 응답
 
 ```json
 {
-  "projectName": "MyProject",
   "files": [
     {"fileName": "user/UserService.java", "fileContent": "package user;..."},
     {"fileName": "order/OrderController.java", "fileContent": "package order;..."}
@@ -66,12 +78,16 @@ MyProject/ddl/tables/user.sql        ← DDL 파일  → ddl/tables/user.sql
 | 항목 | 값 |
 |------|-----|
 | **Content-Type** | `application/json` |
-| **Header** | `Session-UUID: {세션 UUID}` |
+
+| Header | 설명 |
+|--------|------|
+| `Accept-Language` | 언어 설정 (선택, 예: `ko`) |
 
 ```json
 {
+  "strategy": "framework",
   "target": "java",
-  "projectName": "MyProject"
+  "nameCase": "original"
 }
 ```
 
@@ -102,7 +118,7 @@ MyProject/ddl/tables/user.sql        ← DDL 파일  → ddl/tables/user.sql
 ## 📁 저장 구조
 
 ```
-data/{sessionUUID}/{projectName}/
+data/
   ├── source/                 ← 소스 파일 (원본 폴더 구조 유지)
   │   ├── user/
   │   │   └── UserService.java
@@ -119,6 +135,8 @@ data/{sessionUUID}/{projectName}/
           └── OrderController.json
 ```
 
+> **주의**: 파일 업로드 시 기존 `source/`, `ddl/`, `analysis/` 폴더 내용은 모두 삭제되고 새로 업로드된 파일로 대체됩니다.
+
 ---
 
 ## 📊 전체 흐름
@@ -128,9 +146,9 @@ data/{sessionUUID}/{projectName}/
 │                        프론트엔드                                │
 ├─────────────────────────────────────────────────────────────────┤
 │  1. 사용자가 파일/폴더 선택                                       │
-│  2. 파일 경로를 projectName 기준으로 정규화                        │
-│     - 소스 파일: {projectName}/{상대경로}/{파일명}                 │
-│     - DDL 파일:  {projectName}/ddl/{상대경로}/{파일명}            │
+│  2. 파일 경로를 상대경로로 설정                                   │
+│     - 소스 파일: {상대경로}/{파일명}                              │
+│     - DDL 파일:  ddl/{상대경로}/{파일명}                         │
 │  3. FormData 구성                                                │
 │     - metadata: JSON 문자열                                       │
 │     - files: 모든 파일 (filename에 경로 포함)                      │
@@ -138,9 +156,9 @@ data/{sessionUUID}/{projectName}/
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              POST /antlr/fileUpload (multipart/form-data)         │
-│              Header: Session-UUID: {uuid}                        │
+│              POST /antlr/fileUpload (multipart/form-data)        │
 ├─────────────────────────────────────────────────────────────────┤
+│  ⚠️ 기존 파일 모두 삭제 후 새로 저장                              │
 │  서버가 filename 경로로 소스/DDL 파일 자동 구분                    │
 │  (ddl/로 시작하면 DDL → ddl/ 폴더에 저장)                         │
 │  (그 외 → source/ 폴더에 저장)                                    │
@@ -151,7 +169,6 @@ data/{sessionUUID}/{projectName}/
 │                      응답 (JSON)                                 │
 ├─────────────────────────────────────────────────────────────────┤
 │  {                                                               │
-│    "projectName": "MyProject",                                   │
 │    "files": [...],      // 소스 파일 (fileName, fileContent)     │
 │    "ddlFiles": [...]    // DDL 파일 (fileName, fileContent)      │
 │  }                                                               │
@@ -159,10 +176,9 @@ data/{sessionUUID}/{projectName}/
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              POST /antlr/parsing (application/json)               │
-│              Header: Session-UUID: {uuid}                        │
+│              POST /antlr/parsing (application/json)              │
 ├─────────────────────────────────────────────────────────────────┤
-│  { "target": "java", "projectName": "MyProject" }                │
+│  { "strategy": "framework", "target": "java", "nameCase": "original" }│
 │  (파일 없이 메타데이터만 전송)                                      │
 └─────────────────────────────────────────────────────────────────┘
                               │
@@ -216,15 +232,13 @@ curl http://localhost:8081/
 
 # 파일 업로드
 curl -X POST http://localhost:8081/antlr/fileUpload \
-  -H "Session-UUID: test-session" \
-  -F 'metadata={"target":"java","projectName":"TestProject"}' \
-  -F "files=@TestProject/Main.java;filename=TestProject/Main.java"
+  -F 'metadata={"strategy":"framework","target":"java","nameCase":"original"}' \
+  -F "files=@Main.java;filename=Main.java"
 
 # 파싱 (NDJSON 스트림 응답)
 curl -X POST http://localhost:8081/antlr/parsing \
-  -H "Session-UUID: test-session" \
   -H "Content-Type: application/json" \
-  -d '{"target":"java","projectName":"TestProject"}'
+  -d '{"strategy":"framework","target":"java","nameCase":"original"}'
 ```
 
 ---
@@ -262,7 +276,7 @@ src/main/java/legacymodernizer/parser/
 2. **폴더 구조 유지**: 업로드된 폴더 구조가 그대로 유지됨
 3. **2단계 처리**: 업로드 → 파싱이 분리 (파싱은 메타데이터만 전송)
 4. **파싱 결과**: 응답에 포함되지 않고 `analysis/` 폴더에 저장
-5. **Session-UUID**: 모든 요청에 세션 식별용 헤더 필수
+5. **파일 대체**: 업로드 시 기존 파일 모두 삭제 후 새로 저장
 6. **파싱 스트림**: 파싱 API는 NDJSON 스트림으로 진행 상황을 실시간 전달 (타임아웃 30분)
 7. **파일 크기 제한**: 최대 파일 크기 100MB, 최대 요청 크기 500MB
 

@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
  * 파일 저장/파싱 서비스
  * 
  * 저장 구조:
- *   data/{sessionUUID}/{projectName}/
+ *   data/
  *     ├── source/   → 소스 파일 (원본 폴더 구조 유지)
  *     ├── ddl/      → DDL 파일 (원본 폴더 구조 유지)
  *     └── analysis/ → 파싱 결과 JSON (source와 동일 구조)
@@ -50,20 +50,16 @@ public class FileParserService {
     // 경로
     // ═══════════════════════════════════════════════════════════════════
 
-    public Path projectRoot(String session, String project) {
-        return Paths.get(BASE_DIR, session, project);
+    public Path sourceDir() {
+        return Paths.get(BASE_DIR, SOURCE);
     }
 
-    public Path sourceDir(String session, String project) {
-        return projectRoot(session, project).resolve(SOURCE);
+    public Path ddlDir() {
+        return Paths.get(BASE_DIR, DDL);
     }
 
-    public Path ddlDir(String session, String project) {
-        return projectRoot(session, project).resolve(DDL);
-    }
-
-    public Path analysisDir(String session, String project) {
-        return projectRoot(session, project).resolve(ANALYSIS);
+    public Path analysisDir() {
+        return Paths.get(BASE_DIR, ANALYSIS);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -71,20 +67,22 @@ public class FileParserService {
     // ═══════════════════════════════════════════════════════════════════
 
     /**
-     * 파일 업로드
+     * 파일 업로드 (기존 폴더 비우고 새로 저장)
      * 
-     * @param session 세션 UUID
-     * @param project 프로젝트명
-     * @param files   업로드 파일들 (filename: {project}/{상대경로})
-     * @return {projectName, files: [...], ddlFiles: [...]}
+     * @param files 업로드 파일들 (filename: 상대경로)
+     * @return {files: [...], ddlFiles: [...]}
      */
-    public Map<String, Object> uploadFiles(String session, String project, MultipartFile[] files) {
+    public Map<String, Object> uploadFiles(MultipartFile[] files) {
+        // 기존 폴더 비우기
+        clearDirectory(sourceDir());
+        clearDirectory(ddlDir());
+        clearDirectory(analysisDir());
+
         List<Map<String, String>> srcList = new ArrayList<>();
         List<Map<String, String>> ddlList = new ArrayList<>();
 
-        Path sourceBase = sourceDir(session, project);
-        Path ddlBase = ddlDir(session, project);
-        String prefix = project + "/";
+        Path sourceBase = sourceDir();
+        Path ddlBase = ddlDir();
 
         for (MultipartFile mf : files) {
             if (mf == null || mf.isEmpty()) continue;
@@ -92,13 +90,11 @@ public class FileParserService {
             String originalName = mf.getOriginalFilename();
             if (originalName == null || originalName.isBlank()) continue;
 
-            // {project}/ 접두사 제거 → 상대 경로
-            String relativePath = originalName.startsWith(prefix)
-                    ? originalName.substring(prefix.length())
-                    : originalName;
+            // 상대 경로 그대로 사용
+            String relativePath = originalName.replace("\\", "/");
 
             // ddl/ 로 시작하면 DDL, 아니면 소스
-            boolean isDdl = relativePath.startsWith("ddl/") || relativePath.startsWith("ddl\\");
+            boolean isDdl = relativePath.startsWith("ddl/");
 
             try {
                 if (isDdl) {
@@ -125,10 +121,33 @@ public class FileParserService {
         }
 
         Map<String, Object> result = new HashMap<>();
-        result.put("projectName", project);
         result.put("files", srcList);
         result.put("ddlFiles", ddlList);
         return result;
+    }
+
+    /**
+     * 디렉토리 내용 전체 삭제 (디렉토리 자체는 유지)
+     */
+    private void clearDirectory(Path dir) {
+        if (!Files.exists(dir)) {
+            return;
+        }
+        try {
+            Files.walk(dir)
+                    .sorted((a, b) -> b.compareTo(a)) // 역순 (파일 먼저, 디렉토리 나중)
+                    .filter(p -> !p.equals(dir))
+                    .forEach(p -> {
+                        try {
+                            Files.delete(p);
+                        } catch (IOException e) {
+                            log.warn("파일 삭제 실패: {}", p, e);
+                        }
+                    });
+            log.debug("디렉토리 초기화: {}", dir);
+        } catch (IOException e) {
+            log.warn("디렉토리 탐색 실패: {}", dir, e);
+        }
     }
 
     private void saveFile(MultipartFile mf, Path dest) throws IOException {
@@ -164,15 +183,12 @@ public class FileParserService {
     /**
      * source/ 하위 모든 파일을 파싱하며 진행 상황을 스트림으로 전달
      * 
-     * @param session 세션 UUID
-     * @param project 프로젝트명
-     * @param parser  스트림 파싱 함수
+     * @param parser   스트림 파싱 함수
      * @param callback 스트림 콜백
      */
-    public void parseProjectWithStream(String session, String project, 
-                                        StreamParsingFunction parser, StreamCallback callback) {
-        Path sourceBase = sourceDir(session, project);
-        Path analysisBase = analysisDir(session, project);
+    public void parseProjectWithStream(StreamParsingFunction parser, StreamCallback callback) {
+        Path sourceBase = sourceDir();
+        Path analysisBase = analysisDir();
 
         if (!Files.exists(sourceBase)) {
             callback.error("소스 디렉토리 없음: " + sourceBase);

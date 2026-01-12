@@ -27,12 +27,6 @@ public class AntlrAnalysisTest {
     @Autowired
     private FileParserService fileParserService;
     
-    @Value("${test.session:TestSession}")
-    private String TEST_SESSION;
-    
-    @Value("${test.project:test}")
-    private String TEST_PROJECT;
-    
     @Value("${test.target:java}")
     private String TEST_TARGET;
 
@@ -42,12 +36,8 @@ public class AntlrAnalysisTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        // 프로젝트 루트 생성
-        Path projectRoot = fileParserService.projectRoot(TEST_SESSION, TEST_PROJECT);
-        Files.createDirectories(projectRoot);
-
         // 기존 analysis 폴더 정리
-        Path analysisDir = fileParserService.analysisDir(TEST_SESSION, TEST_PROJECT);
+        Path analysisDir = fileParserService.analysisDir();
         if (Files.exists(analysisDir)) {
             deleteRecursively(analysisDir.toFile());
         }
@@ -62,21 +52,17 @@ public class AntlrAnalysisTest {
      * source/ 폴더 내 모든 파일 분석 테스트 (스트림 방식)
      * 
      * 저장 구조:
-     * data/{session}/{project}/source/파일
-     * data/{session}/{project}/analysis/파일.json
+     * data/source/파일
+     * data/analysis/파일.json
      */
     @Test
     void testAnalysisWithExistingFiles() throws Exception {
-        Path projectRoot = fileParserService.projectRoot(TEST_SESSION, TEST_PROJECT);
-        Path sourceDir = fileParserService.sourceDir(TEST_SESSION, TEST_PROJECT);
+        Path sourceDir = fileParserService.sourceDir();
         
         System.out.println("========================================");
         System.out.println("Target: " + TEST_TARGET);
-        System.out.println("Project: " + TEST_PROJECT);
-        System.out.println("Project Dir: " + projectRoot);
+        System.out.println("Source Dir: " + sourceDir);
         System.out.println("========================================");
-        
-        assertTrue(Files.exists(projectRoot), "프로젝트 디렉토리가 존재하지 않습니다: " + projectRoot);
         
         // source/ 폴더 확인
         if (!Files.exists(sourceDir)) {
@@ -106,7 +92,7 @@ public class AntlrAnalysisTest {
         // 스트림 메시지 수집
         List<String> streamMessages = new ArrayList<>();
         
-        strategy.parseWithStream(TEST_SESSION, TEST_PROJECT, (type, content) -> {
+        strategy.parseWithStream((type, content) -> {
             String message = String.format("[%s] %s", type, content != null ? content : "");
             streamMessages.add(message);
             System.out.println(message);
@@ -128,7 +114,7 @@ public class AntlrAnalysisTest {
         System.out.println("========================================");
         
         // analysis/ 폴더에서 생성된 JSON 파일 검증
-        Path analysisDir = fileParserService.analysisDir(TEST_SESSION, TEST_PROJECT);
+        Path analysisDir = fileParserService.analysisDir();
         assertTrue(Files.exists(analysisDir), "analysis 디렉토리가 생성되지 않았습니다");
         
         long jsonCount = Files.walk(analysisDir)

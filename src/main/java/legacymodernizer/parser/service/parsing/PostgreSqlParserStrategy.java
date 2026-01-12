@@ -33,18 +33,18 @@ public class PostgreSqlParserStrategy implements TargetParserStrategy {
     private final FileParserService fileParserService;
 
     @Override
-    public Map<String, Object> upload(String session, String project, MultipartFile[] files) {
-        return fileParserService.uploadFiles(session, project, files);
+    public Map<String, Object> upload(MultipartFile[] files) {
+        return fileParserService.uploadFiles(files);
     }
 
     @Override
-    public void parseWithStream(String session, String project, StreamCallback callback) {
-        fileParserService.parseProjectWithStream(session, project, this::parseFileWithStream, callback);
+    public void parseWithStream(StreamCallback callback) {
+        fileParserService.parseProjectWithStream(this::parseFileWithStream, callback);
     }
 
     @Override
     public void parseFileWithStream(File file, String outputPath, ParseProgressTracker tracker) throws Exception {
-        log.debug("[PostgreSQL] 파싱 (스트림): {}", file.getName());
+        log.debug("[PostgreSQL] 파싱: {}", file.getName());
 
         try (InputStream in = new FileInputStream(file)) {
             CharStream charStream = CharStreams.fromStream(in);
@@ -54,7 +54,6 @@ public class PostgreSqlParserStrategy implements TargetParserStrategy {
 
             PostgreSQLParser.RootContext tree = parser.root();
 
-            // 스트림 콜백을 전달하는 Listener 사용
             CustomPostgreSQLListener listener = new CustomPostgreSQLListener(tokens, tracker);
             new ParseTreeWalker().walk(listener, tree);
 

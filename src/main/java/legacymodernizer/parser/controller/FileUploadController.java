@@ -19,7 +19,6 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jakarta.servlet.http.HttpServletRequest;
 import legacymodernizer.parser.service.parsing.ParserStrategyFactory;
 import legacymodernizer.parser.service.parsing.TargetParserStrategy;
 import lombok.RequiredArgsConstructor;
@@ -32,33 +31,40 @@ import lombok.extern.slf4j.Slf4j;
  * │ POST /antlr/fileUpload                                          │
  * ├─────────────────────────────────────────────────────────────────┤
  * │ Content-Type: multipart/form-data                               │
- * │ Header: Session-UUID (필수)                                      │
+ * │ Headers:                                                        │
+ * │   Accept-Language: ko (선택)                                     │
+ * │   OpenAI-Api-Key: sk-... (선택)                                  │
  * │                                                                  │
  * │ Parts:                                                          │
- * │   metadata: {"target": "java", "projectName": "MyProject"}      │
+ * │   metadata: {                                                   │
+ * │     "strategy": "framework",  // "framework" | "dbms"           │
+ * │     "target": "java",         // "java"|"oracle"|"postgresql"   │
+ * │     "nameCase": "original"    // "original"|"uppercase"|"lowercase"│
+ * │   }                                                             │
  * │   files: 파일들 (filename에 상대경로 포함)                        │
- * │          예: MyProject/user/UserService.java                    │
- * │              MyProject/ddl/schema.sql (→ ddl 폴더로 자동 분류)   │
  * │                                                                  │
  * │ Response:                                                       │
- * │   { "projectName": "...",                                       │
- * │     "files": [{"fileName": "...", "fileContent": "..."}],       │
- * │     "ddlFiles": [{"fileName": "...", "fileContent": "..."}] }   │
+ * │   { "files": [...], "ddlFiles": [...] }                         │
  * └─────────────────────────────────────────────────────────────────┘
  * 
  * ┌─────────────────────────────────────────────────────────────────┐
- * │ POST /antlr/parse                                               │
+ * │ POST /antlr/parsing                                             │
  * ├─────────────────────────────────────────────────────────────────┤
  * │ Content-Type: application/json                                  │
- * │ Header: Session-UUID (필수)                                      │
+ * │ Headers:                                                        │
+ * │   Accept-Language: ko (선택)                                     │
  * │                                                                  │
- * │ Body: {"target": "java", "projectName": "MyProject"}            │
+ * │ Body: {                                                         │
+ * │   "strategy": "framework",                                      │
+ * │   "target": "java",                                             │
+ * │   "nameCase": "original"                                        │
+ * │ }                                                               │
  * │                                                                  │
- * │ Response: {"projectName": "...", "status": "complete"}          │
+ * │ Response: NDJSON 스트림                                          │
  * └─────────────────────────────────────────────────────────────────┘
  * 
  * 저장 구조:
- *   data/{sessionUUID}/{projectName}/
+ *   data/
  *     ├── source/   → 소스 파일 (원본 폴더 구조 유지)
  *     ├── ddl/      → DDL 파일 (원본 폴더 구조 유지)
  *     └── analysis/ → 파싱 결과 JSON (source와 동일 구조)
@@ -73,25 +79,16 @@ public class FileUploadController {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
-    private static final String SESSION_HEADER = "Session-UUID";
-    
     /** NDJSON Content-Type */
     private static final String APPLICATION_NDJSON = "application/x-ndjson";
 
     /**
-     * 파일 업로드
+     * 파일 업로드 (기존 폴더 비우고 새로 저장)
      */
     @PostMapping(value = "/fileUpload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> upload(
             @RequestPart("metadata") String metadata,
-            @RequestPart("files") MultipartFile[] files,
-            HttpServletRequest request) {
-
-        // 세션 검증
-        String sessionUUID = request.getHeader(SESSION_HEADER);
-        if (isBlank(sessionUUID)) {
-            return badRequest("Session-UUID 헤더가 필요합니다");
-        }
+            @RequestPart("files") MultipartFile[] files) {
 
         // 메타데이터 파싱
         Map<String, Object> meta;
@@ -102,20 +99,21 @@ public class FileUploadController {
         }
 
         String target = (String) meta.get("target");
-        String projectName = (String) meta.get("projectName");
+        // strategy, nameCase는 필요시 사용
+        // String strategy = (String) meta.get("strategy");
+        // String nameCase = (String) meta.get("nameCase");
 
         // 필수값 검증
         if (isBlank(target)) return badRequest("target 필수");
-        if (isBlank(projectName)) return badRequest("projectName 필수");
         if (files == null || files.length == 0) return badRequest("files 필수");
 
         // 업로드 처리
         try {
             TargetParserStrategy strategy = parserStrategyFactory.getStrategy(target);
-            Map<String, Object> result = strategy.upload(sessionUUID, projectName, files);
+            Map<String, Object> result = strategy.upload(files);
 
-            log.info("[업로드 완료] session={}, project={}, src={}개, ddl={}개",
-                    sessionUUID, projectName,
+            log.info("[업로드 완료] target={}, src={}개, ddl={}개",
+                    target,
                     size(result.get("files")),
                     size(result.get("ddlFiles")));
 
@@ -133,7 +131,6 @@ public class FileUploadController {
      * 파싱 (ANTLR 분석) - NDJSON 스트림 방식
      * 
      * 진행 상황을 실시간으로 스트림으로 전달합니다.
-     * 500라인 기준 초과 시 현재 라인 정보를 전달합니다.
      * 
      * 응답 형식 (NDJSON):
      *   {"type": "message", "content": "📄 UserService.java 파싱 시작..."}\n
@@ -141,30 +138,19 @@ public class FileUploadController {
      *   {"type": "complete"}\n
      */
     @PostMapping(value = "/parsing", produces = APPLICATION_NDJSON)
-    public ResponseBodyEmitter parse(
-            @RequestBody Map<String, Object> body,
-            HttpServletRequest request) {
+    public ResponseBodyEmitter parse(@RequestBody Map<String, Object> body) {
 
         // 타임아웃 30분 (대용량 파일 대비)
         ResponseBodyEmitter emitter = new ResponseBodyEmitter(30 * 60 * 1000L);
 
-        // 세션 검증
-        String sessionUUID = request.getHeader(SESSION_HEADER);
-        if (isBlank(sessionUUID)) {
-            sendErrorAndComplete(emitter, "Session-UUID 헤더가 필요합니다");
-            return emitter;
-        }
-
         String target = (String) body.get("target");
-        String projectName = (String) body.get("projectName");
+        // strategy, nameCase는 필요시 사용
+        // String strategy = (String) body.get("strategy");
+        // String nameCase = (String) body.get("nameCase");
 
         // 필수값 검증
         if (isBlank(target)) {
             sendErrorAndComplete(emitter, "target 필수");
-            return emitter;
-        }
-        if (isBlank(projectName)) {
-            sendErrorAndComplete(emitter, "projectName 필수");
             return emitter;
         }
 
@@ -174,7 +160,7 @@ public class FileUploadController {
                 TargetParserStrategy strategy = parserStrategyFactory.getStrategy(target);
                 
                 // 스트림 콜백으로 진행 상황 전달
-                strategy.parseWithStream(sessionUUID, projectName, (type, content) -> {
+                strategy.parseWithStream((type, content) -> {
                     try {
                         if (content != null) {
                             emitter.send(Map.of("type", type, "content", content));
@@ -192,7 +178,7 @@ public class FileUploadController {
                 emitter.send("\n");
                 emitter.complete();
                 
-                log.info("[파싱 완료] session={}, project={}", sessionUUID, projectName);
+                log.info("[파싱 완료] target={}", target);
 
             } catch (IllegalArgumentException e) {
                 sendErrorAndComplete(emitter, "지원하지 않는 target: " + target);

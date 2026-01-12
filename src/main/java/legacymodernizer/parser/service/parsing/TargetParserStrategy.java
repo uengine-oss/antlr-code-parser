@@ -16,21 +16,19 @@ import legacymodernizer.parser.service.StreamCallback;
 public interface TargetParserStrategy {
 
     /**
-     * 파일 업로드
+     * 파일 업로드 (기존 폴더 비우고 새로 저장)
      * 
-     * @return {projectName, files: [{fileName, fileContent}], ddlFiles: [{fileName, fileContent}]}
+     * @return {files: [{fileName, fileContent}], ddlFiles: [{fileName, fileContent}]}
      */
-    Map<String, Object> upload(String session, String project, MultipartFile[] files);
+    Map<String, Object> upload(MultipartFile[] files);
 
     /**
      * 전체 프로젝트 파싱 (스트림 방식)
      * 진행 상황을 실시간으로 콜백에 전달
      * 
-     * @param session  세션 UUID
-     * @param project  프로젝트명
      * @param callback 스트림 콜백
      */
-    void parseWithStream(String session, String project, StreamCallback callback);
+    void parseWithStream(StreamCallback callback);
 
     /**
      * 단일 파일 ANTLR 파싱 (스트림 방식)
