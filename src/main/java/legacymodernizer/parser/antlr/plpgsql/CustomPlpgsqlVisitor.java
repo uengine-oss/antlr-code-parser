@@ -6,24 +6,23 @@ import org.antlr.v4.runtime.Token;
 import java.util.HashMap;
 import java.util.Map;
 import legacymodernizer.parser.antlr.Node;
+import legacymodernizer.parser.antlr.ParserUtils;
 
 /**
  * PL/pgSQL Parse Tree를 Node 트리로 변환하는 Visitor
+ * - 통일된 속성명 사용 (Node 클래스 참조)
  */
 public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
 
-    private Node parentNode;  // PostgreSQL의 CREATE_FUNCTION 노드
-    private int baseLineNumber;  // $$ 시작 라인 번호
+    private Node parentNode;
+    private int baseLineNumber;
     private CommonTokenStream tokens;
     private Node currentBlockNode;
-    private Map<String, CursorInfo> activeCursors = new HashMap<>();  // 커서 이름 -> 커서 정보 매핑
+    private Map<String, CursorInfo> activeCursors = new HashMap<>();
     
-    /**
-     * 커서 정보 저장 클래스
-     */
     private static class CursorInfo {
-        Node cursorNode;      // CURSOR 노드
-        Node previousBlock;   // 이전 블록 노드
+        Node cursorNode;
+        Node previousBlock;
         
         CursorInfo(Node cursorNode, Node previousBlock) {
             this.cursorNode = cursorNode;
@@ -37,56 +36,52 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
         this.tokens = tokens;
     }
 
-    /**
-     * 실제 라인 번호 계산 (PL/pgSQL 내부 라인 + 베이스 라인)
-     */
+    // ========================================
+    // 유틸리티 메서드
+    // ========================================
+
     private int getActualLineNumber(ParserRuleContext ctx) {
         return baseLineNumber + ctx.getStart().getLine();
     }
     
-    /**
-     * 실제 라인 번호 계산 (Token용)
-     */
     private int getActualLineNumber(Token token) {
         return baseLineNumber + token.getLine();
     }
     
-    /**
-     * 실제 끝 라인 번호 계산 (PL/pgSQL 내부 라인 + 베이스 라인)
-     */
     private int getActualEndLineNumber(ParserRuleContext ctx) {
         return baseLineNumber + ctx.getStop().getLine();
     }
 
-    /**
-     * 노드 생성 헬퍼
-     */
     private Node createNode(String type, ParserRuleContext ctx, Node parent) {
+        return createNode(type, null, ctx, parent);
+    }
+    
+    private Node createNode(String type, String name, ParserRuleContext ctx, Node parent) {
         int startLine = getActualLineNumber(ctx);
-        Node node = new Node(type, startLine, parent);
+        Node node = new Node(type, name, startLine, parent);
         node.endLine = getActualEndLineNumber(ctx);
-
+        node.code = ParserUtils.getCodeWithLineNumbers(ctx, baseLineNumber);
         return node;
     }
 
+    // ========================================
+    // 블록 처리
+    // ========================================
+
     @Override
     public Node visitPlpgsqlBlock(PlpgsqlParser.PlpgsqlBlockContext ctx) {
-        // 최초 호출 시 currentBlockNode가 null이면 parentNode로 초기화
         if (currentBlockNode == null) {
-        currentBlockNode = parentNode;
+            currentBlockNode = parentNode;
         }
 
         Node previousBlock = currentBlockNode;
         
-        // DECLARE 섹션은 항상 현재 블록의 자식으로 (BEGIN과 형제 관계)
         if (ctx.declareSection() != null) {
             visit(ctx.declareSection());
         }
 
-        // BEGIN 블록 노드 생성
         Node beginNode = null;
         
-        // BEGIN 키워드의 위치를 찾아서 노드 생성
         if (ctx.BEGIN() != null) {
             int beginStartLine = getActualLineNumber(ctx.BEGIN().getSymbol());
             int beginEndLine = getActualEndLineNumber(ctx);
@@ -94,21 +89,18 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
             beginNode = new Node("BEGIN", beginStartLine, previousBlock);
             beginNode.endLine = beginEndLine;
             
-            // BEGIN 블록 내부의 statements만 처리
             currentBlockNode = beginNode;
             
-        if (ctx.statementList() != null) {
-            visitStatementList(ctx.statementList());
-        }
+            if (ctx.statementList() != null) {
+                visitStatementList(ctx.statementList());
+            }
 
-            // EXCEPTION 섹션도 BEGIN 내부
-        if (ctx.exceptionSection() != null) {
-            visit(ctx.exceptionSection());
-        }
+            if (ctx.exceptionSection() != null) {
+                visit(ctx.exceptionSection());
+            }
 
             currentBlockNode = previousBlock;
         } else {
-            // BEGIN이 없는 경우 (최상위 블록) - statementList만 처리
             if (ctx.statementList() != null) {
                 visitStatementList(ctx.statementList());
             }
@@ -123,7 +115,6 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
 
     @Override
     public Node visitDeclareSection(PlpgsqlParser.DeclareSectionContext ctx) {
-        // DECLARE 키워드의 실제 줄 번호 사용
         int declStartLine = getActualLineNumber(ctx.DECLARE().getSymbol());
         int declEndLine = getActualEndLineNumber(ctx.declarationList().declaration(ctx.declarationList().declaration().size() - 1));
         
@@ -138,8 +129,7 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
     }
 
     private void visitDeclaration(PlpgsqlParser.DeclarationContext ctx, Node parent) {
-        // VARIABLE_DECLARATION과 INITIAL_VALUE 노드를 만들지 않음
-        // 필요하면 변수명 정보만 저장하는 방식으로 변경 가능
+        // 변수 선언은 별도 노드 생성 안함
     }
 
     @Override
@@ -153,35 +143,33 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
         return null;
     }
 
+    // ========================================
+    // DML
+    // ========================================
+
     @Override
     public Node visitAssignmentStmt(PlpgsqlParser.AssignmentStmtContext ctx) {
-        Node assignNode = createNode("ASSIGNMENT", ctx, currentBlockNode);
-        return assignNode;
+        return createNode("ASSIGNMENT", ctx, currentBlockNode);
     }
 
     @Override
     public Node visitInsertStmt(PlpgsqlParser.InsertStmtContext ctx) {
-        Node insertNode = createNode("INSERT", ctx, currentBlockNode);
-        return insertNode;
+        return createNode("INSERT", ctx, currentBlockNode);
     }
 
     @Override
     public Node visitUpdateStmt(PlpgsqlParser.UpdateStmtContext ctx) {
-        Node updateNode = createNode("UPDATE", ctx, currentBlockNode);
-        return updateNode;
+        return createNode("UPDATE", ctx, currentBlockNode);
     }
 
     @Override
     public Node visitDeleteStmt(PlpgsqlParser.DeleteStmtContext ctx) {
-        Node deleteNode = createNode("DELETE", ctx, currentBlockNode);
-        return deleteNode;
+        return createNode("DELETE", ctx, currentBlockNode);
     }
 
     @Override
     public Node visitRaiseStmt(PlpgsqlParser.RaiseStmtContext ctx) {
-
-        Node raiseNode = createNode("NOTICE", ctx, currentBlockNode);
-        return raiseNode;
+        return createNode("NOTICE", ctx, currentBlockNode);
     }
 
     @Override
@@ -192,26 +180,18 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
         } else if (ctx.QUERY() != null) {
             returnType = "RETURN_QUERY";
         }
-        Node returnNode = createNode(returnType, ctx, currentBlockNode);
-        return returnNode;
+        return createNode(returnType, ctx, currentBlockNode);
     }
 
-    // ========== 커서 관련 문법 ==========
+    // ========================================
+    // 커서
+    // ========================================
     
-    /**
-     * 커서 이름 추출 헬퍼 메서드
-     */
     private String extractCursorName(ParserRuleContext ctx) {
         if (ctx == null) return null;
-        
-        // OPEN, CLOSE, FETCH 문에서 커서 이름 찾기
-        // 간단한 방법: 첫 번째 식별자가 커서 이름일 가능성이 높음
-        // OPEN cursor_name FOR ... 또는 CLOSE cursor_name 형태
         if (ctx.getChildCount() >= 2) {
-            String cursorName = ctx.getChild(1).getText();
-            return cursorName;
+            return ctx.getChild(1).getText();
         }
-        
         return null;
     }
 
@@ -219,17 +199,13 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
     public Node visitOpenCursorStmt(PlpgsqlParser.OpenCursorStmtContext ctx) {
         String cursorName = extractCursorName(ctx);
         
-        // CURSOR 노드 생성
-        Node cursorNode = createNode("CURSOR", ctx, currentBlockNode);
-        
-        // 현재 블록을 저장하고 CURSOR 블록으로 전환
+        Node cursorNode = createNode("CURSOR", cursorName, ctx, currentBlockNode);
         Node previousBlock = currentBlockNode;
         
         if (cursorName != null) {
             activeCursors.put(cursorName, new CursorInfo(cursorNode, previousBlock));
         }
         
-        // currentBlockNode를 CURSOR 노드로 변경하여 이후 statement들이 자식으로 추가되도록 함
         currentBlockNode = cursorNode;
         
         return cursorNode;
@@ -239,18 +215,13 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
     public Node visitCloseCursorStmt(PlpgsqlParser.CloseCursorStmtContext ctx) {
         String cursorName = extractCursorName(ctx);
         
-        // 활성 커서에서 제거하고 CURSOR 노드의 endLine 업데이트 및 블록 복원
         if (cursorName != null && activeCursors.containsKey(cursorName)) {
             CursorInfo cursorInfo = activeCursors.get(cursorName);
             cursorInfo.cursorNode.endLine = getActualEndLineNumber(ctx);
-            
-            // 이전 블록으로 복원
             currentBlockNode = cursorInfo.previousBlock;
-            
             activeCursors.remove(cursorName);
         }
         
-        // CLOSE는 별도 노드를 만들지 않고 CURSOR에 포함됨
         return null;
     }
 
@@ -261,9 +232,12 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
 
     @Override
     public Node visitSelectIntoStmt(PlpgsqlParser.SelectIntoStmtContext ctx) {
-        Node selectNode = createNode("SELECT", ctx, currentBlockNode);
-        return selectNode;
+        return createNode("SELECT", ctx, currentBlockNode);
     }
+
+    // ========================================
+    // 제어 흐름
+    // ========================================
 
     @Override
     public Node visitIfStmt(PlpgsqlParser.IfStmtContext ctx) {
@@ -277,20 +251,19 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
         }
 
         // ELSIF 절들
-        int elsifCount = ctx.expression().size() - 1; 
+        int elsifCount = ctx.expression().size() - 1;
         if (elsifCount > 0 && ctx.ELSIF() != null) {
-        for (int i = 0; i < elsifCount; i++) {
-            PlpgsqlParser.StatementListContext elsifStmtList = ctx.statementList(i + 1);
+            for (int i = 0; i < elsifCount; i++) {
+                PlpgsqlParser.StatementListContext elsifStmtList = ctx.statementList(i + 1);
                 
-                // ELSIF 키워드의 실제 라인 번호 사용
                 int elsifStartLine = getActualLineNumber(ctx.ELSIF(i).getSymbol());
                 int elsifEndLine = getActualEndLineNumber(elsifStmtList);
 
-            Node elsifNode = new Node("ELSIF", elsifStartLine, ifNode);
-            elsifNode.endLine = elsifEndLine;
+                Node elsifNode = new Node("ELSIF", elsifStartLine, ifNode);
+                elsifNode.endLine = elsifEndLine;
 
-            currentBlockNode = elsifNode;
-            visitStatementList(elsifStmtList);
+                currentBlockNode = elsifNode;
+                visitStatementList(elsifStmtList);
             }
         }
 
@@ -298,7 +271,6 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
         if (ctx.ELSE() != null) {
             PlpgsqlParser.StatementListContext elseStmtList = ctx.statementList(ctx.statementList().size() - 1);
 
-            // ELSE 키워드의 라인 번호 사용
             int elseStartLine = getActualLineNumber(ctx.ELSE().getSymbol());
             int elseEndLine = getActualEndLineNumber(elseStmtList);
 
@@ -363,51 +335,47 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
 
     @Override
     public Node visitExitStmt(PlpgsqlParser.ExitStmtContext ctx) {
-        Node exitNode = createNode("EXIT", ctx, currentBlockNode);
-        return exitNode;
+        return createNode("EXIT", ctx, currentBlockNode);
     }
 
     @Override
     public Node visitContinueStmt(PlpgsqlParser.ContinueStmtContext ctx) {
-        Node continueNode = createNode("CONTINUE", ctx, currentBlockNode);
-        return continueNode;
+        return createNode("CONTINUE", ctx, currentBlockNode);
     }
+
+    // ========================================
+    // 기타 문장
+    // ========================================
 
     @Override
     public Node visitSetStmt(PlpgsqlParser.SetStmtContext ctx) {
-        Node setNode = createNode("SET", ctx, currentBlockNode);
-        return setNode;
+        return createNode("SET", ctx, currentBlockNode);
     }
 
     @Override
     public Node visitExecuteStmt(PlpgsqlParser.ExecuteStmtContext ctx) {
-        Node executeNode = createNode("EXECUTE", ctx, currentBlockNode);
-        return executeNode;
+        return createNode("EXECUTE", ctx, currentBlockNode);
     }
 
     @Override
     public Node visitPerformStmt(PlpgsqlParser.PerformStmtContext ctx) {
-        Node performNode = createNode("PERFORM", ctx, currentBlockNode);
-        return performNode;
+        return createNode("PERFORM", ctx, currentBlockNode);
     }
     
     @Override
     public Node visitCommitStmt(PlpgsqlParser.CommitStmtContext ctx) {
-        Node commitNode = createNode("COMMIT", ctx, currentBlockNode);
-        return commitNode;
+        return createNode("COMMIT", ctx, currentBlockNode);
     }
     
     @Override
     public Node visitRollbackStmt(PlpgsqlParser.RollbackStmtContext ctx) {
-        Node rollbackNode = createNode("ROLLBACK", ctx, currentBlockNode);
-        return rollbackNode;
+        return createNode("ROLLBACK", ctx, currentBlockNode);
     }
 
     @Override
     public Node visitNestedBlock(PlpgsqlParser.NestedBlockContext ctx) {
         Node previousBlock = currentBlockNode;
         
-        // DECLARE 섹션 처리 (있는 경우)
         if (ctx.declarationList() != null) {
             PlpgsqlParser.DeclarationListContext declList = ctx.declarationList();
 
@@ -427,14 +395,12 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
             }
         }
 
-        // BEGIN 블록 생성
         int beginStartLine = getActualLineNumber(ctx.BEGIN().getSymbol());
         int beginEndLine = getActualEndLineNumber(ctx);
         
         Node beginNode = new Node("BEGIN", beginStartLine, currentBlockNode);
         beginNode.endLine = beginEndLine;
         
-        // BEGIN 블록 내부 처리
         currentBlockNode = beginNode;
         
         visitStatementList(ctx.statementList());
@@ -449,19 +415,7 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
 
     @Override
     public Node visitExceptionSection(PlpgsqlParser.ExceptionSectionContext ctx) {
-        Node exceptionNode = createNode("EXCEPTION", ctx, currentBlockNode);
-
-        // for (PlpgsqlParser.ExceptionHandlerContext handlerCtx : ctx.exceptionHandlerList().exceptionHandler()) {
-        //     Node handlerNode = createNode("EXCEPTION_HANDLER", handlerCtx, exceptionNode);
-        //     Node previousBlock = currentBlockNode;
-        //     currentBlockNode = handlerNode;
-
-        //     visitStatementList(handlerCtx.statementList());
-
-        //     currentBlockNode = previousBlock;
-        // }
-
-        return exceptionNode;
+        return createNode("EXCEPTION", ctx, currentBlockNode);
     }
     
     @Override
@@ -503,59 +457,51 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
     
     @Override
     public Node visitAssertStmt(PlpgsqlParser.AssertStmtContext ctx) {
-        Node assertNode = createNode("ASSERT", ctx, currentBlockNode);
-        return assertNode;
+        return createNode("ASSERT", ctx, currentBlockNode);
     }
     
     @Override
     public Node visitNullStmt(PlpgsqlParser.NullStmtContext ctx) {
-        Node nullNode = createNode("NULL", ctx, currentBlockNode);
-        return nullNode;
+        return createNode("NULL", ctx, currentBlockNode);
     }
     
     @Override
     public Node visitGetDiagnosticsStmt(PlpgsqlParser.GetDiagnosticsStmtContext ctx) {
-        Node diagNode = createNode("GET_DIAGNOSTICS", ctx, currentBlockNode);
-        return diagNode;
+        return createNode("GET_DIAGNOSTICS", ctx, currentBlockNode);
     }
     
     @Override
     public Node visitCreateTempTableStmt(PlpgsqlParser.CreateTempTableStmtContext ctx) {
-        Node createTableNode = createNode("CREATE_TEMP_TABLE", ctx, currentBlockNode);
-        return createTableNode;
+        return createNode("CREATE_TEMP_TABLE", ctx, currentBlockNode);
     }
     
     @Override
     public Node visitCteStmt(PlpgsqlParser.CteStmtContext ctx) {
-        Node cteNode = createNode("CTE", ctx, currentBlockNode);
-        return cteNode;
+        return createNode("CTE", ctx, currentBlockNode);
     }
     
     @Override
     public Node visitSqlGenericStmt(PlpgsqlParser.SqlGenericStmtContext ctx) {
         // CALL 문 처리
         if (ctx.CALL() != null) {
-            Node callNode = createNode("CALL", ctx, currentBlockNode);
-            return callNode;
+            String name = null;
+            // 호출 대상 이름 추출 시도
+            if (ctx.getChildCount() > 1) {
+                name = ctx.getChild(1).getText();
+            }
+            return createNode("CALL", name, ctx, currentBlockNode);
         }
         
-        // 구문 텍스트 확인
         String stmtText = ctx.getText().toUpperCase();
         
-        // CREATE INDEX 문 처리
         if (stmtText.startsWith("CREATEINDEX") || stmtText.contains("CREATEINDEX")) {
-            Node createIndexNode = createNode("CREATE_INDEX", ctx, currentBlockNode);
-            return createIndexNode;
+            return createNode("CREATE_INDEX", ctx, currentBlockNode);
         }
         
-        // DROP TABLE 문 처리
         if (stmtText.startsWith("DROPTABLE") || stmtText.contains("DROPTABLE")) {
-            Node dropTableNode = createNode("DROP_TABLE", ctx, currentBlockNode);
-            return dropTableNode;
+            return createNode("DROP_TABLE", ctx, currentBlockNode);
         }
         
-        Node sqlNode = createNode("SQL_GENERIC", ctx, currentBlockNode);
-        return sqlNode;
+        return createNode("SQL_GENERIC", ctx, currentBlockNode);
     }
 }
-

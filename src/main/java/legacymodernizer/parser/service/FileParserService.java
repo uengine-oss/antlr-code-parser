@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.stereotype.Service;
@@ -25,9 +26,11 @@ import lombok.extern.slf4j.Slf4j;
  * 
  * 저장 구조:
  *   data/
- *     ├── source/   → 소스 파일 (원본 폴더 구조 유지)
- *     ├── ddl/      → DDL 파일 (원본 폴더 구조 유지)
- *     └── analysis/ → 파싱 결과 JSON (source와 동일 구조)
+ *     ├── source/              → 타겟 언어 파일 (업로드 시)
+ *     ├── ddl/                 → DDL 파일 (원본 폴더 구조 유지)
+ *     └── analysis/
+ *         ├── target/          → 파싱 결과 JSON (파싱 시)
+ *         └── nontarget/       → 비타겟 파일 원본 (업로드 시)
  */
 @Slf4j
 @Service
@@ -37,6 +40,8 @@ public class FileParserService {
     private static final String SOURCE = "source";
     private static final String DDL = "ddl";
     private static final String ANALYSIS = "analysis";
+    private static final String TARGET = "target";
+    private static final String NONTARGET = "nontarget";
 
     private static String resolveBaseDir() {
         String dockerContext = System.getenv("DOCKER_COMPOSE_CONTEXT");
@@ -62,6 +67,14 @@ public class FileParserService {
         return Paths.get(BASE_DIR, ANALYSIS);
     }
 
+    public Path analysisTargetDir() {
+        return Paths.get(BASE_DIR, ANALYSIS, TARGET);
+    }
+
+    public Path analysisNontargetDir() {
+        return Paths.get(BASE_DIR, ANALYSIS, NONTARGET);
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // 파일 업로드
     // ═══════════════════════════════════════════════════════════════════
@@ -69,10 +82,15 @@ public class FileParserService {
     /**
      * 파일 업로드 (기존 폴더 비우고 새로 저장)
      * 
+     * - 타겟 확장자 파일 → source/ 저장
+     * - 비타겟 확장자 파일 → analysis/nontarget/ 원본 저장
+     * - DDL 파일 → ddl/ 저장
+     * 
      * @param files 업로드 파일들 (filename: 상대경로)
-     * @return {files: [...], ddlFiles: [...]}
+     * @param targetExtensions 타겟 언어 확장자 목록 (예: {".java"})
+     * @return {files: [...], ddlFiles: [...], nontargetFiles: [...]}
      */
-    public Map<String, Object> uploadFiles(MultipartFile[] files) {
+    public Map<String, Object> uploadFiles(MultipartFile[] files, Set<String> targetExtensions) {
         // 기존 폴더 비우기
         clearDirectory(sourceDir());
         clearDirectory(ddlDir());
@@ -80,9 +98,11 @@ public class FileParserService {
 
         List<Map<String, String>> srcList = new ArrayList<>();
         List<Map<String, String>> ddlList = new ArrayList<>();
+        List<Map<String, String>> nontargetList = new ArrayList<>();
 
         Path sourceBase = sourceDir();
         Path ddlBase = ddlDir();
+        Path nontargetBase = analysisNontargetDir();
 
         for (MultipartFile mf : files) {
             if (mf == null || mf.isEmpty()) continue;
@@ -93,7 +113,7 @@ public class FileParserService {
             // 상대 경로 그대로 사용
             String relativePath = originalName.replace("\\", "/");
 
-            // ddl/ 로 시작하면 DDL, 아니면 소스
+            // ddl/ 로 시작하면 DDL
             boolean isDdl = relativePath.startsWith("ddl/");
 
             try {
@@ -106,7 +126,8 @@ public class FileParserService {
                             "fileName", relativePath,
                             "fileContent", readContent(dest)));
                     log.debug("  [DDL] {}", relativePath);
-                } else {
+                } else if (isTargetExtension(relativePath, targetExtensions)) {
+                    // 타겟 확장자 → source/ 저장
                     Path dest = sourceBase.resolve(relativePath);
                     saveFile(mf, dest);
 
@@ -114,6 +135,15 @@ public class FileParserService {
                             "fileName", relativePath,
                             "fileContent", readContent(dest)));
                     log.debug("  [SOURCE] {}", relativePath);
+                } else {
+                    // 비타겟 확장자 → analysis/nontarget/ 원본 저장
+                    Path dest = nontargetBase.resolve(relativePath);
+                    saveFile(mf, dest);
+
+                    nontargetList.add(Map.of(
+                            "fileName", relativePath,
+                            "fileContent", readContent(dest)));
+                    log.debug("  [NONTARGET] {}", relativePath);
                 }
             } catch (IOException e) {
                 throw new RuntimeException("파일 저장 실패: " + originalName, e);
@@ -123,7 +153,18 @@ public class FileParserService {
         Map<String, Object> result = new HashMap<>();
         result.put("files", srcList);
         result.put("ddlFiles", ddlList);
+        result.put("nontargetFiles", nontargetList);
         return result;
+    }
+
+    /**
+     * 파일 확장자가 타겟 확장자 목록에 포함되는지 확인
+     */
+    private boolean isTargetExtension(String filePath, Set<String> targetExtensions) {
+        int dot = filePath.lastIndexOf('.');
+        if (dot < 0) return false;
+        String ext = filePath.substring(dot).toLowerCase();
+        return targetExtensions.contains(ext);
     }
 
     /**
@@ -183,12 +224,14 @@ public class FileParserService {
     /**
      * source/ 하위 모든 파일을 파싱하며 진행 상황을 스트림으로 전달
      * 
+     * 파싱 결과는 analysis/target/에 저장
+     * 
      * @param parser   스트림 파싱 함수
      * @param callback 스트림 콜백
      */
     public void parseProjectWithStream(StreamParsingFunction parser, StreamCallback callback) {
         Path sourceBase = sourceDir();
-        Path analysisBase = analysisDir();
+        Path analysisBase = analysisTargetDir();
 
         if (!Files.exists(sourceBase)) {
             callback.error("소스 디렉토리 없음: " + sourceBase);

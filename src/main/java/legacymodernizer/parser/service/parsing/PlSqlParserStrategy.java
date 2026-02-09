@@ -5,6 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
 import java.util.Map;
+import java.util.Set;
 
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
@@ -36,7 +37,7 @@ public class PlSqlParserStrategy implements TargetParserStrategy {
 
     @Override
     public Map<String, Object> upload(MultipartFile[] files) {
-        return fileParserService.uploadFiles(files);
+        return fileParserService.uploadFiles(files, getTargetExtensions());
     }
 
     @Override
@@ -68,5 +69,10 @@ public class PlSqlParserStrategy implements TargetParserStrategy {
     @Override
     public String getSupportedTargetType() {
         return "oracle";
+    }
+
+    @Override
+    public Set<String> getTargetExtensions() {
+        return Set.of(".sql", ".pks", ".pkb", ".prc", ".fnc");
     }
 }

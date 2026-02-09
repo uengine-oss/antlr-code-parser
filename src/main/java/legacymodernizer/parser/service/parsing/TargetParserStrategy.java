@@ -2,6 +2,7 @@ package legacymodernizer.parser.service.parsing;
 
 import java.io.File;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.web.multipart.MultipartFile;
 
@@ -44,4 +45,9 @@ public interface TargetParserStrategy {
      * 지원하는 target 타입 (예: "java", "plsql", "postgresql")
      */
     String getSupportedTargetType();
+
+    /**
+     * 타겟 언어 확장자 목록 (예: java → {".java"})
+     */
+    Set<String> getTargetExtensions();
 }
