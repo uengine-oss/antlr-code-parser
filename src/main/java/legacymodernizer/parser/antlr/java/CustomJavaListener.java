@@ -1,10 +1,11 @@
 package legacymodernizer.parser.antlr.java;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Stack;
-import java.util.stream.Collectors;
 
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.TokenStream;
 
 import legacymodernizer.parser.antlr.Node;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -13,13 +14,13 @@ import legacymodernizer.parser.service.ParseProgressTracker;
 /**
  * Java 파일 분석을 위한 커스텀 리스너
  * - 클래스/인터페이스/메서드/필드 구조 추출
- * - 상속/구현 관계 추출
- * - 메서드 호출, 객체 생성 추출
+ * - 어노테이션은 부모 노드의 annotations 속성에 포함
+ * - 선행 주석(Javadoc 등)은 code 속성에 포함, startLine도 주석 시작 라인으로 보정
  * - 통일된 속성명 사용 (Node 클래스 참조)
  */
 public class CustomJavaListener extends Java20ParserBaseListener {
     
-    private TokenStream tokens;
+    private CommonTokenStream tokens;
     private Stack<Node> nodeStack = new Stack<>();
     private Node root = new Node("FILE", 0, null);
     private ParseProgressTracker progressTracker;
@@ -28,12 +29,20 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         return root;
     }
     
-    public CustomJavaListener(TokenStream tokens) {
+    /**
+     * FILE 노드에 파일 정보 설정
+     */
+    public void setFileInfo(String fileName, String filePath) {
+        root.fileName = fileName;
+        root.filePath = filePath;
+    }
+    
+    public CustomJavaListener(CommonTokenStream tokens) {
         this.tokens = tokens;
         nodeStack.push(root);
     }
     
-    public CustomJavaListener(TokenStream tokens, ParseProgressTracker tracker) {
+    public CustomJavaListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
         this(tokens);
         this.progressTracker = tracker;
     }
@@ -49,10 +58,6 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     // 노드 생성/종료
     // ========================================
     
-    private Node enterStatement(String type, int line) {
-        return enterStatement(type, null, line);
-    }
-    
     private Node enterStatement(String type, String name, int line) {
         Node node = new Node(type, name, line, nodeStack.peek());
         nodeStack.push(node);
@@ -64,40 +69,144 @@ public class CustomJavaListener extends Java20ParserBaseListener {
             Node node = nodeStack.pop();
             node.endLine = line;
             if (ctx != null) {
+                // 본체 코드 (어노테이션 포함, 주석 제외)
                 node.code = ParserUtils.getCodeWithLineNumbers(ctx);
+                // 선행 주석 (Javadoc 등) 별도 속성
+                node.comment = ParserUtils.getLeadingComment(ctx, tokens);
             }
         }
     }
     
     // ========================================
-    // 패키지/임포트
+    // 어노테이션/수정자 분리 추출
     // ========================================
     
-    @Override
-    public void enterPackageDeclaration(Java20Parser.PackageDeclarationContext ctx) {
-        String name = ctx.identifier() != null && !ctx.identifier().isEmpty()
-            ? ctx.identifier().stream().map(id -> id.getText()).collect(Collectors.joining("."))
-            : null;
-        enterStatement("PACKAGE", name, ctx.getStart().getLine());
+    private void extractClassModifiers(Node node, List<Java20Parser.ClassModifierContext> modifiers) {
+        if (modifiers == null || modifiers.isEmpty()) return;
+        
+        List<String> annotationList = new ArrayList<>();
+        List<String> modifierList = new ArrayList<>();
+        
+        for (Java20Parser.ClassModifierContext m : modifiers) {
+            if (m.annotation() != null) {
+                annotationList.add(m.getText());
+            } else {
+                modifierList.add(m.getText());
+            }
+        }
+        
+        if (!annotationList.isEmpty()) {
+            node.annotations = String.join(" ", annotationList);
+        }
+        if (!modifierList.isEmpty()) {
+            node.modifiers = String.join(" ", modifierList);
+    }
     }
     
-    @Override
-    public void exitPackageDeclaration(Java20Parser.PackageDeclarationContext ctx) {
-        exitStatement("PACKAGE", ctx.getStop().getLine(), ctx);
+    private void extractInterfaceModifiers(Node node, List<Java20Parser.InterfaceModifierContext> modifiers) {
+        if (modifiers == null || modifiers.isEmpty()) return;
+        
+        List<String> annotationList = new ArrayList<>();
+        List<String> modifierList = new ArrayList<>();
+        
+        for (Java20Parser.InterfaceModifierContext m : modifiers) {
+            if (m.annotation() != null) {
+                annotationList.add(m.getText());
+            } else {
+                modifierList.add(m.getText());
+            }
+        }
+        
+        if (!annotationList.isEmpty()) {
+            node.annotations = String.join(" ", annotationList);
+        }
+        if (!modifierList.isEmpty()) {
+            node.modifiers = String.join(" ", modifierList);
+        }
     }
     
-    @Override
-    public void enterImportDeclaration(Java20Parser.ImportDeclarationContext ctx) {
-        enterStatement("IMPORT", ctx.getStart().getLine());
+    private void extractMethodModifiers(Node node, List<Java20Parser.MethodModifierContext> modifiers) {
+        if (modifiers == null || modifiers.isEmpty()) return;
+        
+        List<String> annotationList = new ArrayList<>();
+        List<String> modifierList = new ArrayList<>();
+        
+        for (Java20Parser.MethodModifierContext m : modifiers) {
+            if (m.annotation() != null) {
+                annotationList.add(m.getText());
+            } else {
+                modifierList.add(m.getText());
+            }
+        }
+        
+        if (!annotationList.isEmpty()) {
+            node.annotations = String.join(" ", annotationList);
+        }
+        if (!modifierList.isEmpty()) {
+            node.modifiers = String.join(" ", modifierList);
+        }
     }
     
-    @Override
-    public void exitImportDeclaration(Java20Parser.ImportDeclarationContext ctx) {
-        exitStatement("IMPORT", ctx.getStop().getLine(), ctx);
+    private void extractInterfaceMethodModifiers(Node node, List<Java20Parser.InterfaceMethodModifierContext> modifiers) {
+        if (modifiers == null || modifiers.isEmpty()) return;
+        
+        List<String> annotationList = new ArrayList<>();
+        List<String> modifierList = new ArrayList<>();
+        
+        for (Java20Parser.InterfaceMethodModifierContext m : modifiers) {
+            if (m.annotation() != null) {
+                annotationList.add(m.getText());
+            } else {
+                modifierList.add(m.getText());
+            }
+        }
+        
+        if (!annotationList.isEmpty()) {
+            node.annotations = String.join(" ", annotationList);
+        }
+        if (!modifierList.isEmpty()) {
+            node.modifiers = String.join(" ", modifierList);
+        }
+    }
+    
+    private void extractFieldModifiers(Node node, List<Java20Parser.FieldModifierContext> modifiers) {
+        if (modifiers == null || modifiers.isEmpty()) return;
+        
+        List<String> annotationList = new ArrayList<>();
+        List<String> modifierList = new ArrayList<>();
+        
+        for (Java20Parser.FieldModifierContext m : modifiers) {
+            if (m.annotation() != null) {
+                annotationList.add(m.getText());
+            } else {
+                modifierList.add(m.getText());
+            }
+        }
+        
+        if (!annotationList.isEmpty()) {
+            node.annotations = String.join(" ", annotationList);
+        }
+        if (!modifierList.isEmpty()) {
+            node.modifiers = String.join(" ", modifierList);
+        }
     }
     
     // ========================================
-    // 클래스/인터페이스/열거형/레코드
+    // 클래스명 전파
+    // ========================================
+    
+    /**
+     * 클래스명을 모든 자식 노드에 재귀적으로 전파
+     */
+    private void propagateClassName(Node node, String className) {
+        for (Node child : node.children) {
+            child.className = className;
+            propagateClassName(child, className);
+    }
+    }
+    
+    // ========================================
+    // 클래스/인터페이스
     // ========================================
     
     @Override
@@ -105,25 +214,17 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         String name = ctx.typeIdentifier() != null ? ctx.typeIdentifier().getText() : null;
         Node node = enterStatement("CLASS", name, ctx.getStart().getLine());
         
-        // 시그니처 추출 (클래스 선언부, { 이전까지)
         node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
+        extractClassModifiers(node, ctx.classModifier());
         
-        // 수정자
-        if (ctx.classModifier() != null && !ctx.classModifier().isEmpty()) {
-            node.modifiers = ctx.classModifier().stream().map(m -> m.getText()).collect(Collectors.joining(" "));
-        }
-        
-        // 제네릭 타입
         if (ctx.typeParameters() != null) {
             node.genericType = ctx.typeParameters().getText();
         }
         
-        // 상속 (통일된 속성명: extendsType)
         if (ctx.classExtends() != null && ctx.classExtends().classType() != null) {
             node.extendsType = ctx.classExtends().classType().getText();
         }
         
-        // 구현 (통일된 속성명: implementsTypes)
         if (ctx.classImplements() != null && ctx.classImplements().interfaceTypeList() != null) {
             node.implementsTypes = ctx.classImplements().interfaceTypeList().getText();
         }
@@ -131,57 +232,19 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     
     @Override
     public void exitNormalClassDeclaration(Java20Parser.NormalClassDeclarationContext ctx) {
-        exitStatement("CLASS", ctx.getStop().getLine(), ctx);
-    }
-    
-    @Override
-    public void enterEnumDeclaration(Java20Parser.EnumDeclarationContext ctx) {
-        String name = ctx.typeIdentifier() != null ? ctx.typeIdentifier().getText() : null;
-        Node node = enterStatement("ENUM", name, ctx.getStart().getLine());
-        
-        node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
-        
-        if (ctx.classModifier() != null && !ctx.classModifier().isEmpty()) {
-            node.modifiers = ctx.classModifier().stream().map(m -> m.getText()).collect(Collectors.joining(" "));
+        if (!nodeStack.isEmpty() && nodeStack.peek().type.equals("CLASS")) {
+            Node node = nodeStack.peek();
+            // comment를 먼저 설정 (exitStatement가 pop하므로 미리 설정)
+            if (ctx != null) {
+                node.comment = ParserUtils.getLeadingComment(ctx, tokens);
+            }
+            // exitStatement 호출 (code, endLine 설정)
+            exitStatement("CLASS", ctx.getStop().getLine(), ctx);
+            // 모든 자식에 className 전파
+            propagateClassName(node, node.name);
+        } else {
+            exitStatement("CLASS", ctx.getStop().getLine(), ctx);
         }
-        
-        if (ctx.classImplements() != null && ctx.classImplements().interfaceTypeList() != null) {
-            node.implementsTypes = ctx.classImplements().interfaceTypeList().getText();
-        }
-    }
-    
-    @Override
-    public void exitEnumDeclaration(Java20Parser.EnumDeclarationContext ctx) {
-        exitStatement("ENUM", ctx.getStop().getLine(), ctx);
-    }
-    
-    @Override
-    public void enterRecordDeclaration(Java20Parser.RecordDeclarationContext ctx) {
-        String name = ctx.typeIdentifier() != null ? ctx.typeIdentifier().getText() : null;
-        Node node = enterStatement("RECORD", name, ctx.getStart().getLine());
-        
-        node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
-        
-        if (ctx.classModifier() != null && !ctx.classModifier().isEmpty()) {
-            node.modifiers = ctx.classModifier().stream().map(m -> m.getText()).collect(Collectors.joining(" "));
-        }
-        
-        if (ctx.typeParameters() != null) {
-            node.genericType = ctx.typeParameters().getText();
-        }
-        
-        if (ctx.recordHeader() != null && ctx.recordHeader().recordComponentList() != null) {
-            node.parameters = ctx.recordHeader().recordComponentList().getText();
-        }
-        
-        if (ctx.classImplements() != null && ctx.classImplements().interfaceTypeList() != null) {
-            node.implementsTypes = ctx.classImplements().interfaceTypeList().getText();
-        }
-    }
-    
-    @Override
-    public void exitRecordDeclaration(Java20Parser.RecordDeclarationContext ctx) {
-        exitStatement("RECORD", ctx.getStop().getLine(), ctx);
     }
     
     @Override
@@ -190,10 +253,7 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         Node node = enterStatement("INTERFACE", name, ctx.getStart().getLine());
         
         node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
-        
-        if (ctx.interfaceModifier() != null && !ctx.interfaceModifier().isEmpty()) {
-            node.modifiers = ctx.interfaceModifier().stream().map(m -> m.getText()).collect(Collectors.joining(" "));
-        }
+        extractInterfaceModifiers(node, ctx.interfaceModifier());
         
         if (ctx.typeParameters() != null) {
             node.genericType = ctx.typeParameters().getText();
@@ -206,88 +266,105 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     
     @Override
     public void exitNormalInterfaceDeclaration(Java20Parser.NormalInterfaceDeclarationContext ctx) {
-        exitStatement("INTERFACE", ctx.getStop().getLine(), ctx);
+        if (!nodeStack.isEmpty() && nodeStack.peek().type.equals("INTERFACE")) {
+            Node node = nodeStack.peek();
+            // comment를 먼저 설정 (exitStatement가 pop하므로 미리 설정)
+            if (ctx != null) {
+                node.comment = ParserUtils.getLeadingComment(ctx, tokens);
+            }
+            // exitStatement 호출 (code, endLine 설정)
+            exitStatement("INTERFACE", ctx.getStop().getLine(), ctx);
+            // 모든 자식에 className 전파
+            propagateClassName(node, node.name);
+        } else {
+            exitStatement("INTERFACE", ctx.getStop().getLine(), ctx);
+        }
     }
     
+    // ========================================
+    // 메서드
+    // ========================================
+    
     @Override
-    public void enterAnnotationInterfaceDeclaration(Java20Parser.AnnotationInterfaceDeclarationContext ctx) {
-        String name = ctx.typeIdentifier() != null ? ctx.typeIdentifier().getText() : null;
-        Node node = enterStatement("ANNOTATION_TYPE", name, ctx.getStart().getLine());
+    public void enterMethodDeclaration(Java20Parser.MethodDeclarationContext ctx) {
+        // CLASS/INTERFACE의 직접 자식일 때만 METHOD 노드 생성 (익명 클래스 내부 메서드 무시)
+        if (nodeStack.isEmpty()) return;
+        String parentType = nodeStack.peek().type;
+        if (!parentType.equals("CLASS") && !parentType.equals("INTERFACE")) return;
+        
+        String name = null;
+        if (ctx.methodHeader() != null && ctx.methodHeader().methodDeclarator() != null 
+                && ctx.methodHeader().methodDeclarator().identifier() != null) {
+            name = ctx.methodHeader().methodDeclarator().identifier().getText();
+        }
+        Node node = enterStatement("METHOD", name, ctx.getStart().getLine());
         
         node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
+        extractMethodModifiers(node, ctx.methodModifier());
         
-        if (ctx.interfaceModifier() != null && !ctx.interfaceModifier().isEmpty()) {
-            node.modifiers = ctx.interfaceModifier().stream().map(m -> m.getText()).collect(Collectors.joining(" "));
+        if (ctx.methodHeader() != null && ctx.methodHeader().result() != null) {
+            node.returnType = ctx.methodHeader().result().getText();
+        }
+        
+        if (ctx.methodHeader() != null && ctx.methodHeader().typeParameters() != null) {
+            node.genericType = ctx.methodHeader().typeParameters().getText();
+        }
+        
+        if (ctx.methodHeader() != null 
+                && ctx.methodHeader().methodDeclarator() != null 
+                && ctx.methodHeader().methodDeclarator().formalParameterList() != null) {
+            node.parameters = ParserUtils.getOriginalText(
+                    ctx.methodHeader().methodDeclarator().formalParameterList());
         }
     }
     
     @Override
-    public void exitAnnotationInterfaceDeclaration(Java20Parser.AnnotationInterfaceDeclarationContext ctx) {
-        exitStatement("ANNOTATION_TYPE", ctx.getStop().getLine(), ctx);
+    public void exitMethodDeclaration(Java20Parser.MethodDeclarationContext ctx) {
+        exitStatement("METHOD", ctx.getStop().getLine(), ctx);
     }
     
     @Override
-    public void enterAnnotation(Java20Parser.AnnotationContext ctx) {
-        String name = ctx.getText();
-        if (name != null && name.contains("(")) {
-            name = name.substring(0, name.indexOf("("));
+    public void enterInterfaceMethodDeclaration(Java20Parser.InterfaceMethodDeclarationContext ctx) {
+        String name = null;
+        if (ctx.methodHeader() != null && ctx.methodHeader().methodDeclarator() != null 
+                && ctx.methodHeader().methodDeclarator().identifier() != null) {
+            name = ctx.methodHeader().methodDeclarator().identifier().getText();
         }
-        enterStatement("ANNOTATION", name, ctx.getStart().getLine());
+        Node node = enterStatement("METHOD", name, ctx.getStart().getLine());
+        
+        node.signature = ParserUtils.extractSignature(ctx, tokens, ";");
+        extractInterfaceMethodModifiers(node, ctx.interfaceMethodModifier());
+        
+        if (ctx.methodHeader() != null && ctx.methodHeader().result() != null) {
+            node.returnType = ctx.methodHeader().result().getText();
+        }
+        
+        if (ctx.methodHeader() != null && ctx.methodHeader().typeParameters() != null) {
+            node.genericType = ctx.methodHeader().typeParameters().getText();
+        }
+        
+        if (ctx.methodHeader() != null 
+                && ctx.methodHeader().methodDeclarator() != null 
+                && ctx.methodHeader().methodDeclarator().formalParameterList() != null) {
+            node.parameters = ParserUtils.getOriginalText(
+                    ctx.methodHeader().methodDeclarator().formalParameterList());
+        }
     }
     
     @Override
-    public void exitAnnotation(Java20Parser.AnnotationContext ctx) {
-        exitStatement("ANNOTATION", ctx.getStop().getLine(), ctx);
+    public void exitInterfaceMethodDeclaration(Java20Parser.InterfaceMethodDeclarationContext ctx) {
+        exitStatement("METHOD", ctx.getStop().getLine(), ctx);
     }
-
-    // ========================================
-    // 상속/구현 관계
-    // ========================================
-    
-    // @Override
-    // public void enterClassExtends(Java20Parser.ClassExtendsContext ctx) {
-    //     String name = ctx.classType() != null ? ctx.classType().getText() : null;
-    //     enterStatement("EXTENDS", name, ctx.getStart().getLine());
-    // }
-    
-    // @Override
-    // public void exitClassExtends(Java20Parser.ClassExtendsContext ctx) {
-    //     exitStatement("EXTENDS", ctx.getStop().getLine(), ctx);
-    // }
-    
-    // @Override
-    // public void enterClassImplements(Java20Parser.ClassImplementsContext ctx) {
-    //     String name = ctx.interfaceTypeList() != null ? ctx.interfaceTypeList().getText() : null;
-    //     enterStatement("IMPLEMENTS", name, ctx.getStart().getLine());
-    // }
-    
-    // @Override
-    // public void exitClassImplements(Java20Parser.ClassImplementsContext ctx) {
-    //     exitStatement("IMPLEMENTS", ctx.getStop().getLine(), ctx);
-    // }
-    
-    // @Override
-    // public void enterInterfaceExtends(Java20Parser.InterfaceExtendsContext ctx) {
-    //     String name = ctx.interfaceTypeList() != null ? ctx.interfaceTypeList().getText() : null;
-    //     enterStatement("EXTENDS", name, ctx.getStart().getLine());
-    // }
-    
-    // @Override
-    // public void exitInterfaceExtends(Java20Parser.InterfaceExtendsContext ctx) {
-    //     exitStatement("EXTENDS", ctx.getStop().getLine(), ctx);
-    // }
     
     // ========================================
-    // 필드/변수
+    // 필드
     // ========================================
     
     @Override
     public void enterFieldDeclaration(Java20Parser.FieldDeclarationContext ctx) {
-        Node node = enterStatement("FIELD", ctx.getStart().getLine());
+        Node node = enterStatement("FIELD", null, ctx.getStart().getLine());
         
-        if (ctx.fieldModifier() != null && !ctx.fieldModifier().isEmpty()) {
-            node.modifiers = ctx.fieldModifier().stream().map(m -> m.getText()).collect(Collectors.joining(" "));
-        }
+        extractFieldModifiers(node, ctx.fieldModifier());
         
         if (ctx.unannType() != null) {
             node.fieldType = ctx.unannType().getText();
@@ -306,9 +383,44 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         exitStatement("FIELD", ctx.getStop().getLine(), ctx);
     }
     
+    // ========================================
+    // 메서드 호출/참조
+    // ========================================
+    
+    // @Override
+    // public void enterMethodInvocation(Java20Parser.MethodInvocationContext ctx) {
+    //     String name = null;
+    //     if (ctx.identifier() != null) {
+    //         name = ctx.identifier().getText();
+    //     } else if (ctx.methodName() != null) {
+    //         name = ctx.methodName().getText();
+    //     }
+    //     enterStatement("METHOD_CALL", name, ctx.getStart().getLine());
+    // }
+    
+    // @Override
+    // public void exitMethodInvocation(Java20Parser.MethodInvocationContext ctx) {
+    //     exitStatement("METHOD_CALL", ctx.getStop().getLine(), ctx);
+    // }
+    
+    // @Override
+    // public void enterMethodReference(Java20Parser.MethodReferenceContext ctx) {
+    //     String name = ctx.identifier() != null ? ctx.identifier().getText() : null;
+    //     enterStatement("METHOD_CALL", name, ctx.getStart().getLine());
+    // }
+    
+    // @Override
+    // public void exitMethodReference(Java20Parser.MethodReferenceContext ctx) {
+    //     exitStatement("METHOD_CALL", ctx.getStop().getLine(), ctx);
+    // }
+    
+    // ========================================
+    // 변수/대입
+    // ========================================
+    
     @Override
     public void enterLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
-        Node node = enterStatement("VARIABLE", ctx.getStart().getLine());
+        Node node = enterStatement("VARIABLE", null, ctx.getStart().getLine());
         
         if (ctx.localVariableType() != null) {
             node.fieldType = ctx.localVariableType().getText();
@@ -327,313 +439,48 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         exitStatement("VARIABLE", ctx.getStop().getLine(), ctx);
     }
     
-    @Override
-    public void enterAssignment(Java20Parser.AssignmentContext ctx) {
-        enterStatement("ASSIGNMENT", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitAssignment(Java20Parser.AssignmentContext ctx) {
-        exitStatement("ASSIGNMENT", ctx.getStop().getLine(), ctx);
-    }
-    
-    // ========================================
-    // 초기화 블록
-    // ========================================
-    
-    @Override
-    public void enterStaticInitializer(Java20Parser.StaticInitializerContext ctx) {
-        Node node = enterStatement("STATIC_INITIALIZER", ctx.getStart().getLine());
-        node.modifiers = "static";
-    }
-    
-    @Override
-    public void exitStaticInitializer(Java20Parser.StaticInitializerContext ctx) {
-        exitStatement("STATIC_INITIALIZER", ctx.getStop().getLine(), ctx);
-    }
-    
-    // ========================================
-    // 메서드/생성자
-    // ========================================
-    
-    @Override
-    public void enterMethodDeclaration(Java20Parser.MethodDeclarationContext ctx) {
-        String name = null;
-        if (ctx.methodHeader() != null && ctx.methodHeader().methodDeclarator() != null 
-                && ctx.methodHeader().methodDeclarator().identifier() != null) {
-            name = ctx.methodHeader().methodDeclarator().identifier().getText();
-        }
-        Node node = enterStatement("METHOD", name, ctx.getStart().getLine());
-        
-        // 시그니처 추출 ({ 이전까지)
-        node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
-        
-        if (ctx.methodModifier() != null && !ctx.methodModifier().isEmpty()) {
-            node.modifiers = ctx.methodModifier().stream().map(m -> m.getText()).collect(Collectors.joining(" "));
-        }
-        
-        if (ctx.methodHeader() != null && ctx.methodHeader().result() != null) {
-            node.returnType = ctx.methodHeader().result().getText();
-        }
-        
-        if (ctx.methodHeader() != null && ctx.methodHeader().typeParameters() != null) {
-            node.genericType = ctx.methodHeader().typeParameters().getText();
-        }
-        
-        if (ctx.methodHeader() != null && ctx.methodHeader().methodDeclarator() != null 
-                && ctx.methodHeader().methodDeclarator().formalParameterList() != null) {
-            node.parameters = ctx.methodHeader().methodDeclarator().formalParameterList().getText();
-        }
-    }
-    
-    @Override
-    public void exitMethodDeclaration(Java20Parser.MethodDeclarationContext ctx) {
-        exitStatement("METHOD", ctx.getStop().getLine(), ctx);
-    }
-    
     // @Override
-    // public void enterMethodHeader(Java20Parser.MethodHeaderContext ctx) {
-    //     enterStatement("METHOD_SIGNATURE", ctx.getStart().getLine());
+    // public void enterAssignment(Java20Parser.AssignmentContext ctx) {
+    //     enterStatement("ASSIGNMENT", null, ctx.getStart().getLine());
     // }
     
     // @Override
-    // public void exitMethodHeader(Java20Parser.MethodHeaderContext ctx) {
-    //     exitStatement("METHOD_SIGNATURE", ctx.getStop().getLine(), ctx);
+    // public void exitAssignment(Java20Parser.AssignmentContext ctx) {
+    //     exitStatement("ASSIGNMENT", ctx.getStop().getLine(), ctx);
     // }
-    
-    @Override
-    public void enterConstructorDeclaration(Java20Parser.ConstructorDeclarationContext ctx) {
-        String name = null;
-        if (ctx.constructorDeclarator() != null && ctx.constructorDeclarator().simpleTypeName() != null) {
-            name = ctx.constructorDeclarator().simpleTypeName().getText();
-        }
-        Node node = enterStatement("CONSTRUCTOR", name, ctx.getStart().getLine());
-        
-        node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
-        
-        if (ctx.constructorModifier() != null && !ctx.constructorModifier().isEmpty()) {
-            node.modifiers = ctx.constructorModifier().stream().map(m -> m.getText()).collect(Collectors.joining(" "));
-        }
-        
-        if (ctx.constructorDeclarator() != null && ctx.constructorDeclarator().typeParameters() != null) {
-            node.genericType = ctx.constructorDeclarator().typeParameters().getText();
-        }
-        
-        if (ctx.constructorDeclarator() != null && ctx.constructorDeclarator().formalParameterList() != null) {
-            node.parameters = ctx.constructorDeclarator().formalParameterList().getText();
-        }
-    }
-    
-    @Override
-    public void exitConstructorDeclaration(Java20Parser.ConstructorDeclarationContext ctx) {
-        exitStatement("CONSTRUCTOR", ctx.getStop().getLine(), ctx);
-    }
-    
-    @Override
-    public void enterInterfaceMethodDeclaration(Java20Parser.InterfaceMethodDeclarationContext ctx) {
-        String name = null;
-        if (ctx.methodHeader() != null && ctx.methodHeader().methodDeclarator() != null 
-                && ctx.methodHeader().methodDeclarator().identifier() != null) {
-            name = ctx.methodHeader().methodDeclarator().identifier().getText();
-        }
-        Node node = enterStatement("METHOD", name, ctx.getStart().getLine());
-        
-        node.signature = ParserUtils.extractSignature(ctx, tokens, ";");
-        
-        if (ctx.interfaceMethodModifier() != null && !ctx.interfaceMethodModifier().isEmpty()) {
-            node.modifiers = ctx.interfaceMethodModifier().stream().map(m -> m.getText()).collect(Collectors.joining(" "));
-        }
-        
-        if (ctx.methodHeader() != null && ctx.methodHeader().result() != null) {
-            node.returnType = ctx.methodHeader().result().getText();
-        }
-        
-        if (ctx.methodHeader() != null && ctx.methodHeader().typeParameters() != null) {
-            node.genericType = ctx.methodHeader().typeParameters().getText();
-        }
-        
-        if (ctx.methodHeader() != null && ctx.methodHeader().methodDeclarator() != null 
-                && ctx.methodHeader().methodDeclarator().formalParameterList() != null) {
-            node.parameters = ctx.methodHeader().methodDeclarator().formalParameterList().getText();
-        }
-    }
-    
-    @Override
-    public void exitInterfaceMethodDeclaration(Java20Parser.InterfaceMethodDeclarationContext ctx) {
-        exitStatement("METHOD", ctx.getStop().getLine(), ctx);
-    }
-    
-    // ========================================
-    // 메서드 호출/참조
-    // ========================================
-    
-    @Override
-    public void enterMethodInvocation(Java20Parser.MethodInvocationContext ctx) {
-        String name = null;
-        if (ctx.identifier() != null) {
-            name = ctx.identifier().getText();
-        } else if (ctx.methodName() != null) {
-            name = ctx.methodName().getText();
-        }
-        enterStatement("METHOD_CALL", name, ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitMethodInvocation(Java20Parser.MethodInvocationContext ctx) {
-        exitStatement("METHOD_CALL", ctx.getStop().getLine(), ctx);
-    }
-    
-    @Override
-    public void enterMethodReference(Java20Parser.MethodReferenceContext ctx) {
-        String name = ctx.identifier() != null ? ctx.identifier().getText() : null;
-        enterStatement("METHOD_CALL", name, ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitMethodReference(Java20Parser.MethodReferenceContext ctx) {
-        exitStatement("METHOD_CALL", ctx.getStop().getLine(), ctx);
-    }
     
     // ========================================
     // 객체 생성
     // ========================================
     
-    @Override
-    public void enterClassInstanceCreationExpression(Java20Parser.ClassInstanceCreationExpressionContext ctx) {
-        String name = null;
-        if (ctx.unqualifiedClassInstanceCreationExpression() != null 
-                && ctx.unqualifiedClassInstanceCreationExpression().classOrInterfaceTypeToInstantiate() != null) {
-            name = ctx.unqualifiedClassInstanceCreationExpression().classOrInterfaceTypeToInstantiate().getText();
-        }
-        enterStatement("NEW_INSTANCE", name, ctx.getStart().getLine());
-    }
+    // @Override
+    // public void enterClassInstanceCreationExpression(Java20Parser.ClassInstanceCreationExpressionContext ctx) {
+    //     String name = null;
+    //     if (ctx.unqualifiedClassInstanceCreationExpression() != null 
+    //             && ctx.unqualifiedClassInstanceCreationExpression().classOrInterfaceTypeToInstantiate() != null) {
+    //         name = ctx.unqualifiedClassInstanceCreationExpression().classOrInterfaceTypeToInstantiate().getText();
+    //     }
+    //     enterStatement("NEW_INSTANCE", name, ctx.getStart().getLine());
+    // }
     
-    @Override
-    public void exitClassInstanceCreationExpression(Java20Parser.ClassInstanceCreationExpressionContext ctx) {
-        exitStatement("NEW_INSTANCE", ctx.getStop().getLine(), ctx);
-    }
-    
-    // ========================================
-    // 제어 흐름
-    // ========================================
-    
-    @Override
-    public void enterIfThenStatement(Java20Parser.IfThenStatementContext ctx) {
-        enterStatement("IF", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitIfThenStatement(Java20Parser.IfThenStatementContext ctx) {
-        exitStatement("IF", ctx.getStop().getLine(), ctx);
-    }
-    
-    @Override
-    public void enterIfThenElseStatement(Java20Parser.IfThenElseStatementContext ctx) {
-        enterStatement("ELSE", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitIfThenElseStatement(Java20Parser.IfThenElseStatementContext ctx) {
-        exitStatement("ELSE", ctx.getStop().getLine(), ctx);
-    }
-    
-    @Override
-    public void enterForStatement(Java20Parser.ForStatementContext ctx) {
-        enterStatement("FOR", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitForStatement(Java20Parser.ForStatementContext ctx) {
-        exitStatement("FOR", ctx.getStop().getLine(), ctx);
-    }
-    
-    @Override
-    public void enterWhileStatement(Java20Parser.WhileStatementContext ctx) {
-        enterStatement("WHILE", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitWhileStatement(Java20Parser.WhileStatementContext ctx) {
-        exitStatement("WHILE", ctx.getStop().getLine(), ctx);
-    }
-    
-    @Override
-    public void enterDoStatement(Java20Parser.DoStatementContext ctx) {
-        enterStatement("DO_WHILE", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitDoStatement(Java20Parser.DoStatementContext ctx) {
-        exitStatement("DO_WHILE", ctx.getStop().getLine(), ctx);
-    }
-    
-    @Override
-    public void enterSwitchStatement(Java20Parser.SwitchStatementContext ctx) {
-        enterStatement("SWITCH", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitSwitchStatement(Java20Parser.SwitchStatementContext ctx) {
-        exitStatement("SWITCH", ctx.getStop().getLine(), ctx);
-    }
+    // @Override
+    // public void exitClassInstanceCreationExpression(Java20Parser.ClassInstanceCreationExpressionContext ctx) {
+    //     exitStatement("NEW_INSTANCE", ctx.getStop().getLine(), ctx);
+    // }
     
     // ========================================
-    // 예외 처리
+    // return
     // ========================================
     
-    @Override
-    public void enterTryStatement(Java20Parser.TryStatementContext ctx) {
-        enterStatement("TRY", ctx.getStart().getLine());
-    }
+    // @Override
+    // public void enterReturnStatement(Java20Parser.ReturnStatementContext ctx) {
+    //     enterStatement("RETURN", null, ctx.getStart().getLine());
+    // }
     
-    @Override
-    public void exitTryStatement(Java20Parser.TryStatementContext ctx) {
-        exitStatement("TRY", ctx.getStop().getLine(), ctx);
-    }
-    
-    @Override
-    public void enterCatchClause(Java20Parser.CatchClauseContext ctx) {
-        enterStatement("CATCH", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitCatchClause(Java20Parser.CatchClauseContext ctx) {
-        exitStatement("CATCH", ctx.getStop().getLine(), ctx);
-    }
-    
-    @Override
-    public void enterFinallyBlock(Java20Parser.FinallyBlockContext ctx) {
-        enterStatement("FINALLY", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitFinallyBlock(Java20Parser.FinallyBlockContext ctx) {
-        exitStatement("FINALLY", ctx.getStop().getLine(), ctx);
-    }
-    
-    @Override
-    public void enterThrowStatement(Java20Parser.ThrowStatementContext ctx) {
-        enterStatement("THROW", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitThrowStatement(Java20Parser.ThrowStatementContext ctx) {
-        exitStatement("THROW", ctx.getStop().getLine(), ctx);
-    }
-    
-    // ========================================
-    // 점프 문
-    // ========================================
-    
-    @Override
-    public void enterReturnStatement(Java20Parser.ReturnStatementContext ctx) {
-        enterStatement("RETURN", ctx.getStart().getLine());
-    }
-    
-    @Override
-    public void exitReturnStatement(Java20Parser.ReturnStatementContext ctx) {
-        exitStatement("RETURN", ctx.getStop().getLine(), ctx);
-    }
+    // @Override
+    // public void exitReturnStatement(Java20Parser.ReturnStatementContext ctx) {
+    //     exitStatement("RETURN", ctx.getStop().getLine(), ctx);
+    // }
     
     // ========================================
     // 디버깅용
@@ -643,6 +490,7 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         StringBuilder info = new StringBuilder();
         info.append(indent).append(node.type);
         if (node.name != null) info.append(" [").append(node.name).append("]");
+        if (node.annotations != null) info.append(" @{").append(node.annotations).append("}");
         if (node.modifiers != null) info.append(" {").append(node.modifiers).append("}");
         if (node.extendsType != null) info.append(" extends:").append(node.extendsType);
         if (node.implementsTypes != null) info.append(" implements:").append(node.implementsTypes);

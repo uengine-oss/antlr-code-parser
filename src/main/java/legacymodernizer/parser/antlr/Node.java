@@ -14,13 +14,15 @@ public class Node {
     public String name;           // 이름 (클래스명, 메서드명, 프로시저명 등)
     public int startLine;         // 시작 라인
     public int endLine;           // 종료 라인
-    public String code;           // 원본 소스코드 (라인번호 포함, 줄바꿈 유지)
+    public String code;           // 원본 소스코드 본체 (라인번호 포함, 줄바꿈 유지)
+    public String comment;        // 선행 주석 (Javadoc 등, 라인번호 포함)
     
     // ========================================
     // 선언부 관련 (클래스, 메서드, 프로시저/함수)
     // ========================================
     public String signature;      // 선언부 전체 (IS/AS 이전, { 이전 등)
     public String modifiers;      // 수정자 (public, private, static 등)
+    public String annotations;    // 어노테이션 목록 (@Override, @Deprecated 등)
     public String returnType;     // 리턴 타입
     public String parameters;     // 파라미터 목록
     public String genericType;    // 제네릭 타입 파라미터
@@ -40,6 +42,17 @@ public class Node {
     // 스키마 관련 (PL/SQL, PostgreSQL)
     // ========================================
     public String schema;         // 스키마명 (schema.procedure_name)
+    
+    // ========================================
+    // 소속 클래스 관련 (CLASS/INTERFACE 자식 노드)
+    // ========================================
+    public String className;      // 소속 클래스/인터페이스명
+    
+    // ========================================
+    // 파일 관련 (FILE 노드)
+    // ========================================
+    public String fileName;       // 파일명 (예: "UserService.java")
+    public String filePath;       // 파일 경로 (예: "com/example/service/UserService.java" 또는 전체 경로)
     
     // ========================================
     // 트리 구조
@@ -72,6 +85,7 @@ public class Node {
         appendJsonField(json, "name", name);
         appendJsonField(json, "signature", signature);
         appendJsonField(json, "modifiers", modifiers);
+        appendJsonField(json, "annotations", annotations);
         appendJsonField(json, "returnType", returnType);
         appendJsonField(json, "parameters", parameters);
         appendJsonField(json, "genericType", genericType);
@@ -79,6 +93,10 @@ public class Node {
         appendJsonField(json, "implementsTypes", implementsTypes);
         appendJsonField(json, "fieldType", fieldType);
         appendJsonField(json, "schema", schema);
+        appendJsonField(json, "className", className);
+        appendJsonField(json, "fileName", fileName);
+        appendJsonField(json, "filePath", filePath);
+        appendJsonField(json, "comment", comment);
         appendJsonField(json, "code", code);
         
         // 라인 정보
@@ -90,6 +108,43 @@ public class Node {
         for (int i = 0; i < children.size(); i++) {
             if (i > 0) json.append(",");
             json.append(children.get(i).toJson());
+        }
+        json.append("]");
+        
+        json.append("}");
+        return json.toString();
+    }
+    
+    /**
+     * 간소화 JSON 출력 (type, name, startLine, endLine, children만 포함)
+     * 트리 구조 확인용
+     */
+    public String toSimpleJson() {
+        StringBuilder json = new StringBuilder();
+        json.append("{");
+        
+        json.append("\"type\":\"").append(type).append("\"");
+        
+        if (name != null) {
+            json.append(",\"name\":\"").append(escapeJson(name)).append("\"");
+        }
+        if (fileName != null) {
+            json.append(",\"fileName\":\"").append(escapeJson(fileName)).append("\"");
+        }
+        if (filePath != null) {
+            json.append(",\"filePath\":\"").append(escapeJson(filePath)).append("\"");
+        }
+        if (className != null) {
+            json.append(",\"className\":\"").append(escapeJson(className)).append("\"");
+        }
+        
+        json.append(",\"startLine\":").append(startLine);
+        json.append(",\"endLine\":").append(endLine);
+        
+        json.append(",\"children\":[");
+        for (int i = 0; i < children.size(); i++) {
+            if (i > 0) json.append(",");
+            json.append(children.get(i).toSimpleJson());
         }
         json.append("]");
         

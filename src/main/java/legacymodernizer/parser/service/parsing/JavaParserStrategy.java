@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.Set;
 
@@ -56,6 +57,26 @@ public class JavaParserStrategy implements TargetParserStrategy {
             Java20Parser.Start_Context tree = parser.start_();
 
             CustomJavaListener listener = new CustomJavaListener(tokens, tracker);
+            
+            // 파일 정보 설정
+            String fileName = file.getName();
+            // sourceDir 기준 상대 경로 계산
+            Path sourceDir = fileParserService.sourceDir();
+            Path filePath = file.toPath();
+            String relativePath = null;
+            try {
+                if (filePath.startsWith(sourceDir)) {
+                    relativePath = sourceDir.relativize(filePath).toString().replace('\\', '/');
+                } else {
+                    // sourceDir 밖이면 절대 경로 사용
+                    relativePath = filePath.toString().replace('\\', '/');
+                }
+            } catch (Exception e) {
+                // 경로 계산 실패 시 파일명만 사용
+                relativePath = fileName;
+            }
+            listener.setFileInfo(fileName, relativePath);
+            
             new ParseTreeWalker().walk(listener, tree);
 
             try (FileWriter writer = new FileWriter(outputPath)) {

@@ -1,6 +1,9 @@
 package legacymodernizer.parser.antlr;
 
+import java.util.List;
+
 import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.TokenStream;
@@ -79,6 +82,52 @@ public class ParserUtils {
         for (int i = 0; i < lines.length; i++) {
             if (i > 0) result.append("\n");
             result.append(startLine + i).append(": ").append(lines[i]);
+        }
+        
+        return result.toString();
+    }
+    
+    /**
+     * 선행 주석(Javadoc 등) 텍스트 추출 (라인번호 포함)
+     * HIDDEN 채널에서 선언문 직전의 주석만 추출하여 반환
+     */
+    public static String getLeadingComment(ParserRuleContext ctx, CommonTokenStream tokens) {
+        if (ctx == null || ctx.getStart() == null) return null;
+        
+        List<Token> hiddenTokens = tokens.getHiddenTokensToLeft(
+            ctx.getStart().getTokenIndex(), Token.HIDDEN_CHANNEL
+        );
+        
+        if (hiddenTokens == null || hiddenTokens.isEmpty()) return null;
+        
+        // 주석 토큰만 필터 (WS 제외, COMMENT/LINE_COMMENT만)
+        Token firstComment = null;
+        Token lastComment = null;
+        for (Token t : hiddenTokens) {
+            String text = t.getText().trim();
+            if (text.startsWith("/*") || text.startsWith("//")) {
+                if (firstComment == null) {
+                    firstComment = t;
+                }
+                lastComment = t;
+            }
+        }
+        
+        if (firstComment == null) return null;
+        
+        CharStream input = ctx.getStart().getInputStream();
+        if (input == null) return null;
+        
+        String commentText = input.getText(new Interval(firstComment.getStartIndex(), lastComment.getStopIndex()));
+        if (commentText == null || commentText.trim().isEmpty()) return null;
+        
+        // 라인번호 추가
+        int commentStartLine = firstComment.getLine();
+        String[] lines = commentText.split("\n", -1);
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < lines.length; i++) {
+            if (i > 0) result.append("\n");
+            result.append(commentStartLine + i).append(": ").append(lines[i]);
         }
         
         return result.toString();
