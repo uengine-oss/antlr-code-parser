@@ -2,8 +2,10 @@ package legacymodernizer.parser.service.parsing;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileWriter;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.Set;
 
@@ -60,9 +62,7 @@ public class PlSqlParserStrategy implements TargetParserStrategy {
             CustomPlSqlListener listener = new CustomPlSqlListener(tokens, tracker);
             new ParseTreeWalker().walk(listener, tree);
 
-            try (FileWriter writer = new FileWriter(outputPath)) {
-                writer.write(listener.getRoot().toJson());
-            }
+            Files.writeString(Path.of(outputPath), listener.getRoot().toJson(), StandardCharsets.UTF_8);
         }
     }
 

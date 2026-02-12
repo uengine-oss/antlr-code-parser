@@ -37,3 +37,7 @@ result
 
 ### Local config ###
 src/main/resources/application.properties
+
+# Private Datas
+p_*
+.temp
