@@ -65,11 +65,59 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     }
     
     private void exitStatement(String type, int line, ParserRuleContext ctx) {
+        if (nodeStack.isEmpty()) return;
         Node node = nodeStack.pop();
         node.endLine = line;
         if (ctx != null) {
-            node.code = ParserUtils.getCodeWithLineNumbers(ctx);
+            node.code = ParserUtils.getCodeWithLineNumbers(ctx, tokens);
+            // 선행 주석 추출
+            if (tokens instanceof CommonTokenStream) {
+                node.comment = ParserUtils.getLeadingComment(ctx, (CommonTokenStream) tokens);
+            }
         }
+    }
+
+    // ========================================
+    // 유틸리티 메서드
+    // ========================================
+    
+    /**
+     * 스키마.이름 형태에서 분리
+     */
+    private String[] extractSchemaAndName(String fullName) {
+        if (fullName == null) return new String[]{null, null};
+        if (fullName.contains(".")) {
+            String[] parts = fullName.split("\\.", 2);
+            return new String[]{parts[0], parts[1]};
+        }
+        return new String[]{null, fullName};
+    }
+    
+    /**
+     * PostgreSQL 함수 파라미터 목록 추출
+     */
+    private String extractPostgreSQLParameters(PostgreSQLParser.Func_args_with_defaultsContext funcArgs) {
+        if (funcArgs == null || funcArgs.func_args_with_defaults_list() == null) return null;
+        
+        java.util.List<PostgreSQLParser.Func_arg_with_defaultContext> args = 
+            funcArgs.func_args_with_defaults_list().func_arg_with_default();
+        
+        if (args == null || args.isEmpty()) return null;
+        
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < args.size(); i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(args.get(i).getText());
+        }
+        return sb.toString();
+    }
+    
+    /**
+     * PostgreSQL 함수 리턴 타입 추출
+     */
+    private String extractPostgreSQLReturnType(PostgreSQLParser.Func_returnContext funcReturn) {
+        if (funcReturn == null) return null;
+        return funcReturn.getText();
     }
 
     // ========================================
@@ -79,12 +127,27 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     @Override
     public void enterCreatefunctionstmt(PostgreSQLParser.CreatefunctionstmtContext ctx) {
         // 함수명 추출
-        String name = null;
+        String fullName = null;
         if (ctx.func_name() != null) {
-            name = ctx.func_name().getText();
+            fullName = ctx.func_name().getText();
         }
         
+        // 스키마와 이름 분리
+        String[] parts = extractSchemaAndName(fullName);
+        String name = parts[1];
+        
         Node node = enterStatement("PROCEDURE", name, ctx.getStart().getLine());
+        node.schema = parts[0];
+        
+        // 파라미터 추출
+        if (ctx.func_args_with_defaults() != null) {
+            node.parameters = extractPostgreSQLParameters(ctx.func_args_with_defaults());
+        }
+        
+        // 리턴 타입 추출
+        if (ctx.func_return() != null) {
+            node.returnType = extractPostgreSQLReturnType(ctx.func_return());
+        }
         
         // 시그니처 추출 (AS $$ 이전까지)
         int dollarLineNumber = findDollarStringLine(ctx);

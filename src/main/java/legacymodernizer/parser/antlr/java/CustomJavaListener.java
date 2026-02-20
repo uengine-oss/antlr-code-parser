@@ -70,7 +70,7 @@ public class CustomJavaListener extends Java20ParserBaseListener {
             node.endLine = line;
             if (ctx != null) {
                 // 본체 코드 (어노테이션 포함, 주석 제외)
-                node.code = ParserUtils.getCodeWithLineNumbers(ctx);
+                node.code = ParserUtils.getCodeWithLineNumbers(ctx, tokens);
                 // 선행 주석 (Javadoc 등) 별도 속성
                 node.comment = ParserUtils.getLeadingComment(ctx, tokens);
             }
@@ -314,7 +314,7 @@ public class CustomJavaListener extends Java20ParserBaseListener {
                 && ctx.methodHeader().methodDeclarator() != null 
                 && ctx.methodHeader().methodDeclarator().formalParameterList() != null) {
             node.parameters = ParserUtils.getOriginalText(
-                    ctx.methodHeader().methodDeclarator().formalParameterList());
+                    ctx.methodHeader().methodDeclarator().formalParameterList(), tokens);
         }
     }
     
@@ -347,7 +347,7 @@ public class CustomJavaListener extends Java20ParserBaseListener {
                 && ctx.methodHeader().methodDeclarator() != null 
                 && ctx.methodHeader().methodDeclarator().formalParameterList() != null) {
             node.parameters = ParserUtils.getOriginalText(
-                    ctx.methodHeader().methodDeclarator().formalParameterList());
+                    ctx.methodHeader().methodDeclarator().formalParameterList(), tokens);
         }
     }
     

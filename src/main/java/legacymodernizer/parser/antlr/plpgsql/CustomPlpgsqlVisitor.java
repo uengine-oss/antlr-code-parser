@@ -60,7 +60,7 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
         int startLine = getActualLineNumber(ctx);
         Node node = new Node(type, name, startLine, parent);
         node.endLine = getActualEndLineNumber(ctx);
-        node.code = ParserUtils.getCodeWithLineNumbers(ctx, baseLineNumber);
+        node.code = ParserUtils.getCodeWithLineNumbers(ctx, baseLineNumber, tokens);
         return node;
     }
 
@@ -478,6 +478,26 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
     @Override
     public Node visitCteStmt(PlpgsqlParser.CteStmtContext ctx) {
         return createNode("CTE", ctx, currentBlockNode);
+    }
+    
+    @Override
+    public Node visitFunctionCall(PlpgsqlParser.FunctionCallContext ctx) {
+        String functionName = null;
+        
+        // 함수명 추출 (Identifier 또는 키워드)
+        if (ctx.Identifier() != null) {
+            functionName = ctx.Identifier().getText();
+        } else if (ctx.LEFT() != null) {
+            functionName = "LEFT";
+        } else if (ctx.RIGHT() != null) {
+            functionName = "RIGHT";
+        } else if (ctx.SUBSTRING() != null) {
+            functionName = "SUBSTRING";
+        } else if (ctx.POSITION() != null) {
+            functionName = "POSITION";
+        }
+        
+        return createNode("CALL", functionName, ctx, currentBlockNode);
     }
     
     @Override

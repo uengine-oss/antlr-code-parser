@@ -1,6 +1,7 @@
 package legacymodernizer.parser.antlr.plsql;
 
 import java.util.Stack;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.TokenStream;
 
@@ -84,6 +85,7 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
     }
     
     private void exitStatement(String type, int line, ParserRuleContext ctx) {
+        if (nodeStack.isEmpty()) return;
         Node node = nodeStack.pop();
         node.endLine = line;
         // 동일 범위 중복 자식 제거
@@ -91,7 +93,11 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
             node.children.removeIf(child -> child.startLine == node.startLine && child.endLine == node.endLine);
         }
         if (ctx != null) {
-            node.code = ParserUtils.getCodeWithLineNumbers(ctx);
+            node.code = ParserUtils.getCodeWithLineNumbers(ctx, tokens);
+            // 선행 주석 추출
+            if (tokens instanceof CommonTokenStream) {
+                node.comment = ParserUtils.getLeadingComment(ctx, (CommonTokenStream) tokens);
+            }
         }
     }
 
@@ -613,6 +619,80 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
     public void exitCommit_statement(PlSqlParser.Commit_statementContext ctx) {
         exitStatement("COMMIT", ctx.getStop().getLine(), ctx);
     }
+
+    // // ========================================
+    // // DDL: CREATE/ALTER/COMMENT
+    // // ========================================
+    
+    // @Override
+    // public void enterCreate_table(PlSqlParser.Create_tableContext ctx) {
+    //     String name = null;
+    //     if (ctx.table_name() != null) {
+    //         name = ctx.table_name().getText();
+    //     }
+    //     enterStatement("CREATE_TABLE", name, ctx.getStart().getLine());
+    // }
+    
+    // @Override
+    // public void exitCreate_table(PlSqlParser.Create_tableContext ctx) {
+    //     exitStatement("CREATE_TABLE", ctx.getStop().getLine(), ctx);
+    // }
+    
+    // @Override
+    // public void enterAlter_table(PlSqlParser.Alter_tableContext ctx) {
+    //     String name = null;
+    //     if (ctx.tableview_name() != null && ctx.tableview_name().getText() != null) {
+    //         name = ctx.tableview_name().getText();
+    //     }
+    //     enterStatement("ALTER_TABLE", name, ctx.getStart().getLine());
+    // }
+    
+    // @Override
+    // public void exitAlter_table(PlSqlParser.Alter_tableContext ctx) {
+    //     exitStatement("ALTER_TABLE", ctx.getStop().getLine(), ctx);
+    // }
+    
+    // @Override
+    // public void enterComment_on_column(PlSqlParser.Comment_on_columnContext ctx) {
+    //     String name = null;
+    //     if (ctx.column_name() != null) {
+    //         name = ctx.column_name().getText();
+    //     }
+    //     enterStatement("COMMENT_ON_COLUMN", name, ctx.getStart().getLine());
+    // }
+    
+    // @Override
+    // public void exitComment_on_column(PlSqlParser.Comment_on_columnContext ctx) {
+    //     exitStatement("COMMENT_ON_COLUMN", ctx.getStop().getLine(), ctx);
+    // }
+    
+    // @Override
+    // public void enterComment_on_table(PlSqlParser.Comment_on_tableContext ctx) {
+    //     String name = null;
+    //     if (ctx.tableview_name() != null && ctx.tableview_name().getText() != null) {
+    //         name = ctx.tableview_name().getText();
+    //     }
+    //     enterStatement("COMMENT_ON_TABLE", name, ctx.getStart().getLine());
+    // }
+    
+    // @Override
+    // public void exitComment_on_table(PlSqlParser.Comment_on_tableContext ctx) {
+    //     exitStatement("COMMENT_ON_TABLE", ctx.getStop().getLine(), ctx);
+    // }
+    
+    // @Override
+    // public void enterCreate_index(PlSqlParser.Create_indexContext ctx) {
+    //     String name = null;
+    //     if (ctx.index_name() != null) {
+    //         name = ctx.index_name().getText();
+    //     }
+    //     enterStatement("CREATE_INDEX", name, ctx.getStart().getLine());
+    // }
+    
+    // @Override
+    // public void exitCreate_index(PlSqlParser.Create_indexContext ctx) {
+    //     exitStatement("CREATE_INDEX", ctx.getStop().getLine(), ctx);
+    // }
 
     // ========================================
     // 디버깅용

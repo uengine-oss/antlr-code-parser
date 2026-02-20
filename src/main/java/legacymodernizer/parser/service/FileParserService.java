@@ -239,7 +239,7 @@ public class FileParserService {
         }
 
         try {
-            // 파일 목록 수집
+            // source 폴더의 파일만 수집
             List<Path> files = Files.walk(sourceBase)
                     .filter(Files::isRegularFile)
                     .toList();
