@@ -1,6 +1,5 @@
-// Generated from ../PlSqlParser.g4 by ANTLR 4.13.1
+// Generated from antlr-grammars/PlSqlParser.g4 by ANTLR 4.13.2
 package legacymodernizer.parser.antlr.plsql;
-
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 /**
@@ -278,26 +277,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitDiskgroup_attributes(PlSqlParser.Diskgroup_attributesContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#modify_diskgroup_file}.
-	 * @param ctx the parse tree
-	 */
-	void enterModify_diskgroup_file(PlSqlParser.Modify_diskgroup_fileContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#modify_diskgroup_file}.
-	 * @param ctx the parse tree
-	 */
-	void exitModify_diskgroup_file(PlSqlParser.Modify_diskgroup_fileContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#disk_region_clause}.
-	 * @param ctx the parse tree
-	 */
-	void enterDisk_region_clause(PlSqlParser.Disk_region_clauseContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#disk_region_clause}.
-	 * @param ctx the parse tree
-	 */
-	void exitDisk_region_clause(PlSqlParser.Disk_region_clauseContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#drop_diskgroup_file_clause}.
 	 * @param ctx the parse tree
@@ -1139,16 +1118,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitTrigger_body(PlSqlParser.Trigger_bodyContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#routine_clause}.
-	 * @param ctx the parse tree
-	 */
-	void enterRoutine_clause(PlSqlParser.Routine_clauseContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#routine_clause}.
-	 * @param ctx the parse tree
-	 */
-	void exitRoutine_clause(PlSqlParser.Routine_clauseContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#compound_trigger_block}.
 	 * @param ctx the parse tree
 	 */
@@ -1288,26 +1257,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitAlter_method_element(PlSqlParser.Alter_method_elementContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#alter_attribute_definition}.
-	 * @param ctx the parse tree
-	 */
-	void enterAlter_attribute_definition(PlSqlParser.Alter_attribute_definitionContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#alter_attribute_definition}.
-	 * @param ctx the parse tree
-	 */
-	void exitAlter_attribute_definition(PlSqlParser.Alter_attribute_definitionContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#attribute_definition}.
-	 * @param ctx the parse tree
-	 */
-	void enterAttribute_definition(PlSqlParser.Attribute_definitionContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#attribute_definition}.
-	 * @param ctx the parse tree
-	 */
-	void exitAttribute_definition(PlSqlParser.Attribute_definitionContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#alter_collection_clauses}.
 	 * @param ctx the parse tree
@@ -1558,6 +1507,16 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitOverriding_function_spec(PlSqlParser.Overriding_function_specContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#overriding_procedure_spec}.
+	 * @param ctx the parse tree
+	 */
+	void enterOverriding_procedure_spec(PlSqlParser.Overriding_procedure_specContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#overriding_procedure_spec}.
+	 * @param ctx the parse tree
+	 */
+	void exitOverriding_procedure_spec(PlSqlParser.Overriding_procedure_specContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#type_procedure_spec}.
 	 * @param ctx the parse tree
@@ -4699,6 +4658,16 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitParallel_clause(PlSqlParser.Parallel_clauseContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#parallel_instances_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterParallel_instances_clause(PlSqlParser.Parallel_instances_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#parallel_instances_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitParallel_instances_clause(PlSqlParser.Parallel_instances_clauseContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#alter_materialized_view}.
 	 * @param ctx the parse tree
 	 */
@@ -4788,46 +4757,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitMv_log_augmentation(PlSqlParser.Mv_log_augmentationContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#datetime_expr}.
-	 * @param ctx the parse tree
-	 */
-	void enterDatetime_expr(PlSqlParser.Datetime_exprContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#datetime_expr}.
-	 * @param ctx the parse tree
-	 */
-	void exitDatetime_expr(PlSqlParser.Datetime_exprContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#interval_expr}.
-	 * @param ctx the parse tree
-	 */
-	void enterInterval_expr(PlSqlParser.Interval_exprContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#interval_expr}.
-	 * @param ctx the parse tree
-	 */
-	void exitInterval_expr(PlSqlParser.Interval_exprContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#synchronous_or_asynchronous}.
-	 * @param ctx the parse tree
-	 */
-	void enterSynchronous_or_asynchronous(PlSqlParser.Synchronous_or_asynchronousContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#synchronous_or_asynchronous}.
-	 * @param ctx the parse tree
-	 */
-	void exitSynchronous_or_asynchronous(PlSqlParser.Synchronous_or_asynchronousContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#including_or_excluding}.
-	 * @param ctx the parse tree
-	 */
-	void enterIncluding_or_excluding(PlSqlParser.Including_or_excludingContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#including_or_excluding}.
-	 * @param ctx the parse tree
-	 */
-	void exitIncluding_or_excluding(PlSqlParser.Including_or_excludingContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#create_materialized_view_log}.
 	 * @param ctx the parse tree
@@ -5119,6 +5048,16 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitDrop_materialized_view(PlSqlParser.Drop_materialized_viewContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#drop_materialized_view_log}.
+	 * @param ctx the parse tree
+	 */
+	void enterDrop_materialized_view_log(PlSqlParser.Drop_materialized_view_logContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#drop_materialized_view_log}.
+	 * @param ctx the parse tree
+	 */
+	void exitDrop_materialized_view_log(PlSqlParser.Drop_materialized_view_logContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#create_context}.
 	 * @param ctx the parse tree
 	 */
@@ -5368,6 +5307,26 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitRelational_table(PlSqlParser.Relational_tableContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#relational_table_properties}.
+	 * @param ctx the parse tree
+	 */
+	void enterRelational_table_properties(PlSqlParser.Relational_table_propertiesContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#relational_table_properties}.
+	 * @param ctx the parse tree
+	 */
+	void exitRelational_table_properties(PlSqlParser.Relational_table_propertiesContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#relational_table_property}.
+	 * @param ctx the parse tree
+	 */
+	void enterRelational_table_property(PlSqlParser.Relational_table_propertyContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#relational_table_property}.
+	 * @param ctx the parse tree
+	 */
+	void exitRelational_table_property(PlSqlParser.Relational_table_propertyContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#immutable_table_clauses}.
 	 * @param ctx the parse tree
@@ -5909,16 +5868,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitLob_partitioning_storage(PlSqlParser.Lob_partitioning_storageContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#datatype_null_enable}.
-	 * @param ctx the parse tree
-	 */
-	void enterDatatype_null_enable(PlSqlParser.Datatype_null_enableContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#datatype_null_enable}.
-	 * @param ctx the parse tree
-	 */
-	void exitDatatype_null_enable(PlSqlParser.Datatype_null_enableContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#size_clause}.
 	 * @param ctx the parse tree
 	 */
@@ -6179,15 +6128,225 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitExternal_table_data_props(PlSqlParser.External_table_data_propsContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#opaque_format_spec}.
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_data_format}.
 	 * @param ctx the parse tree
 	 */
-	void enterOpaque_format_spec(PlSqlParser.Opaque_format_specContext ctx);
+	void enterExternal_table_data_format(PlSqlParser.External_table_data_formatContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#opaque_format_spec}.
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_data_format}.
 	 * @param ctx the parse tree
 	 */
-	void exitOpaque_format_spec(PlSqlParser.Opaque_format_specContext ctx);
+	void exitExternal_table_data_format(PlSqlParser.External_table_data_formatContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_transform}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_transform(PlSqlParser.External_table_transformContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_transform}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_transform(PlSqlParser.External_table_transformContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_field}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_field(PlSqlParser.External_table_fieldContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_field}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_field(PlSqlParser.External_table_fieldContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_field_list}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_field_list(PlSqlParser.External_table_field_listContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_field_list}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_field_list(PlSqlParser.External_table_field_listContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_fields_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_fields_clause(PlSqlParser.External_table_fields_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_fields_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_fields_clause(PlSqlParser.External_table_fields_clauseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_position_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_position_clause(PlSqlParser.External_table_position_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_position_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_position_clause(PlSqlParser.External_table_position_clauseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_datatype_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_datatype_clause(PlSqlParser.External_table_datatype_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_datatype_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_datatype_clause(PlSqlParser.External_table_datatype_clauseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_delimit_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_delimit_clause(PlSqlParser.External_table_delimit_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_delimit_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_delimit_clause(PlSqlParser.External_table_delimit_clauseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_trim_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_trim_clause(PlSqlParser.External_table_trim_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_trim_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_trim_clause(PlSqlParser.External_table_trim_clauseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_date_format_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_date_format_clause(PlSqlParser.External_table_date_format_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_date_format_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_date_format_clause(PlSqlParser.External_table_date_format_clauseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_init_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_init_clause(PlSqlParser.External_table_init_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_init_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_init_clause(PlSqlParser.External_table_init_clauseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_condition_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_condition_clause(PlSqlParser.External_table_condition_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_condition_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_condition_clause(PlSqlParser.External_table_condition_clauseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_lls_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_lls_clause(PlSqlParser.External_table_lls_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_lls_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_lls_clause(PlSqlParser.External_table_lls_clauseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_records}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_records(PlSqlParser.External_table_recordsContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_records}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_records(PlSqlParser.External_table_recordsContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_record_options_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_record_options_clause(PlSqlParser.External_table_record_options_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_record_options_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_record_options_clause(PlSqlParser.External_table_record_options_clauseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_output_files}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_output_files(PlSqlParser.External_table_output_filesContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_output_files}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_output_files(PlSqlParser.External_table_output_filesContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_fields}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_fields(PlSqlParser.External_table_fieldsContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_fields}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_fields(PlSqlParser.External_table_fieldsContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_datapump}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_datapump(PlSqlParser.External_table_datapumpContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_datapump}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_datapump(PlSqlParser.External_table_datapumpContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_hive}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_hive(PlSqlParser.External_table_hiveContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_hive}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_hive(PlSqlParser.External_table_hiveContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_hive_parameter_map}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_hive_parameter_map(PlSqlParser.External_table_hive_parameter_mapContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_hive_parameter_map}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_hive_parameter_map(PlSqlParser.External_table_hive_parameter_mapContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_hive_parameter_map_entry}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_hive_parameter_map_entry(PlSqlParser.External_table_hive_parameter_map_entryContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_hive_parameter_map_entry}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_hive_parameter_map_entry(PlSqlParser.External_table_hive_parameter_map_entryContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#external_table_directory}.
+	 * @param ctx the parse tree
+	 */
+	void enterExternal_table_directory(PlSqlParser.External_table_directoryContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#external_table_directory}.
+	 * @param ctx the parse tree
+	 */
+	void exitExternal_table_directory(PlSqlParser.External_table_directoryContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#row_movement_clause}.
 	 * @param ctx the parse tree
@@ -7239,6 +7398,16 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitLink_authentication(PlSqlParser.Link_authenticationContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#create_schema}.
+	 * @param ctx the parse tree
+	 */
+	void enterCreate_schema(PlSqlParser.Create_schemaContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#create_schema}.
+	 * @param ctx the parse tree
+	 */
+	void exitCreate_schema(PlSqlParser.Create_schemaContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#create_database}.
 	 * @param ctx the parse tree
 	 */
@@ -7578,6 +7747,36 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitAlter_interval_partition(PlSqlParser.Alter_interval_partitionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#move_table_partition}.
+	 * @param ctx the parse tree
+	 */
+	void enterMove_table_partition(PlSqlParser.Move_table_partitionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#move_table_partition}.
+	 * @param ctx the parse tree
+	 */
+	void exitMove_table_partition(PlSqlParser.Move_table_partitionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#filter_condition}.
+	 * @param ctx the parse tree
+	 */
+	void enterFilter_condition(PlSqlParser.Filter_conditionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#filter_condition}.
+	 * @param ctx the parse tree
+	 */
+	void exitFilter_condition(PlSqlParser.Filter_conditionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#rename_table_partition}.
+	 * @param ctx the parse tree
+	 */
+	void enterRename_table_partition(PlSqlParser.Rename_table_partitionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#rename_table_partition}.
+	 * @param ctx the parse tree
+	 */
+	void exitRename_table_partition(PlSqlParser.Rename_table_partitionContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#partition_extended_names}.
 	 * @param ctx the parse tree
@@ -7939,16 +8138,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitAdd_column_clause(PlSqlParser.Add_column_clauseContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#alter_varray_col_properties}.
-	 * @param ctx the parse tree
-	 */
-	void enterAlter_varray_col_properties(PlSqlParser.Alter_varray_col_propertiesContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#alter_varray_col_properties}.
-	 * @param ctx the parse tree
-	 */
-	void exitAlter_varray_col_properties(PlSqlParser.Alter_varray_col_propertiesContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#varray_col_properties}.
 	 * @param ctx the parse tree
 	 */
@@ -8209,6 +8398,16 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitVirtual_column_definition(PlSqlParser.Virtual_column_definitionContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#virtual_column_expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterVirtual_column_expression(PlSqlParser.Virtual_column_expressionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#virtual_column_expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitVirtual_column_expression(PlSqlParser.Virtual_column_expressionContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#autogenerated_sequence_definition}.
 	 * @param ctx the parse tree
 	 */
@@ -8219,6 +8418,16 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitAutogenerated_sequence_definition(PlSqlParser.Autogenerated_sequence_definitionContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#by_user_for_statistics_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterBy_user_for_statistics_clause(PlSqlParser.By_user_for_statistics_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#by_user_for_statistics_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitBy_user_for_statistics_clause(PlSqlParser.By_user_for_statistics_clauseContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#evaluation_edition_clause}.
 	 * @param ctx the parse tree
 	 */
@@ -8228,16 +8437,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitEvaluation_edition_clause(PlSqlParser.Evaluation_edition_clauseContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#out_of_line_part_storage}.
-	 * @param ctx the parse tree
-	 */
-	void enterOut_of_line_part_storage(PlSqlParser.Out_of_line_part_storageContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#out_of_line_part_storage}.
-	 * @param ctx the parse tree
-	 */
-	void exitOut_of_line_part_storage(PlSqlParser.Out_of_line_part_storageContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#nested_table_col_properties}.
 	 * @param ctx the parse tree
@@ -8289,16 +8488,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitSupplemental_logging_props(PlSqlParser.Supplemental_logging_propsContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#column_or_attribute}.
-	 * @param ctx the parse tree
-	 */
-	void enterColumn_or_attribute(PlSqlParser.Column_or_attributeContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#column_or_attribute}.
-	 * @param ctx the parse tree
-	 */
-	void exitColumn_or_attribute(PlSqlParser.Column_or_attributeContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#object_type_col_properties}.
 	 * @param ctx the parse tree
 	 */
@@ -8349,26 +8538,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitDrop_constraint_clause(PlSqlParser.Drop_constraint_clauseContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#add_constraint}.
-	 * @param ctx the parse tree
-	 */
-	void enterAdd_constraint(PlSqlParser.Add_constraintContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#add_constraint}.
-	 * @param ctx the parse tree
-	 */
-	void exitAdd_constraint(PlSqlParser.Add_constraintContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#add_constraint_clause}.
-	 * @param ctx the parse tree
-	 */
-	void enterAdd_constraint_clause(PlSqlParser.Add_constraint_clauseContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#add_constraint_clause}.
-	 * @param ctx the parse tree
-	 */
-	void exitAdd_constraint_clause(PlSqlParser.Add_constraint_clauseContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#check_constraint}.
 	 * @param ctx the parse tree
 	 */
@@ -8378,36 +8547,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitCheck_constraint(PlSqlParser.Check_constraintContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#drop_constraint}.
-	 * @param ctx the parse tree
-	 */
-	void enterDrop_constraint(PlSqlParser.Drop_constraintContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#drop_constraint}.
-	 * @param ctx the parse tree
-	 */
-	void exitDrop_constraint(PlSqlParser.Drop_constraintContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#enable_constraint}.
-	 * @param ctx the parse tree
-	 */
-	void enterEnable_constraint(PlSqlParser.Enable_constraintContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#enable_constraint}.
-	 * @param ctx the parse tree
-	 */
-	void exitEnable_constraint(PlSqlParser.Enable_constraintContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#disable_constraint}.
-	 * @param ctx the parse tree
-	 */
-	void enterDisable_constraint(PlSqlParser.Disable_constraintContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#disable_constraint}.
-	 * @param ctx the parse tree
-	 */
-	void exitDisable_constraint(PlSqlParser.Disable_constraintContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#foreign_key_clause}.
 	 * @param ctx the parse tree
@@ -8438,26 +8577,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitOn_delete_clause(PlSqlParser.On_delete_clauseContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#unique_key_clause}.
-	 * @param ctx the parse tree
-	 */
-	void enterUnique_key_clause(PlSqlParser.Unique_key_clauseContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#unique_key_clause}.
-	 * @param ctx the parse tree
-	 */
-	void exitUnique_key_clause(PlSqlParser.Unique_key_clauseContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#primary_key_clause}.
-	 * @param ctx the parse tree
-	 */
-	void enterPrimary_key_clause(PlSqlParser.Primary_key_clauseContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#primary_key_clause}.
-	 * @param ctx the parse tree
-	 */
-	void exitPrimary_key_clause(PlSqlParser.Primary_key_clauseContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#anonymous_block}.
 	 * @param ctx the parse tree
@@ -8748,16 +8867,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitStatement(PlSqlParser.StatementContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#swallow_to_semi}.
-	 * @param ctx the parse tree
-	 */
-	void enterSwallow_to_semi(PlSqlParser.Swallow_to_semiContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#swallow_to_semi}.
-	 * @param ctx the parse tree
-	 */
-	void exitSwallow_to_semi(PlSqlParser.Swallow_to_semiContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#assignment_statement}.
 	 * @param ctx the parse tree
@@ -10285,15 +10394,15 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitCondition(PlSqlParser.ConditionContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#expressions}.
+	 * Enter a parse tree produced by {@link PlSqlParser#expressions_}.
 	 * @param ctx the parse tree
 	 */
-	void enterExpressions(PlSqlParser.ExpressionsContext ctx);
+	void enterExpressions_(PlSqlParser.Expressions_Context ctx);
 	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#expressions}.
+	 * Exit a parse tree produced by {@link PlSqlParser#expressions_}.
 	 * @param ctx the parse tree
 	 */
-	void exitExpressions(PlSqlParser.ExpressionsContext ctx);
+	void exitExpressions_(PlSqlParser.Expressions_Context ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#expression}.
 	 * @param ctx the parse tree
@@ -10525,16 +10634,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitSimple_case_statement(PlSqlParser.Simple_case_statementContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#simple_case_when_part}.
-	 * @param ctx the parse tree
-	 */
-	void enterSimple_case_when_part(PlSqlParser.Simple_case_when_partContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#simple_case_when_part}.
-	 * @param ctx the parse tree
-	 */
-	void exitSimple_case_when_part(PlSqlParser.Simple_case_when_partContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#searched_case_statement}.
 	 * @param ctx the parse tree
 	 */
@@ -10545,25 +10644,75 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitSearched_case_statement(PlSqlParser.Searched_case_statementContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#searched_case_when_part}.
+	 * Enter a parse tree produced by {@link PlSqlParser#case_when_part_statement}.
 	 * @param ctx the parse tree
 	 */
-	void enterSearched_case_when_part(PlSqlParser.Searched_case_when_partContext ctx);
+	void enterCase_when_part_statement(PlSqlParser.Case_when_part_statementContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#searched_case_when_part}.
+	 * Exit a parse tree produced by {@link PlSqlParser#case_when_part_statement}.
 	 * @param ctx the parse tree
 	 */
-	void exitSearched_case_when_part(PlSqlParser.Searched_case_when_partContext ctx);
+	void exitCase_when_part_statement(PlSqlParser.Case_when_part_statementContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#case_else_part}.
+	 * Enter a parse tree produced by {@link PlSqlParser#case_else_part_statement}.
 	 * @param ctx the parse tree
 	 */
-	void enterCase_else_part(PlSqlParser.Case_else_partContext ctx);
+	void enterCase_else_part_statement(PlSqlParser.Case_else_part_statementContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#case_else_part}.
+	 * Exit a parse tree produced by {@link PlSqlParser#case_else_part_statement}.
 	 * @param ctx the parse tree
 	 */
-	void exitCase_else_part(PlSqlParser.Case_else_partContext ctx);
+	void exitCase_else_part_statement(PlSqlParser.Case_else_part_statementContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#case_expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterCase_expression(PlSqlParser.Case_expressionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#case_expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitCase_expression(PlSqlParser.Case_expressionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#simple_case_expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterSimple_case_expression(PlSqlParser.Simple_case_expressionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#simple_case_expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitSimple_case_expression(PlSqlParser.Simple_case_expressionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#searched_case_expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterSearched_case_expression(PlSqlParser.Searched_case_expressionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#searched_case_expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitSearched_case_expression(PlSqlParser.Searched_case_expressionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#case_when_part_expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterCase_when_part_expression(PlSqlParser.Case_when_part_expressionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#case_when_part_expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitCase_when_part_expression(PlSqlParser.Case_when_part_expressionContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#case_else_part_expression}.
+	 * @param ctx the parse tree
+	 */
+	void enterCase_else_part_expression(PlSqlParser.Case_else_part_expressionContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#case_else_part_expression}.
+	 * @param ctx the parse tree
+	 */
+	void exitCase_else_part_expression(PlSqlParser.Case_else_part_expressionContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#atom}.
 	 * @param ctx the parse tree
@@ -10925,6 +11074,16 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitUsing_element(PlSqlParser.Using_elementContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#assignable_element}.
+	 * @param ctx the parse tree
+	 */
+	void enterAssignable_element(PlSqlParser.Assignable_elementContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#assignable_element}.
+	 * @param ctx the parse tree
+	 */
+	void exitAssignable_element(PlSqlParser.Assignable_elementContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#collect_order_by_part}.
 	 * @param ctx the parse tree
 	 */
@@ -11075,6 +11234,36 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitXmlserialize_param_ident_part(PlSqlParser.Xmlserialize_param_ident_partContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#annotations_clause}.
+	 * @param ctx the parse tree
+	 */
+	void enterAnnotations_clause(PlSqlParser.Annotations_clauseContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#annotations_clause}.
+	 * @param ctx the parse tree
+	 */
+	void exitAnnotations_clause(PlSqlParser.Annotations_clauseContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#annotations_list}.
+	 * @param ctx the parse tree
+	 */
+	void enterAnnotations_list(PlSqlParser.Annotations_listContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#annotations_list}.
+	 * @param ctx the parse tree
+	 */
+	void exitAnnotations_list(PlSqlParser.Annotations_listContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#annotation}.
+	 * @param ctx the parse tree
+	 */
+	void enterAnnotation(PlSqlParser.AnnotationContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#annotation}.
+	 * @param ctx the parse tree
+	 */
+	void exitAnnotation(PlSqlParser.AnnotationContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#sql_plus_command_no_semicolon}.
 	 * @param ctx the parse tree
 	 */
@@ -11135,6 +11324,16 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 */
 	void exitTiming_command(PlSqlParser.Timing_commandContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link PlSqlParser#clear_command}.
+	 * @param ctx the parse tree
+	 */
+	void enterClear_command(PlSqlParser.Clear_commandContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlSqlParser#clear_command}.
+	 * @param ctx the parse tree
+	 */
+	void exitClear_command(PlSqlParser.Clear_commandContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#partition_extension_clause}.
 	 * @param ctx the parse tree
 	 */
@@ -11174,16 +11373,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitWhere_clause(PlSqlParser.Where_clauseContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#quantitative_where_stmt}.
-	 * @param ctx the parse tree
-	 */
-	void enterQuantitative_where_stmt(PlSqlParser.Quantitative_where_stmtContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#quantitative_where_stmt}.
-	 * @param ctx the parse tree
-	 */
-	void exitQuantitative_where_stmt(PlSqlParser.Quantitative_where_stmtContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#into_clause}.
 	 * @param ctx the parse tree
@@ -11244,16 +11433,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitRollback_segment_name(PlSqlParser.Rollback_segment_nameContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#table_var_name}.
-	 * @param ctx the parse tree
-	 */
-	void enterTable_var_name(PlSqlParser.Table_var_nameContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#table_var_name}.
-	 * @param ctx the parse tree
-	 */
-	void exitTable_var_name(PlSqlParser.Table_var_nameContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#schema_name}.
 	 * @param ctx the parse tree
@@ -11494,16 +11673,6 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitRecord_name(PlSqlParser.Record_nameContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#collection_name}.
-	 * @param ctx the parse tree
-	 */
-	void enterCollection_name(PlSqlParser.Collection_nameContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#collection_name}.
-	 * @param ctx the parse tree
-	 */
-	void exitCollection_name(PlSqlParser.Collection_nameContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlSqlParser#link_name}.
 	 * @param ctx the parse tree
@@ -11924,24 +12093,4 @@ public interface PlSqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitNon_reserved_keywords_pre12c(PlSqlParser.Non_reserved_keywords_pre12cContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#string_function_name}.
-	 * @param ctx the parse tree
-	 */
-	void enterString_function_name(PlSqlParser.String_function_nameContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#string_function_name}.
-	 * @param ctx the parse tree
-	 */
-	void exitString_function_name(PlSqlParser.String_function_nameContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link PlSqlParser#numeric_function_name}.
-	 * @param ctx the parse tree
-	 */
-	void enterNumeric_function_name(PlSqlParser.Numeric_function_nameContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link PlSqlParser#numeric_function_name}.
-	 * @param ctx the parse tree
-	 */
-	void exitNumeric_function_name(PlSqlParser.Numeric_function_nameContext ctx);
 }

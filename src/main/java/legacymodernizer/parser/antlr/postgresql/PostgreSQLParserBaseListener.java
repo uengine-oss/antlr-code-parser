@@ -1,4 +1,4 @@
-// Generated from PostgreSQLParser.g4 by ANTLR 4.13.1
+// Generated from antlr-grammars/PostgreSQLParser.g4 by ANTLR 4.13.2
 package legacymodernizer.parser.antlr.postgresql;
 
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -3540,6 +3540,18 @@ public class PostgreSQLParserBaseListener implements PostgreSQLParserListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitUnique_(PostgreSQLParser.Unique_Context ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterNulls_distinct(PostgreSQLParser.Nulls_distinctContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitNulls_distinct(PostgreSQLParser.Nulls_distinctContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

@@ -1,4 +1,4 @@
-// Generated from PostgreSQLParser.g4 by ANTLR 4.13.1
+// Generated from antlr-grammars/PostgreSQLParser.g4 by ANTLR 4.13.2
 package legacymodernizer.parser.antlr.postgresql;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
@@ -2947,6 +2947,16 @@ public interface PostgreSQLParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitUnique_(PostgreSQLParser.Unique_Context ctx);
+	/**
+	 * Enter a parse tree produced by {@link PostgreSQLParser#nulls_distinct}.
+	 * @param ctx the parse tree
+	 */
+	void enterNulls_distinct(PostgreSQLParser.Nulls_distinctContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PostgreSQLParser#nulls_distinct}.
+	 * @param ctx the parse tree
+	 */
+	void exitNulls_distinct(PostgreSQLParser.Nulls_distinctContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PostgreSQLParser#single_name_}.
 	 * @param ctx the parse tree

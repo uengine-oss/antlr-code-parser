@@ -682,7 +682,8 @@ procedure_spec
     : PROCEDURE identifier ('(' parameter ( ',' parameter)* ')')? (
         accessible_by_clause
         | PARALLEL_ENABLE
-    )* ';'
+        | DETERMINISTIC
+    )* (AS call_spec)? ';'
     ;
 
 function_spec
@@ -692,7 +693,7 @@ function_spec
         | parallel_enable_clause
         | RESULT_CACHE
         | streaming_clause
-    )* ';'
+    )* (AS call_spec)? ';'
     ;
 
 package_obj_body
@@ -753,11 +754,12 @@ procedure_body
     : PROCEDURE identifier ('(' parameter (',' parameter)* ')')? (
         accessible_by_clause
         | PARALLEL_ENABLE
+        | DETERMINISTIC
     )* (IS | AS) (DECLARE? seq_of_declare_specs? body | call_spec | EXTERNAL) ';'
     ;
 
 create_procedure_body
-    : CREATE (OR REPLACE)? PROCEDURE procedure_name ('(' parameter (',' parameter)* ')')? invoker_rights_clause? PARALLEL_ENABLE? (
+    : CREATE (OR REPLACE)? PROCEDURE procedure_name ('(' parameter (',' parameter)* ')')? invoker_rights_clause? (PARALLEL_ENABLE | DETERMINISTIC)* (
         IS
         | AS
     ) (DECLARE? seq_of_declare_specs? body | call_spec | EXTERNAL)
@@ -1030,14 +1032,15 @@ map_order_func_declaration
     ;
 
 subprog_decl_in_type
-    : (MEMBER | STATIC) (proc_decl_in_type | func_decl_in_type | constructor_declaration)
+    : (MEMBER | STATIC)? (proc_decl_in_type | func_decl_in_type | constructor_declaration)
     ;
 
 proc_decl_in_type
-    : PROCEDURE procedure_name '(' type_elements_parameter (',' type_elements_parameter)* ')' (
-        IS
-        | AS
-    ) (call_spec | DECLARE? seq_of_declare_specs? body ';')
+    : PROCEDURE procedure_name
+        (
+            '(' type_elements_parameter (',' type_elements_parameter)* ')'
+        )?
+        (IS | AS) (call_spec | DECLARE? seq_of_declare_specs? body ';')
     ;
 
 func_decl_in_type
@@ -1048,9 +1051,11 @@ func_decl_in_type
     ;
 
 constructor_declaration
-    : FINAL? INSTANTIABLE? CONSTRUCTOR FUNCTION type_spec (
-        '(' (SELF IN OUT type_spec ',') type_elements_parameter (',' type_elements_parameter)* ')'
-    )? RETURN SELF AS RESULT (IS | AS) (call_spec | DECLARE? seq_of_declare_specs? body ';')
+    : FINAL? INSTANTIABLE? CONSTRUCTOR FUNCTION function_name
+        (
+            '(' (SELF IN OUT type_spec ',')? (type_elements_parameter (',' type_elements_parameter)*)? ')'
+        )?
+      RETURN SELF AS RESULT (IS | AS) (call_spec | DECLARE? seq_of_declare_specs? body ';')
     ;
 
 // Common Type Clauses
@@ -1085,6 +1090,7 @@ subprogram_spec
 // TODO: should be refactored such as Procedure body and Function body, maybe Type_Function_Body and overriding_function_body
 overriding_subprogram_spec
     : OVERRIDING MEMBER overriding_function_spec
+    | OVERRIDING MEMBER overriding_procedure_spec
     ;
 
 overriding_function_spec
@@ -1094,8 +1100,16 @@ overriding_function_spec
     ) (PIPELINED? (IS | AS) (DECLARE? seq_of_declare_specs? body))? ';'?
     ;
 
+overriding_procedure_spec
+    : PROCEDURE procedure_name
+        (
+            '(' type_elements_parameter (',' type_elements_parameter)* ')'
+        )?
+        (IS | AS) (call_spec | DECLARE? seq_of_declare_specs? body ';')
+    ;
+
 type_procedure_spec
-    : PROCEDURE procedure_name '(' type_elements_parameter (',' type_elements_parameter)* ')' (
+    : PROCEDURE procedure_name ('(' type_elements_parameter (',' type_elements_parameter)* ')')? (
         (IS | AS) call_spec
     )?
     ;
@@ -1109,7 +1123,7 @@ type_function_spec
 
 constructor_spec
     : FINAL? INSTANTIABLE? CONSTRUCTOR FUNCTION type_spec (
-        '(' (SELF IN OUT type_spec ',') type_elements_parameter (',' type_elements_parameter)* ')'
+        '(' (SELF IN OUT type_spec ',')? (type_elements_parameter (',' type_elements_parameter)*)? ')'
     )? RETURN SELF AS RESULT ((IS | AS) call_spec)?
     ;
 
@@ -1127,7 +1141,7 @@ pragma_elements
     ;
 
 type_elements_parameter
-    : parameter_name type_spec
+    : parameter_name (IN OUT NOCOPY | IN OUT | OUT NOCOPY | OUT | IN)? type_spec (ASSIGN_OP constant)?
     ;
 
 // Sequence DDLs
@@ -3602,9 +3616,13 @@ range_partitions
     ;
 
 list_partitions
-    : PARTITION BY LIST '(' column_name ')' '(' PARTITION partition_name? list_values_clause table_partition_description (
-        ',' PARTITION partition_name? list_values_clause table_partition_description
-    )* ')'
+    : PARTITION BY LIST '(' column_name ')' (
+        AUTOMATIC (STORE IN '(' tablespace (',' tablespace)* ')')?
+    )? (
+        '(' PARTITION partition_name? list_values_clause table_partition_description (
+            ',' PARTITION partition_name? list_values_clause table_partition_description
+        )* ')'
+    )?
     ;
 
 hash_partitions
@@ -5006,6 +5024,7 @@ alter_table_partitioning
     | coalesce_table_partition
     | alter_interval_partition
     | move_table_partition
+    | rename_table_partition
     ;
 
 add_table_partition
@@ -5080,6 +5099,10 @@ move_table_partition
 
 filter_condition
     : INCLUDING ROWS where_clause
+    ;
+
+rename_table_partition
+    : RENAME (partition_extended_names | subpartition_extended_names) TO partition_name
     ;
 
 partition_extended_names
@@ -5601,7 +5624,7 @@ on_delete_clause
 // Anonymous PL/SQL code block
 
 anonymous_block
-    : (DECLARE seq_of_declare_specs)? BEGIN seq_of_statements (EXCEPTION exception_handler+)? END
+    : (DECLARE seq_of_declare_specs?)? BEGIN seq_of_statements (EXCEPTION exception_handler+)? END
     ;
 
 // Common DDL Clauses
@@ -5820,7 +5843,7 @@ cursor_loop_param
 
 //https://docs.oracle.com/en/database/oracle/oracle-database/21/lnpls/FORALL-statement.html#GUID-C45B8241-F9DF-4C93-8577-C840A25963DB
 forall_statement
-    : FORALL index_name IN bounds_clause (SAVE EXCEPTIONS)? data_manipulation_language_statements
+    : FORALL index_name IN bounds_clause (SAVE EXCEPTIONS)? (data_manipulation_language_statements | execute_immediate)
     ;
 
 bounds_clause
@@ -6430,7 +6453,7 @@ conditional_insert_else_part
     ;
 
 insert_into_clause
-    : INTO general_table_ref paren_column_list?
+    : INTO general_table_ref (FIELDS)? paren_column_list?
     ;
 
 values_clause
@@ -7045,7 +7068,16 @@ using_clause
     ;
 
 using_element
-    : (IN OUT? | OUT)? select_list_elements
+    : IN expression
+    | IN OUT assignable_element
+    | OUT assignable_element
+    | expression
+    ;
+
+// Elemento assegnabile: usato per OUT/IN OUT
+assignable_element
+    : general_element
+    | bind_variable
     ;
 
 collect_order_by_part
@@ -7716,6 +7748,14 @@ regular_id
     | non_reserved_keywords_in_12c
     | non_reserved_keywords_in_18c
     | REGULAR_ID
+    | AUDIT
+    | ITEMS
+    | BYTES
+    | LINES
+    | RECORDS
+    | NEWLINE_
+    | FIELD
+    | MASK
     | ABSENT
     | A_LETTER
     | AGENT
@@ -9140,6 +9180,7 @@ non_reserved_keywords_pre12c
     | OVERFLOW_NOMOVE
     | OVERLAPS
     | OVER
+    | OVERRIDE
     | OWNER
     | OWNERSHIP
     | OWN
