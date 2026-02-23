@@ -3,11 +3,16 @@ package legacymodernizer.parser;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.File;
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +38,15 @@ public class AntlrAnalysisTest {
     // ========================================
     // 테스트 설정
     // ========================================
+
+    /** Windows 콘솔 한글 깨짐 방지: System.out을 UTF-8로 설정 */
+    @BeforeAll
+    static void setConsoleUtf8() {
+        try {
+            System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8));
+        } catch (Exception ignored) {
+        }
+    }
 
     @BeforeEach
     void setUp() throws Exception {

@@ -3,9 +3,13 @@ package legacymodernizer.parser;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.File;
+import java.io.FileDescriptor;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,6 +19,7 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +42,15 @@ public class AntlrSimpleAnalysisTest {
     private FileParserService fileParserService;
     
     private Path testAnalysisDir;
+
+    /** Windows 콘솔 한글 깨짐 방지: System.out을 UTF-8로 설정 */
+    @BeforeAll
+    static void setConsoleUtf8() {
+        try {
+            System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8));
+        } catch (Exception ignored) {
+        }
+    }
     
     @BeforeEach
     void setUp() throws Exception {
