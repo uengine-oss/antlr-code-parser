@@ -151,6 +151,16 @@ public class AntlrAnalysisTest {
         System.out.println("========================================");
         
         assertTrue(jsonCount > 0, "생성된 JSON 파일이 없습니다");
+
+        // Java 타겟인 경우 uml-result.json 검증
+        if ("java".equals(TEST_TARGET)) {
+            Path umlResult = targetDir.resolve("uml-result.json");
+            assertTrue(Files.exists(umlResult), "uml-result.json이 생성되지 않았습니다");
+            String umlContent = Files.readString(umlResult);
+            assertFalse(umlContent.isEmpty(), "uml-result.json이 비어있습니다");
+            assertTrue(umlContent.contains("\"relations\""), "uml-result.json에 relations 필드가 없습니다");
+            System.out.println("  uml-result.json 검증 완료");
+        }
     }
 
     // ========================================
