@@ -92,12 +92,8 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
         if (node.children != null && !node.children.isEmpty()) {
             node.children.removeIf(child -> child.startLine == node.startLine && child.endLine == node.endLine);
         }
-        if (ctx != null) {
-            node.code = ParserUtils.getCodeWithLineNumbers(ctx, tokens);
-            // 선행 주석 추출
-            if (tokens instanceof CommonTokenStream) {
-                node.comment = ParserUtils.getLeadingComment(ctx, (CommonTokenStream) tokens);
-            }
+        if (ctx != null && tokens instanceof CommonTokenStream) {
+            node.comment = ParserUtils.getLeadingComment(ctx, (CommonTokenStream) tokens);
         }
     }
 
@@ -427,14 +423,6 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
             // 동일 범위 중복 자식 제거
             if (node.children != null && !node.children.isEmpty()) {
                 node.children.removeIf(child -> child.startLine == node.startLine && child.endLine == node.endLine);
-            }
-            // EXCEPTION 토큰부터 마지막 handler까지의 코드 추출
-            java.util.List<PlSqlParser.Exception_handlerContext> handlers = ctx.exception_handler();
-            if (ctx.EXCEPTION() != null && handlers != null && !handlers.isEmpty()) {
-                node.code = ParserUtils.getCodeWithLineNumbers(
-                    ctx.EXCEPTION().getSymbol(),
-                    handlers.get(handlers.size() - 1).getStop()
-                );
             }
         }
     }

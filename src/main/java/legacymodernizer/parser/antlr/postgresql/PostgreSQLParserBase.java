@@ -20,8 +20,6 @@ THE SOFTWARE.
 */
 package legacymodernizer.parser.antlr.postgresql;
 
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import org.antlr.v4.runtime.*;
 
@@ -64,7 +62,7 @@ public abstract class PostgreSQLParserBase extends Parser {
 
         }
         if (func_as != null) {
-            String txt = GetRoutineBodyString(func_as.func_as().sconst(0));
+            // String txt = GetRoutineBodyString(func_as.func_as().sconst(0));
             switch (lang) {
                 case "plpgsql":
                     //NB: Cannot be done this way.

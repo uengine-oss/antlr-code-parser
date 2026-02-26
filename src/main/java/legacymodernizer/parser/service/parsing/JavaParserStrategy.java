@@ -22,9 +22,6 @@ import legacymodernizer.parser.antlr.java.Java20Parser;
 import legacymodernizer.parser.service.FileParserService;
 import legacymodernizer.parser.service.ParseProgressTracker;
 import legacymodernizer.parser.service.StreamCallback;
-import legacymodernizer.parser.uml.UmlAnalyzerService;
-import legacymodernizer.parser.uml.UmlResult;
-import legacymodernizer.parser.util.JsonUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,7 +34,6 @@ import lombok.extern.slf4j.Slf4j;
 public class JavaParserStrategy implements TargetParserStrategy {
 
     private final FileParserService fileParserService;
-    private final UmlAnalyzerService umlAnalyzerService;
 
     @Override
     public Map<String, Object> upload(MultipartFile[] files) {
@@ -47,23 +43,6 @@ public class JavaParserStrategy implements TargetParserStrategy {
     @Override
     public void parseWithStream(StreamCallback callback) {
         fileParserService.parseProjectWithStream(this::parseFileWithStream, callback);
-        runUmlAnalysis(callback);
-    }
-
-    private void runUmlAnalysis(StreamCallback callback) {
-        try {
-            Path srcRoot = fileParserService.sourceDir();
-            if (!Files.exists(srcRoot)) {
-                return;
-            }
-            UmlResult result = umlAnalyzerService.analyze(srcRoot);
-            Path output = fileParserService.analysisTargetDir().resolve("uml-result.json");
-            JsonUtils.write(output, result);
-            callback.message("UML 분석 완료: uml-result.json 저장");
-        } catch (Exception e) {
-            callback.error("UML 분석 실패: " + e.getMessage());
-            log.warn("UML 분석 실패", e);
-        }
     }
 
     @Override

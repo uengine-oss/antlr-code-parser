@@ -14,7 +14,6 @@ public class Node {
     public String name;           // 이름 (클래스명, 메서드명, 프로시저명 등)
     public int startLine;         // 시작 라인
     public int endLine;           // 종료 라인
-    public String code;           // 원본 소스코드 본체 (라인번호 포함, 줄바꿈 유지)
     public String comment;        // 선행 주석 (Javadoc 등, 라인번호 포함)
     
     // ========================================
@@ -37,6 +36,10 @@ public class Node {
     // 필드/변수 관련
     // ========================================
     public String fieldType;      // 필드/변수 타입
+    /** VARIABLE: 초기화식 문자열에 메서드 호출 패턴(괄호 등)이 있으면 true — 정규식으로 판별 */
+    public Boolean initializerContainsMethodCall;
+    /** VARIABLE: 초기화식 문자열에 new 타입 패턴이 있으면 true — 정규식으로 판별 */
+    public Boolean initializerContainsNewInstance;
     
     // ========================================
     // 스키마 관련 (PL/SQL, PostgreSQL)
@@ -53,6 +56,7 @@ public class Node {
     // ========================================
     public String fileName;       // 파일명 (예: "UserService.java")
     public String filePath;       // 파일 경로 (예: "com/example/service/UserService.java" 또는 전체 경로)
+    public String packageName;   // 패키지명 (예: "com.example.service") — FILE 노드 속성
     
     // ========================================
     // 트리 구조
@@ -92,12 +96,14 @@ public class Node {
         appendJsonField(json, "extendsType", extendsType);
         appendJsonField(json, "implementsTypes", implementsTypes);
         appendJsonField(json, "fieldType", fieldType);
+        if (Boolean.TRUE.equals(initializerContainsMethodCall)) json.append(",\"initializerContainsMethodCall\":true");
+        if (Boolean.TRUE.equals(initializerContainsNewInstance)) json.append(",\"initializerContainsNewInstance\":true");
         appendJsonField(json, "schema", schema);
         appendJsonField(json, "className", className);
         appendJsonField(json, "fileName", fileName);
         appendJsonField(json, "filePath", filePath);
+        appendJsonField(json, "packageName", packageName);
         appendJsonField(json, "comment", comment);
-        appendJsonField(json, "code", code);
         
         // 라인 정보
         json.append(",\"startLine\":").append(startLine);
@@ -133,6 +139,9 @@ public class Node {
         }
         if (filePath != null) {
             json.append(",\"filePath\":\"").append(escapeJson(filePath)).append("\"");
+        }
+        if (packageName != null) {
+            json.append(",\"packageName\":\"").append(escapeJson(packageName)).append("\"");
         }
         if (className != null) {
             json.append(",\"className\":\"").append(escapeJson(className)).append("\"");

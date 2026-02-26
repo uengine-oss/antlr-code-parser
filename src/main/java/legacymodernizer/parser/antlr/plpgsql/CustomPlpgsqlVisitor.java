@@ -6,7 +6,6 @@ import org.antlr.v4.runtime.Token;
 import java.util.HashMap;
 import java.util.Map;
 import legacymodernizer.parser.antlr.Node;
-import legacymodernizer.parser.antlr.ParserUtils;
 
 /**
  * PL/pgSQL Parse Tree를 Node 트리로 변환하는 Visitor
@@ -60,7 +59,6 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
         int startLine = getActualLineNumber(ctx);
         Node node = new Node(type, name, startLine, parent);
         node.endLine = getActualEndLineNumber(ctx);
-        node.code = ParserUtils.getCodeWithLineNumbers(ctx, baseLineNumber, tokens);
         return node;
     }
 

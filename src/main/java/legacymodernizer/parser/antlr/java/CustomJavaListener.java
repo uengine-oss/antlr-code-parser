@@ -13,7 +13,11 @@ import legacymodernizer.parser.service.ParseProgressTracker;
 
 /**
  * Java 파일 분석을 위한 커스텀 리스너
- * - 클래스/인터페이스/메서드/필드 구조 추출
+ * - 패키지는 FILE 노드의 packageName 속성으로 저장
+ * - import 문은 IMPORT 노드로 추출
+ * - 클래스/인터페이스/메서드/필드/로컬변수 구조 추출
+ * - new 인스턴스 생성은 NEW_INSTANCE 노드 (타입명, 라인만)
+ * - 메서드 호출은 METHOD_CALL 노드; VARIABLE은 초기화식에 메서드호출/new 패턴이 있으면 플래그(속성)로 표시
  * - 어노테이션은 부모 노드의 annotations 속성에 포함
  * - 선행 주석(Javadoc 등)은 code 속성에 포함, startLine도 주석 시작 라인으로 보정
  * - 통일된 속성명 사용 (Node 클래스 참조)
@@ -69,9 +73,6 @@ public class CustomJavaListener extends Java20ParserBaseListener {
             Node node = nodeStack.pop();
             node.endLine = line;
             if (ctx != null) {
-                // 본체 코드 (어노테이션 포함, 주석 제외)
-                node.code = ParserUtils.getCodeWithLineNumbers(ctx, tokens);
-                // 선행 주석 (Javadoc 등) 별도 속성
                 node.comment = ParserUtils.getLeadingComment(ctx, tokens);
             }
         }
@@ -100,7 +101,7 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         }
         if (!modifierList.isEmpty()) {
             node.modifiers = String.join(" ", modifierList);
-    }
+        }
     }
     
     private void extractInterfaceModifiers(Node node, List<Java20Parser.InterfaceModifierContext> modifiers) {
@@ -189,6 +190,36 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         if (!modifierList.isEmpty()) {
             node.modifiers = String.join(" ", modifierList);
         }
+    }
+    
+    // ========================================
+    // 패키지 (FILE 노드 속성)
+    // ========================================
+    
+    @Override
+    public void enterPackageDeclaration(Java20Parser.PackageDeclarationContext ctx) {
+        String text = ctx.getText();
+        if (text != null) {
+            root.packageName = text.replaceFirst("^.*?package\\s*", "").replaceAll("\\s*;\\s*$", "").trim();
+        }
+    }
+    
+    // ========================================
+    // import 문
+    // ========================================
+    
+    @Override
+    public void enterImportDeclaration(Java20Parser.ImportDeclarationContext ctx) {
+        String text = ctx.getText();
+        String name = (text != null)
+                ? text.replaceFirst("^import\\s*", "").replaceAll("\\s*;\\s*$", "").trim()
+                : null;
+        enterStatement("IMPORT", name, ctx.getStart().getLine());
+    }
+    
+    @Override
+    public void exitImportDeclaration(Java20Parser.ImportDeclarationContext ctx) {
+        exitStatement("IMPORT", ctx.getStop().getLine(), ctx);
     }
     
     // ========================================
@@ -384,39 +415,55 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     }
     
     // ========================================
-    // 메서드 호출/참조
+    // 메서드 호출
     // ========================================
     
-    // @Override
-    // public void enterMethodInvocation(Java20Parser.MethodInvocationContext ctx) {
-    //     String name = null;
-    //     if (ctx.identifier() != null) {
-    //         name = ctx.identifier().getText();
-    //     } else if (ctx.methodName() != null) {
-    //         name = ctx.methodName().getText();
-    //     }
-    //     enterStatement("METHOD_CALL", name, ctx.getStart().getLine());
-    // }
+    @Override
+    public void enterMethodInvocation(Java20Parser.MethodInvocationContext ctx) {
+        String name = null;
+        if (ctx.methodName() != null) {
+            name = ctx.methodName().getText();
+        } else if (ctx.identifier() != null) {
+            name = ctx.identifier().getText();
+        }
+        enterStatement("METHOD_CALL", name, ctx.getStart().getLine());
+    }
     
-    // @Override
-    // public void exitMethodInvocation(Java20Parser.MethodInvocationContext ctx) {
-    //     exitStatement("METHOD_CALL", ctx.getStop().getLine(), ctx);
-    // }
-    
-    // @Override
-    // public void enterMethodReference(Java20Parser.MethodReferenceContext ctx) {
-    //     String name = ctx.identifier() != null ? ctx.identifier().getText() : null;
-    //     enterStatement("METHOD_CALL", name, ctx.getStart().getLine());
-    // }
-    
-    // @Override
-    // public void exitMethodReference(Java20Parser.MethodReferenceContext ctx) {
-    //     exitStatement("METHOD_CALL", ctx.getStop().getLine(), ctx);
-    // }
+    @Override
+    public void exitMethodInvocation(Java20Parser.MethodInvocationContext ctx) {
+        exitStatement("METHOD_CALL", ctx.getStop().getLine(), ctx);
+    }
     
     // ========================================
-    // 변수/대입
+    // 변수 (초기화식 패턴은 플래그로 표시)
     // ========================================
+    
+    /**
+     * 선언문 문자열에서 초기화부만 잘라서 반환 (첫 번째 '=' 뒤).
+     * getText()는 공백이 빠질 수 있음 — 정규식 매칭용으로만 사용.
+     */
+    private static String getInitializerPart(String declaratorListText) {
+        if (declaratorListText == null || !declaratorListText.contains("=")) return "";
+        int eq = declaratorListText.indexOf('=');
+        return declaratorListText.substring(eq + 1).trim();
+    }
+    
+    /**
+     * 초기화식 문자열에 메서드 호출 패턴이 있는지 정규식으로 판별.
+     * 예: .getX( , getInstance( 등
+     */
+    private static boolean initializerMatchesMethodCall(String initializerText) {
+        if (initializerText == null || initializerText.isEmpty()) return false;
+        return initializerText.matches("(?s).*\\.\\w+\\s*\\(.*") || initializerText.matches("(?s).*\\b\\w+\\s*\\(.*");
+    }
+    
+    /**
+     * 초기화식 문자열에 new 타입 패턴이 있는지 정규식으로 판별.
+     */
+    private static boolean initializerMatchesNewInstance(String initializerText) {
+        if (initializerText == null) return false;
+        return initializerText.matches("(?s).*\\bnew\\s+\\w+.*");
+    }
     
     @Override
     public void enterLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
@@ -427,9 +474,14 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         }
         
         if (ctx.variableDeclaratorList() != null) {
-            node.name = ctx.variableDeclaratorList().getText();
-            if (node.name != null && node.name.contains("=")) {
-                node.name = node.name.split("=")[0];
+            String raw = ctx.variableDeclaratorList().getText();
+            if (raw != null && raw.contains("=")) {
+                node.name = raw.split("=")[0].trim();
+                String initPart = getInitializerPart(raw);
+                node.initializerContainsMethodCall = initializerMatchesMethodCall(initPart);
+                node.initializerContainsNewInstance = initializerMatchesNewInstance(initPart);
+            } else {
+                node.name = raw;
             }
         }
     }
@@ -450,23 +502,23 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     // }
     
     // ========================================
-    // 객체 생성
+    // 객체 생성 (new 인스턴스 — 타입명·라인만)
     // ========================================
     
-    // @Override
-    // public void enterClassInstanceCreationExpression(Java20Parser.ClassInstanceCreationExpressionContext ctx) {
-    //     String name = null;
-    //     if (ctx.unqualifiedClassInstanceCreationExpression() != null 
-    //             && ctx.unqualifiedClassInstanceCreationExpression().classOrInterfaceTypeToInstantiate() != null) {
-    //         name = ctx.unqualifiedClassInstanceCreationExpression().classOrInterfaceTypeToInstantiate().getText();
-    //     }
-    //     enterStatement("NEW_INSTANCE", name, ctx.getStart().getLine());
-    // }
+    @Override
+    public void enterClassInstanceCreationExpression(Java20Parser.ClassInstanceCreationExpressionContext ctx) {
+        String name = null;
+        if (ctx.unqualifiedClassInstanceCreationExpression() != null
+                && ctx.unqualifiedClassInstanceCreationExpression().classOrInterfaceTypeToInstantiate() != null) {
+            name = ctx.unqualifiedClassInstanceCreationExpression().classOrInterfaceTypeToInstantiate().getText();
+        }
+        enterStatement("NEW_INSTANCE", name, ctx.getStart().getLine());
+    }
     
-    // @Override
-    // public void exitClassInstanceCreationExpression(Java20Parser.ClassInstanceCreationExpressionContext ctx) {
-    //     exitStatement("NEW_INSTANCE", ctx.getStop().getLine(), ctx);
-    // }
+    @Override
+    public void exitClassInstanceCreationExpression(Java20Parser.ClassInstanceCreationExpressionContext ctx) {
+        exitStatement("NEW_INSTANCE", ctx.getStop().getLine(), ctx);
+    }
     
     // ========================================
     // return
@@ -497,6 +549,7 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         if (node.fieldType != null) info.append(" type:").append(node.fieldType);
         if (node.returnType != null) info.append(" returns:").append(node.returnType);
         if (node.genericType != null) info.append(" generic:").append(node.genericType);
+        if (node.packageName != null) info.append(" package:").append(node.packageName);
         info.append(" (").append(node.startLine).append("-").append(node.endLine).append(")");
         
         System.out.println(info.toString());

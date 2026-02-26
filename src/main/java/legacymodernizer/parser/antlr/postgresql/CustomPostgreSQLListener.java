@@ -68,12 +68,8 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
         if (nodeStack.isEmpty()) return;
         Node node = nodeStack.pop();
         node.endLine = line;
-        if (ctx != null) {
-            node.code = ParserUtils.getCodeWithLineNumbers(ctx, tokens);
-            // 선행 주석 추출
-            if (tokens instanceof CommonTokenStream) {
-                node.comment = ParserUtils.getLeadingComment(ctx, (CommonTokenStream) tokens);
-            }
+        if (ctx != null && tokens instanceof CommonTokenStream) {
+            node.comment = ParserUtils.getLeadingComment(ctx, (CommonTokenStream) tokens);
         }
     }
 
