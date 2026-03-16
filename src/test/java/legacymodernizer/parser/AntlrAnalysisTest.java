@@ -9,6 +9,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 import legacymodernizer.parser.service.FileParserService;
 import legacymodernizer.parser.service.parsing.ParserStrategyFactory;
@@ -151,6 +154,83 @@ public class AntlrAnalysisTest {
         System.out.println("========================================");
         
         assertTrue(jsonCount > 0, "생성된 JSON 파일이 없습니다");
+    }
+
+    /**
+     * 특정 경로에 있는 프로젝트 파일들을 읽어서
+     * 업로드(upload) 단계만 수행하는 테스트.
+     *
+     * - projectRoot: 외부/로컬 프로젝트 루트 (하드코딩)
+     * - 이 경로 아래의 파일들을 MultipartFile로 감싸서
+     *   TargetParserStrategy.upload(...)를 호출
+     * - 실제 파싱(parse)은 하지 않고, data/source 등에 잘 적재되는지만 본다.
+     */
+    @Test
+    void testUploadExternalProjectToDataSource() throws Exception {
+        // 1) 하드코딩된 업로드 대상 경로 (필요시 변경해서 사용)
+        // 예: 기존 레거시 자바 프로젝트 루트 등
+        Path projectRoot = Paths.get("D:/문서/카카오톡 받은 파일/loan-ejb-app");
+
+        System.out.println("=== 업로드 대상 프로젝트 루트 ===");
+        System.out.println("projectRoot: " + projectRoot);
+
+        if (!Files.exists(projectRoot)) {
+            System.out.println("경고: 업로드 대상 경로가 없습니다. 경로를 확인해주세요.");
+            return;
+        }
+
+        // 2) 하위 모든 파일을 MultipartFile로 래핑
+        List<MultipartFile> multipartFiles = new ArrayList<>();
+
+        Files.walk(projectRoot)
+                .filter(Files::isRegularFile)
+                .forEach(p -> {
+                    try {
+                        String relativePath = projectRoot.relativize(p).toString().replace("\\", "/");
+                        byte[] bytes = Files.readAllBytes(p);
+                        MultipartFile mf = new MockMultipartFile(
+                                "files",              // form field name
+                                relativePath,         // original filename (상대 경로 유지)
+                                "text/plain",         // content type (대략적인 값)
+                                bytes
+                        );
+                        multipartFiles.add(mf);
+                    } catch (Exception e) {
+                        throw new RuntimeException("업로드 대상 파일 읽기 실패: " + p, e);
+                    }
+                });
+
+        System.out.println("발견된 업로드 대상 파일 수: " + multipartFiles.size());
+        if (multipartFiles.isEmpty()) {
+            System.out.println("경고: 업로드 대상 파일이 없습니다.");
+            return;
+        }
+
+        // 3) target 타입에 맞는 전략 가져오기 (예: java)
+        TargetParserStrategy strategy = parserStrategyFactory.getStrategy(TEST_TARGET);
+
+        // 4) upload 호출 → data/source, analysis/nontarget, ddl 등에 저장
+        MultipartFile[] array = multipartFiles.toArray(new MultipartFile[0]);
+        System.out.println("업로드 호출 시작 (target=" + TEST_TARGET + ") ...");
+        var result = strategy.upload(array);
+
+        // 5) 결과 요약 출력 및 간단 검증
+        @SuppressWarnings("unchecked")
+        List<?> srcFiles = (List<?>) result.get("files");
+
+        System.out.println("업로드된 타겟 파일 수: " + (srcFiles != null ? srcFiles.size() : 0));
+        if (srcFiles != null) {
+            assertTrue(srcFiles.size() > 0, "업로드된 타겟 파일이 없습니다");
+        }
+
+        // 실제 파일 시스템상의 data/source/ 도 한 번 확인
+        Path sourceDir = fileParserService.sourceDir();
+        long uploadedCount = Files.exists(sourceDir)
+                ? Files.walk(sourceDir).filter(Files::isRegularFile).count()
+                : 0;
+
+        System.out.println("data/source 내 실제 파일 수: " + uploadedCount);
+        assertTrue(uploadedCount > 0, "data/source 내 업로드된 파일이 없습니다");
     }
 
     // ========================================

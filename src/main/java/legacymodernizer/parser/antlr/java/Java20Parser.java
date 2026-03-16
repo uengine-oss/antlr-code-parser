@@ -1,4 +1,3 @@
-// Generated from Java20Parser.g4 by ANTLR 4.13.2
 package legacymodernizer.parser.antlr.java;
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;

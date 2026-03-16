@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Target별 파싱 전략 팩토리
  * 
- * 지원 타입: java, oracle, postgresql
+ * 지원 타입: java, c, oracle, postgresql
  */
 @Slf4j
 @Component
@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ParserStrategyFactory {
 
     private final JavaParserStrategy javaStrategy;
+    private final CParserStrategy cStrategy;
     private final PlSqlParserStrategy plSqlStrategy;
     private final PostgreSqlParserStrategy postgreSqlStrategy;
 
@@ -29,6 +30,7 @@ public class ParserStrategyFactory {
     private void init() {
         strategies = Map.of(
                 "java", javaStrategy,
+                "c", cStrategy,
                 "oracle", plSqlStrategy,
                 "plsql", plSqlStrategy,
                 "postgresql", postgreSqlStrategy,
