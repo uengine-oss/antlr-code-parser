@@ -260,6 +260,28 @@ public abstract class CParserBase extends Parser {
         // No-op for our use case
     }
 
+    /**
+     * 외부에서 수집한 typedef 이름을 심볼 테이블에 등록
+     */
+    public void registerTypeName(String name) {
+        Symbol symbol = new Symbol();
+        symbol.setName(name);
+        HashSet<TypeClassification> classSet = new HashSet<>();
+        classSet.add(TypeClassification.TypeSpecifier_);
+        symbol.setClassification(classSet);
+        symbol.setPredefined(true);
+        _st.define(symbol);
+    }
+
+    /**
+     * 여러 typedef 이름을 일괄 등록
+     */
+    public void registerTypeNames(java.util.Collection<String> names) {
+        for (String name : names) {
+            registerTypeName(name);
+        }
+    }
+
     private Symbol resolveSymbol(Token token) {
         if (token == null) return null;
         return _st.resolve(token.getText());

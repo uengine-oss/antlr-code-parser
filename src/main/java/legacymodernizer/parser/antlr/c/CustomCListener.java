@@ -28,6 +28,13 @@ public class CustomCListener extends CParserBaseListener {
     private Node root = new Node("FILE", 0, null);
     private ParseProgressTracker progressTracker;
 
+    /**
+     * typedef struct { ... } Name; 패턴에서 Name을 임시 보관.
+     * enterDeclaration이 먼저 실행되어 이름을 저장하면,
+     * 이후 enterStructOrUnionSpecifier / enterEnumSpecifier 에서 사용한다.
+     */
+    private String pendingTypedefName = null;
+
     public Node getRoot() {
         return root;
     }
@@ -88,7 +95,7 @@ public class CustomCListener extends CParserBaseListener {
             Node node = nodeStack.pop();
             node.endLine = line;
             if (ctx != null) {
-                node.comment = ParserUtils.getLeadingComment(ctx, tokens);
+                node.comment = ParserUtils.getComment(ctx, tokens);
             }
         }
     }
@@ -99,14 +106,22 @@ public class CustomCListener extends CParserBaseListener {
 
     @Override
     public void enterStructOrUnionSpecifier(CParser.StructOrUnionSpecifierContext ctx) {
-        // 이름이 있고 본문({})이 있는 struct/union만 노드로 생성
-        if (ctx.Identifier() == null) return;
         // 본문이 없으면 (forward declaration 또는 타입 참조) 무시
         if (ctx.memberDeclarationList() == null) return;
 
         String structOrUnion = ctx.structOrUnion().getText(); // "struct" or "union"
         String type = structOrUnion.equals("union") ? "UNION" : "STRUCT";
-        String name = ctx.Identifier().getText();
+
+        String name;
+        if (ctx.Identifier() != null) {
+            // Named struct: struct Subscriber { ... };
+            name = ctx.Identifier().getText();
+        } else if (pendingTypedefName != null) {
+            // Anonymous typedef struct: typedef struct { ... } Subscriber;
+            name = pendingTypedefName;
+        } else {
+            return; // 이름 없는 익명 struct (typedef도 아님) → 무시
+        }
 
         Node node = enterStatement(type, name, ctx.getStart().getLine());
         node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
@@ -114,7 +129,6 @@ public class CustomCListener extends CParserBaseListener {
 
     @Override
     public void exitStructOrUnionSpecifier(CParser.StructOrUnionSpecifierContext ctx) {
-        if (ctx.Identifier() == null) return;
         if (ctx.memberDeclarationList() == null) return;
 
         String structOrUnion = ctx.structOrUnion().getText();
@@ -122,10 +136,12 @@ public class CustomCListener extends CParserBaseListener {
 
         if (!nodeStack.isEmpty() && nodeStack.peek().type.equals(type)) {
             Node node = nodeStack.peek();
-            node.comment = ParserUtils.getLeadingComment(ctx, tokens);
+            node.comment = ParserUtils.getComment(ctx, tokens);
             exitStatement(type, ctx.getStop().getLine(), ctx);
             propagateClassName(node, node.name);
         }
+        // typedef struct 처리 완료 시 pending 이름 초기화
+        pendingTypedefName = null;
     }
 
     // ========================================
@@ -134,20 +150,30 @@ public class CustomCListener extends CParserBaseListener {
 
     @Override
     public void enterEnumSpecifier(CParser.EnumSpecifierContext ctx) {
-        if (ctx.Identifier() == null) return;
-        if (ctx.enumeratorList() == null) return;
+        if (ctx.enumeratorList() == null) return; // body 없으면 무시
 
-        String name = ctx.Identifier().getText();
+        String name;
+        if (ctx.Identifier() != null) {
+            // Named enum: enum UsageType { ... };
+            name = ctx.Identifier().getText();
+        } else if (pendingTypedefName != null) {
+            // Anonymous typedef enum: typedef enum { ... } UsageType;
+            name = pendingTypedefName;
+        } else {
+            return; // 이름 없는 익명 enum → 무시
+        }
+
         Node node = enterStatement("ENUM", name, ctx.getStart().getLine());
         node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
     }
 
     @Override
     public void exitEnumSpecifier(CParser.EnumSpecifierContext ctx) {
-        if (ctx.Identifier() == null) return;
         if (ctx.enumeratorList() == null) return;
 
         exitStatement("ENUM", ctx.getStop().getLine(), ctx);
+        // typedef enum 처리 완료 시 pending 이름 초기화
+        pendingTypedefName = null;
     }
 
     // ========================================
@@ -157,7 +183,6 @@ public class CustomCListener extends CParserBaseListener {
     @Override
     public void enterFunctionDefinition(CParser.FunctionDefinitionContext ctx) {
         String name = null;
-        String returnType = null;
 
         // 함수 이름 추출: declarator → directDeclarator → Identifier
         if (ctx.declarator() != null && ctx.declarator().directDeclarator() != null) {
@@ -167,36 +192,28 @@ public class CustomCListener extends CParserBaseListener {
             }
         }
 
-        // 리턴 타입 추출: declarationSpecifiers
-        if (ctx.declarationSpecifiers() != null) {
-            returnType = ctx.declarationSpecifiers().getText();
+        // returnType, modifiers 분리 추출
+        String returnType = extractReturnType(ctx.declarationSpecifiers());
+        String modifiers = extractModifiers(ctx.declarationSpecifiers());
+
+        // 포인터 * 확인 (declarator에 pointer가 있으면 리턴 타입에 포함)
+        if (ctx.declarator() != null && !ctx.declarator().pointer().isEmpty()) {
+            returnType = returnType + " *";
         }
 
         Node node = enterStatement("FUNCTION", name, ctx.getStart().getLine());
         node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
-        node.returnType = returnType;
+        node.returnType = returnType != null ? returnType.trim() : null;
+        if (modifiers != null) {
+            node.modifiers = modifiers;
+        }
 
         // 파라미터 추출
         if (ctx.declarator() != null && ctx.declarator().directDeclarator() != null) {
             CParser.DirectDeclaratorContext dd = ctx.declarator().directDeclarator();
-            // directDeclarator에서 parameterTypeList 찾기
             if (dd.parameterTypeList() != null && !dd.parameterTypeList().isEmpty()) {
                 CParser.ParameterTypeListContext params = dd.parameterTypeList(0);
                 node.parameters = ParserUtils.getOriginalText(params, tokens);
-            }
-        }
-
-        // storage class (static, extern 등) 추출
-        if (ctx.declarationSpecifiers() != null) {
-            StringBuilder modifiers = new StringBuilder();
-            for (CParser.DeclarationSpecifierContext ds : ctx.declarationSpecifiers().declarationSpecifier()) {
-                if (ds.storageClassSpecifier() != null) {
-                    if (modifiers.length() > 0) modifiers.append(" ");
-                    modifiers.append(ds.storageClassSpecifier().getText());
-                }
-            }
-            if (modifiers.length() > 0) {
-                node.modifiers = modifiers.toString();
             }
         }
     }
@@ -219,23 +236,57 @@ public class CustomCListener extends CParserBaseListener {
 
         // typedef 여부 확인
         boolean isTypedef = false;
-        StringBuilder typeBuilder = new StringBuilder();
-        StringBuilder modifierBuilder = new StringBuilder();
+        boolean hasStructOrEnumWithBody = false;
 
         for (CParser.DeclarationSpecifierContext ds : ctx.declarationSpecifiers().declarationSpecifier()) {
-            if (ds.storageClassSpecifier() != null) {
-                if (ds.storageClassSpecifier().getText().equals("typedef")) {
-                    isTypedef = true;
-                } else {
-                    if (modifierBuilder.length() > 0) modifierBuilder.append(" ");
-                    modifierBuilder.append(ds.storageClassSpecifier().getText());
+            if (ds.storageClassSpecifier() != null && ds.storageClassSpecifier().getText().equals("typedef")) {
+                isTypedef = true;
+            }
+            if (ds.typeSpecifier() != null) {
+                CParser.TypeSpecifierContext ts = ds.typeSpecifier();
+                if (ts.structOrUnionSpecifier() != null
+                        && ts.structOrUnionSpecifier().memberDeclarationList() != null) {
+                    hasStructOrEnumWithBody = true;
                 }
-            } else if (ds.typeSpecifier() != null) {
-                if (typeBuilder.length() > 0) typeBuilder.append(" ");
-                typeBuilder.append(ds.typeSpecifier().getText());
-            } else if (ds.typeQualifier() != null) {
-                if (modifierBuilder.length() > 0) modifierBuilder.append(" ");
-                modifierBuilder.append(ds.typeQualifier().getText());
+                if (ts.enumSpecifier() != null
+                        && ts.enumSpecifier().enumeratorList() != null) {
+                    hasStructOrEnumWithBody = true;
+                }
+            }
+        }
+
+        // returnType/modifiers를 공통 메서드로 추출
+        String fieldType = extractReturnType(ctx.declarationSpecifiers());
+        String modifierStr = extractModifiers(ctx.declarationSpecifiers());
+        // typedef는 modifiers에서 제외 (별도 처리)
+        if (modifierStr != null) {
+            modifierStr = modifierStr.replace("typedef", "").trim();
+            if (modifierStr.isEmpty()) modifierStr = null;
+        }
+
+        // typedef struct { ... } Name; / typedef enum { ... } Name; 패턴:
+        // TYPEDEF 노드를 만들지 않고, 이름만 저장하여 struct/enum 핸들러에서 사용
+        if (isTypedef && hasStructOrEnumWithBody) {
+            if (ctx.initDeclaratorList() != null) {
+                // typedef struct { ... } Name; → initDeclaratorList에서 이름 추출
+                for (CParser.InitDeclaratorContext initDecl : ctx.initDeclaratorList().initDeclarator()) {
+                    pendingTypedefName = extractDeclaratorName(initDecl.declarator());
+                    break;
+                }
+            } else {
+                // ANTLR이 typedef 이름을 typeSpecifier(typedefName)로 파싱한 경우
+                // declarationSpecifiers의 마지막 typedefName에서 이름 추출
+                List<CParser.DeclarationSpecifierContext> specs = ctx.declarationSpecifiers().declarationSpecifier();
+                for (int i = specs.size() - 1; i >= 0; i--) {
+                    CParser.DeclarationSpecifierContext ds = specs.get(i);
+                    if (ds.typeSpecifier() != null && ds.typeSpecifier().typedefName() != null) {
+                        pendingTypedefName = ds.typeSpecifier().typedefName().getText();
+                        break;
+                    }
+                }
+            }
+            if (pendingTypedefName != null) {
+                return; // TYPEDEF 노드 생성 안 함 → struct/enum 핸들러가 처리
             }
         }
 
@@ -245,9 +296,29 @@ public class CustomCListener extends CParserBaseListener {
                 String name = extractDeclaratorName(initDecl.declarator());
                 if (name == null) continue;
 
+                // 함수 프로토타입 감지: declarator에 parameterTypeList가 있으면 함수 선언
+                boolean isFunctionPrototype = false;
+                String parameters = null;
+                if (initDecl.declarator() != null && initDecl.declarator().directDeclarator() != null) {
+                    CParser.DirectDeclaratorContext dd = initDecl.declarator().directDeclarator();
+                    if (dd.parameterTypeList() != null && !dd.parameterTypeList().isEmpty()) {
+                        isFunctionPrototype = true;
+                        parameters = ParserUtils.getOriginalText(dd.parameterTypeList(0), tokens);
+                    }
+                }
+
+                // 포인터 확인
+                String actualFieldType = fieldType;
+                if (initDecl.declarator() != null && !initDecl.declarator().pointer().isEmpty()) {
+                    actualFieldType = (actualFieldType != null ? actualFieldType : "") + " *";
+                    actualFieldType = actualFieldType.trim();
+                }
+
                 String nodeType;
                 if (isTypedef) {
                     nodeType = "TYPEDEF";
+                } else if (isFunctionPrototype && isGlobal) {
+                    nodeType = "FUNCTION";
                 } else if (isGlobal) {
                     nodeType = "GLOBAL_VARIABLE";
                 } else {
@@ -255,17 +326,22 @@ public class CustomCListener extends CParserBaseListener {
                 }
 
                 Node node = enterStatement(nodeType, name, ctx.getStart().getLine());
-                node.fieldType = typeBuilder.length() > 0 ? typeBuilder.toString() : null;
-                if (modifierBuilder.length() > 0) {
-                    node.modifiers = modifierBuilder.toString();
+                node.fieldType = actualFieldType;
+                if (isFunctionPrototype) {
+                    node.returnType = actualFieldType;
+                    node.parameters = parameters;
+                    node.fieldType = null;
+                }
+                if (modifierStr != null) {
+                    node.modifiers = modifierStr;
                 }
 
                 // 즉시 닫기 (declaration은 한 줄)
                 node.endLine = ctx.getStop().getLine();
-                node.comment = ParserUtils.getLeadingComment(ctx, tokens);
+                node.comment = ParserUtils.getComment(ctx, tokens);
                 nodeStack.pop();
             }
-        } else if (!isTypedef && typeBuilder.length() > 0) {
+        } else if (!isTypedef && fieldType != null) {
             // initDeclaratorList 없는 선언 (ex: struct 정의만)은 무시
         }
     }
@@ -329,7 +405,7 @@ public class CustomCListener extends CParserBaseListener {
             Node node = new Node("FIELD", name, ctx.getStart().getLine(), nodeStack.peek());
             node.fieldType = fieldType;
             node.endLine = ctx.getStop().getLine();
-            node.comment = ParserUtils.getLeadingComment(ctx, tokens);
+            node.comment = ParserUtils.getComment(ctx, tokens);
         }
     }
 
@@ -344,12 +420,53 @@ public class CustomCListener extends CParserBaseListener {
         String name = ctx.enumerationConstant() != null ? ctx.enumerationConstant().getText() : null;
         Node node = new Node("ENUM_CONSTANT", name, ctx.getStart().getLine(), nodeStack.peek());
         node.endLine = ctx.getStop().getLine();
-        node.comment = ParserUtils.getLeadingComment(ctx, tokens);
+        node.comment = ParserUtils.getComment(ctx, tokens);
     }
 
     // ========================================
     // 유틸리티
     // ========================================
+
+    /**
+     * declarationSpecifiers에서 returnType 추출
+     * storage class(static, extern 등)를 제외한 타입 지정자만 추출하며
+     * 원본 공백을 유지 (struct tm 등)
+     */
+    private String extractReturnType(CParser.DeclarationSpecifiersContext specs) {
+        if (specs == null) return null;
+        StringBuilder sb = new StringBuilder();
+        for (CParser.DeclarationSpecifierContext ds : specs.declarationSpecifier()) {
+            if (ds.storageClassSpecifier() != null) continue; // static, extern 등 제외
+            if (ds.typeSpecifier() != null) {
+                if (sb.length() > 0) sb.append(" ");
+                sb.append(ParserUtils.getOriginalText(ds.typeSpecifier(), tokens));
+            } else if (ds.typeQualifier() != null) {
+                if (sb.length() > 0) sb.append(" ");
+                sb.append(ds.typeQualifier().getText());
+            } else if (ds.functionSpecifier() != null) {
+                // WINAPI 등 calling convention은 returnType에 포함
+                if (sb.length() > 0) sb.append(" ");
+                sb.append(ds.functionSpecifier().getText());
+            }
+        }
+        return sb.length() > 0 ? sb.toString() : null;
+    }
+
+    /**
+     * declarationSpecifiers에서 modifiers 추출
+     * storage class(static, extern 등)만 추출
+     */
+    private String extractModifiers(CParser.DeclarationSpecifiersContext specs) {
+        if (specs == null) return null;
+        StringBuilder sb = new StringBuilder();
+        for (CParser.DeclarationSpecifierContext ds : specs.declarationSpecifier()) {
+            if (ds.storageClassSpecifier() != null) {
+                if (sb.length() > 0) sb.append(" ");
+                sb.append(ds.storageClassSpecifier().getText());
+            }
+        }
+        return sb.length() > 0 ? sb.toString() : null;
+    }
 
     /**
      * declarator에서 이름(Identifier) 추출

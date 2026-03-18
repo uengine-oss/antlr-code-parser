@@ -110,6 +110,72 @@ public class SymbolTable {
 
         define(createSymbol("alignas", TypeClassification.AlignmentSpecifier_));
         define(createSymbol("align", TypeClassification.AlignmentSpecifier_));
+
+        // ── 표준 C / POSIX 타입 ──
+        define(createSymbol("size_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("ssize_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("ptrdiff_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("intptr_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("uintptr_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("wchar_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("int8_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("int16_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("int32_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("int64_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("uint8_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("uint16_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("uint32_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("uint64_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("time_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("clock_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("off_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("pid_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("uid_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("gid_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("mode_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("FILE", TypeClassification.TypeSpecifier_));
+        define(createSymbol("DIR", TypeClassification.TypeSpecifier_));
+        define(createSymbol("va_list", TypeClassification.TypeSpecifier_));
+        define(createSymbol("NULL", TypeClassification.TypeSpecifier_));
+        define(createSymbol("SQLCA", TypeClassification.TypeSpecifier_));
+
+        // ── pthread 타입 ──
+        define(createSymbol("pthread_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("pthread_mutex_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("pthread_cond_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("pthread_attr_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("pthread_key_t", TypeClassification.TypeSpecifier_));
+        define(createSymbol("pthread_rwlock_t", TypeClassification.TypeSpecifier_));
+
+        // ── Windows 타입 ──
+        define(createSymbol("HANDLE", TypeClassification.TypeSpecifier_));
+        define(createSymbol("DWORD", TypeClassification.TypeSpecifier_));
+        define(createSymbol("BOOL", TypeClassification.TypeSpecifier_));
+        define(createSymbol("BYTE", TypeClassification.TypeSpecifier_));
+        define(createSymbol("WORD", TypeClassification.TypeSpecifier_));
+        define(createSymbol("LONG", TypeClassification.TypeSpecifier_));
+        define(createSymbol("LPVOID", TypeClassification.TypeSpecifier_));
+        define(createSymbol("LPCSTR", TypeClassification.TypeSpecifier_));
+        define(createSymbol("LPSTR", TypeClassification.TypeSpecifier_));
+        define(createSymbol("LPCWSTR", TypeClassification.TypeSpecifier_));
+        define(createSymbol("LPWSTR", TypeClassification.TypeSpecifier_));
+        define(createSymbol("HINSTANCE", TypeClassification.TypeSpecifier_));
+        define(createSymbol("HWND", TypeClassification.TypeSpecifier_));
+        define(createSymbol("CRITICAL_SECTION", TypeClassification.TypeSpecifier_));
+        define(createSymbol("LPCRITICAL_SECTION", TypeClassification.TypeSpecifier_));
+        define(createSymbol("SOCKET", TypeClassification.TypeSpecifier_));
+        define(createSymbol("TCHAR", TypeClassification.TypeSpecifier_));
+        define(createSymbol("WCHAR", TypeClassification.TypeSpecifier_));
+        define(createSymbol("UINT", TypeClassification.TypeSpecifier_));
+        define(createSymbol("HMODULE", TypeClassification.TypeSpecifier_));
+        define(createSymbol("LPARAM", TypeClassification.TypeSpecifier_));
+        define(createSymbol("WPARAM", TypeClassification.TypeSpecifier_));
+        define(createSymbol("LRESULT", TypeClassification.TypeSpecifier_));
+        define(createSymbol("LARGE_INTEGER", TypeClassification.TypeSpecifier_));
+        define(createSymbol("WINAPI", TypeClassification.FunctionSpecifier_));
+        define(createSymbol("CALLBACK", TypeClassification.FunctionSpecifier_));
+        define(createSymbol("APIENTRY", TypeClassification.FunctionSpecifier_));
+        define(createSymbol("LPTHREAD_START_ROUTINE", TypeClassification.TypeSpecifier_));
     }
 
     private Symbol createSymbol(String name, TypeClassification... classifications) {

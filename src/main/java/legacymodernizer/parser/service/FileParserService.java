@@ -203,7 +203,13 @@ public class FileParserService {
             try {
                 return Files.readString(path, Charset.forName("EUC-KR"));
             } catch (Exception e2) {
-                return Files.readString(path, Charset.forName("MS949"));
+                try {
+                    return Files.readString(path, Charset.forName("MS949"));
+                } catch (Exception e3) {
+                    // 바이너리 파일 등 텍스트로 읽을 수 없는 경우
+                    log.warn("텍스트로 읽을 수 없는 파일 (바이너리): {}", path);
+                    return "[binary file]";
+                }
             }
         }
     }
@@ -309,11 +315,11 @@ public class FileParserService {
             totalLines.addAndGet(lineCount);
             log.info("  [PARSED] {}", relative);
 
-        } catch (Exception e) {
+        } catch (Throwable e) {
             errorCount.incrementAndGet();
-            callback.error(String.format("❌ [%d/%d] %s 파싱 실패: %s", 
+            callback.error(String.format("❌ [%d/%d] %s 파싱 실패: %s",
                     fileIndex, totalFiles, fileName, e.getMessage()));
-            log.error("  [PARSE ERROR] {} - {}", relative, e.getMessage());
+            log.error("  [PARSE ERROR] {} - {}", relative, e.getMessage(), e);
         }
     }
 

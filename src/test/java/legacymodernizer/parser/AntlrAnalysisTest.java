@@ -167,10 +167,11 @@ public class AntlrAnalysisTest {
      */
     @Test
     void testUploadExternalProjectToDataSource() throws Exception {
-        // 1) 하드코딩된 업로드 대상 경로 (필요시 변경해서 사용)
+        // 1) 하드코딩된 업로드 대상 경로 (필요시 변경해서 사용)**
         // 예: 기존 레거시 자바 프로젝트 루트 등
-        Path projectRoot = Paths.get("D:/문서/카카오톡 받은 파일/loan-ejb-app");
-
+        // Path projectRoot = Paths.get("D:/문서/카카오톡 받은 파일/loan-ejb-app");
+        Path projectRoot = Paths.get("C:/uEngine/robo/테스트데이터/swing_system");
+        
         System.out.println("=== 업로드 대상 프로젝트 루트 ===");
         System.out.println("projectRoot: " + projectRoot);
 

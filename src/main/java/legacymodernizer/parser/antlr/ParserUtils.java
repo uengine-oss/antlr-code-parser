@@ -164,22 +164,64 @@ public class ParserUtils {
         if (hiddenTokens == null || hiddenTokens.isEmpty()) return null;
         
         // 주석 토큰만 필터 (공백/줄바꿈 제외)
-        // getHiddenTokensToLeft는 역순으로 반환되므로, 첫 번째가 가장 가까운 주석
+        // 인라인 주석 제외: 주석과 같은 줄에 코드 토큰이 있으면 그건 그 코드의 주석이지 다음 요소의 주석이 아님
+        int ctxLine = ctx.getStart().getLine();
         List<Token> commentTokens = new ArrayList<>();
         for (Token t : hiddenTokens) {
             String text = t.getText().trim();
-            // PL/SQL, PostgreSQL, Java 모두 지원
             if (text.startsWith("--") || text.startsWith("/*") || text.startsWith("//")) {
+                // 주석이 구문과 같은 줄이 아니고, 주석 줄에 앞쪽 코드 토큰이 있으면 인라인 주석 → 제외
+                int commentLine = t.getLine();
+                if (commentLine < ctxLine) {
+                    // 이 주석 앞에 같은 줄의 코드 토큰이 있는지 확인
+                    boolean isInlineComment = false;
+                    int tokenIdx = t.getTokenIndex();
+                    for (int i = tokenIdx - 1; i >= 0; i--) {
+                        Token prev = tokens.get(i);
+                        if (prev.getLine() != commentLine) break;
+                        if (prev.getChannel() == Token.DEFAULT_CHANNEL) {
+                            isInlineComment = true;
+                            break;
+                        }
+                    }
+                    if (isInlineComment) continue; // 인라인 주석은 건너뜀
+                }
                 commentTokens.add(t);
             }
         }
         
         if (commentTokens.isEmpty()) return null;
-        
-        // 첫 번째 주석부터 마지막 주석까지 모두 포함
-        // 역순이므로 마지막이 첫 번째 주석, 첫 번째가 마지막 주석
-        Token firstComment = commentTokens.get(commentTokens.size() - 1);
-        Token lastComment = commentTokens.get(0);
+
+        // 구문 바로 직전의 주석만 포함 (주석 끝과 구문 시작 사이에 빈 줄 2줄 이상이면 관련 없는 주석으로 판단)
+        // commentTokens는 역순: index 0이 구문에 가장 가까운 주석
+        int ctxStartLine = ctx.getStart().getLine();
+
+        // 구문에 가장 가까운 주석의 끝 라인 확인
+        Token closestComment = commentTokens.get(0);
+        int closestCommentEndLine = closestComment.getLine();
+        String closestText = closestComment.getText();
+        closestCommentEndLine += closestText.split("\n", -1).length - 1;
+
+        // 주석 끝과 구문 시작 사이에 빈 줄이 2줄 이상이면 관련 없는 주석
+        if (ctxStartLine - closestCommentEndLine > 2) {
+            return null;
+        }
+
+        // 연속된 주석만 포함 (주석 간 빈 줄 2줄 이상이면 분리)
+        List<Token> relevantComments = new ArrayList<>();
+        relevantComments.add(commentTokens.get(0));
+        for (int i = 1; i < commentTokens.size(); i++) {
+            Token prev = commentTokens.get(i - 1); // 구문에 더 가까운 주석
+            Token curr = commentTokens.get(i);      // 구문에서 더 먼 주석
+            int currEndLine = curr.getLine() + curr.getText().split("\n", -1).length - 1;
+            if (prev.getLine() - currEndLine > 2) {
+                break; // 이 주석은 이전 블록의 주석
+            }
+            relevantComments.add(curr);
+        }
+
+        Token firstComment = relevantComments.get(relevantComments.size() - 1);
+        Token lastComment = relevantComments.get(0);
         
         CharStream input = ctx.getStart().getInputStream();
         if (input == null) return null;
@@ -212,57 +254,46 @@ public class ParserUtils {
         
         return result.toString();
     }
-    
+
     /**
-     * 인라인 주석 추출 (같은 라인에 있는 주석만)
-     * 
-     * 구문 끝 토큰과 같은 라인에 있는 주석을 추출
-     * 예: product_id VARCHAR(20) PRIMARY KEY,  -- 제품 ID
-     * 
-     * @param ctx 파싱 컨텍스트
-     * @param tokens 토큰 스트림
-     * @return 인라인 주석 텍스트 (주석 기호 제거, 없으면 null)
+     * 구문 뒤쪽(같은 줄)에 있는 인라인 주석을 추출한다.
+     * 예: SUB_STATUS_ACTIVE, (주석) -> 이 주석을 찾음
      */
     public static String getTrailingComment(ParserRuleContext ctx, CommonTokenStream tokens) {
         if (ctx == null || ctx.getStop() == null || tokens == null) return null;
-        
-        Token stopToken = ctx.getStop();
-        int stopLine = stopToken.getLine();
-        
+
+        int stopTokenIndex = ctx.getStop().getTokenIndex();
+        int stopLine = ctx.getStop().getLine();
+
+        // stop 토큰 오른쪽의 hidden 토큰을 탐색
         List<Token> hiddenTokens = tokens.getHiddenTokensToRight(
-            stopToken.getTokenIndex(), Token.HIDDEN_CHANNEL
+                stopTokenIndex, Token.HIDDEN_CHANNEL
         );
-        
+
         if (hiddenTokens == null || hiddenTokens.isEmpty()) return null;
-        
-        // 같은 라인에 있는 첫 번째 주석만 추출
+
+        // 같은 줄에 있는 주석만 찾기
         for (Token t : hiddenTokens) {
+            if (t.getLine() != stopLine) break; // 다른 줄이면 중단
             String text = t.getText().trim();
-            
-            // 주석인지 확인 (PostgreSQL/Oracle 모두 -- 또는 /* */)
-            if (text.startsWith("--") || text.startsWith("/*")) {
-                // 같은 라인인지 확인
-                if (t.getLine() == stopLine) {
-                    // 주석 기호 제거하고 반환
-                    if (text.startsWith("--")) {
-                        return text.substring(2).trim();
-                    } else if (text.startsWith("/*")) {
-                        String comment = text.substring(2);
-                        if (comment.endsWith("*/")) {
-                            comment = comment.substring(0, comment.length() - 2);
-                        }
-                        return comment.trim();
-                    }
-                } else {
-                    // 다른 라인이면 중단 (다음 구문의 주석일 수 있음)
-                    break;
-                }
+            if (text.startsWith("/*") || text.startsWith("//") || text.startsWith("--")) {
+                return stopLine + ": " + text;
             }
         }
-        
+
         return null;
     }
-    
+
+    /**
+     * leading 주석과 trailing 주석을 합쳐서 반환한다.
+     * leading이 있으면 leading 우선, 없으면 trailing 사용.
+     */
+    public static String getComment(ParserRuleContext ctx, CommonTokenStream tokens) {
+        String leading = getLeadingComment(ctx, tokens);
+        if (leading != null) return leading;
+        return getTrailingComment(ctx, tokens);
+    }
+
     /**
      * 시그니처 추출: 시작부터 특정 토큰(예: {, IS, AS) 직전까지
      */
