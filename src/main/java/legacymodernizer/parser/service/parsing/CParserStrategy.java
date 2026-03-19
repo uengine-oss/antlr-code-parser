@@ -297,11 +297,21 @@ public class CParserStrategy implements TargetParserStrategy {
         }
 
         // 2단계: 매크로 상수 치환 (배열 크기 등에서 사용되는 #define 값)
+        // #define 라인 자체는 치환에서 제외 (HIDDEN 채널에서 원본 추출을 위해)
         String processed = result.toString();
-        for (Map.Entry<String, String> entry : collectedMacroConstants.entrySet()) {
-            // 단어 경계로 치환 (부분 매칭 방지)
-            processed = processed.replaceAll("\\b" + Pattern.quote(entry.getKey()) + "\\b", entry.getValue());
+        String[] processedLines = processed.split("\n", -1);
+        for (int li = 0; li < processedLines.length; li++) {
+            String trimmedLine = processedLines[li].trim();
+            if (trimmedLine.startsWith("#define") || trimmedLine.startsWith("# define")) {
+                continue; // #define 라인은 치환하지 않음
+            }
+            String replaced = processedLines[li];
+            for (Map.Entry<String, String> entry : collectedMacroConstants.entrySet()) {
+                replaced = replaced.replaceAll("\\b" + Pattern.quote(entry.getKey()) + "\\b", entry.getValue());
+            }
+            processedLines[li] = replaced;
         }
+        processed = String.join("\n", processedLines);
 
         return processed;
     }

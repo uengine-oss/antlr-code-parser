@@ -2,6 +2,8 @@ package legacymodernizer.parser.antlr.c;
 
 import java.util.List;
 import java.util.Stack;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -75,6 +77,17 @@ public class CustomCListener extends CParserBaseListener {
                     String includeName = text.replaceFirst("^#\\s*include\\s*", "").trim();
                     Node node = new Node("INCLUDE", includeName, token.getLine(), root);
                     node.endLine = token.getLine();
+                }
+                // #define 대문자 상수를 FIELD로 추출
+                if (text.startsWith("#define") || text.startsWith("# define")) {
+                    Matcher m = Pattern
+                        .compile("^#\\s*define\\s+([A-Z_][A-Z0-9_]*)\\s+([-+]?(?:0[xX][0-9a-fA-F]+|\\d+(?:\\.\\d+)?))")
+                        .matcher(text);
+                    if (m.find()) {
+                        Node node = new Node("FIELD", m.group(1), token.getLine(), root);
+                        node.endLine = token.getLine();
+                        node.fieldType = m.group(2);
+                    }
                 }
             }
         }
@@ -182,6 +195,9 @@ public class CustomCListener extends CParserBaseListener {
 
     @Override
     public void enterFunctionDefinition(CParser.FunctionDefinitionContext ctx) {
+        // .h 파일에서는 함수 정의 노드를 생성하지 않음 (중복 방지)
+        if (isHeaderFile()) return;
+
         String name = null;
 
         // 함수 이름 추출: declarator → directDeclarator → Identifier
@@ -318,6 +334,7 @@ public class CustomCListener extends CParserBaseListener {
                 if (isTypedef) {
                     nodeType = "TYPEDEF";
                 } else if (isFunctionPrototype && isGlobal) {
+                    if (isHeaderFile()) continue; // .h 파일에서는 함수 원형 무시
                     nodeType = "FUNCTION";
                 } else if (isGlobal) {
                     nodeType = "GLOBAL_VARIABLE";
@@ -369,9 +386,25 @@ public class CustomCListener extends CParserBaseListener {
         // FUNCTION 노드 내부에서만 함수 호출 추출
         if (!isInsideFunction()) return;
 
+        // 함수 호출 이름 추출: '->' 또는 '.' 멤버 접근 시 실제 호출 대상 추출
+        // 예: svc->handler(req, reply) → name="handler", printf("hello") → name="printf"
         String name = null;
-        if (ctx.primaryExpression().Identifier() != null) {
-            name = ctx.primaryExpression().Identifier().getText();
+        for (int j = 0; j < ctx.getChildCount(); j++) {
+            if (ctx.getChild(j).getText().equals("(") && j > 0) {
+                // 멤버 접근 호출: svc->handler(), obj.func()
+                if (j >= 2) {
+                    String op = ctx.getChild(j - 2).getText();
+                    if (".".equals(op) || "->".equals(op)) {
+                        name = ctx.getChild(j - 1).getText();
+                        break;
+                    }
+                }
+                // 일반 호출: printf(), init_fn()
+                if (ctx.primaryExpression().Identifier() != null) {
+                    name = ctx.primaryExpression().Identifier().getText();
+                }
+                break;
+            }
         }
 
         Node node = enterStatement("FUNCTION_CALL", name, ctx.getStart().getLine());
@@ -502,6 +535,13 @@ public class CustomCListener extends CParserBaseListener {
             if (nodeStack.get(i).type.equals("FUNCTION")) return true;
         }
         return false;
+    }
+
+    /**
+     * 현재 파일이 헤더(.h) 파일인지 확인
+     */
+    private boolean isHeaderFile() {
+        return root.fileName != null && root.fileName.endsWith(".h");
     }
 
     /**
