@@ -223,16 +223,16 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     }
     
     // ========================================
-    // 클래스명 전파
+    // 모듈명 전파
     // ========================================
     
     /**
-     * 클래스명을 모든 자식 노드에 재귀적으로 전파
+     * 모듈명을 모든 자식 노드에 재귀적으로 전파
      */
-    private void propagateClassName(Node node, String className) {
+    private void propagateModuleName(Node node, String moduleName) {
         for (Node child : node.children) {
-            child.className = className;
-            propagateClassName(child, className);
+            child.moduleName = moduleName;
+            propagateModuleName(child, moduleName);
     }
     }
     
@@ -271,8 +271,8 @@ public class CustomJavaListener extends Java20ParserBaseListener {
             }
             // exitStatement 호출 (code, endLine 설정)
             exitStatement("CLASS", ctx.getStop().getLine(), ctx);
-            // 모든 자식에 className 전파
-            propagateClassName(node, node.name);
+            // 모든 자식에 moduleName 전파
+            propagateModuleName(node, node.name);
         } else {
             exitStatement("CLASS", ctx.getStop().getLine(), ctx);
         }
@@ -305,8 +305,8 @@ public class CustomJavaListener extends Java20ParserBaseListener {
             }
             // exitStatement 호출 (code, endLine 설정)
             exitStatement("INTERFACE", ctx.getStop().getLine(), ctx);
-            // 모든 자식에 className 전파
-            propagateClassName(node, node.name);
+            // 모든 자식에 moduleName 전파
+            propagateModuleName(node, node.name);
         } else {
             exitStatement("INTERFACE", ctx.getStop().getLine(), ctx);
         }
@@ -398,7 +398,7 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         extractFieldModifiers(node, ctx.fieldModifier());
         
         if (ctx.unannType() != null) {
-            node.fieldType = ctx.unannType().getText();
+            node.variableType = ctx.unannType().getText();
         }
         
         if (ctx.variableDeclaratorList() != null) {
@@ -470,7 +470,7 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         Node node = enterStatement("VARIABLE", null, ctx.getStart().getLine());
         
         if (ctx.localVariableType() != null) {
-            node.fieldType = ctx.localVariableType().getText();
+            node.variableType = ctx.localVariableType().getText();
         }
         
         if (ctx.variableDeclaratorList() != null) {
@@ -546,7 +546,7 @@ public class CustomJavaListener extends Java20ParserBaseListener {
         if (node.modifiers != null) info.append(" {").append(node.modifiers).append("}");
         if (node.extendsType != null) info.append(" extends:").append(node.extendsType);
         if (node.implementsTypes != null) info.append(" implements:").append(node.implementsTypes);
-        if (node.fieldType != null) info.append(" type:").append(node.fieldType);
+        if (node.variableType != null) info.append(" type:").append(node.variableType);
         if (node.returnType != null) info.append(" returns:").append(node.returnType);
         if (node.genericType != null) info.append(" generic:").append(node.genericType);
         if (node.packageName != null) info.append(" package:").append(node.packageName);

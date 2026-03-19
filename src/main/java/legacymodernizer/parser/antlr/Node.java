@@ -35,7 +35,7 @@ public class Node {
     // ========================================
     // 필드/변수 관련
     // ========================================
-    public String fieldType;      // 필드/변수 타입
+    public String variableType;    // 변수 타입
     /** VARIABLE: 초기화식 문자열에 메서드 호출 패턴(괄호 등)이 있으면 true — 정규식으로 판별 */
     public Boolean initializerContainsMethodCall;
     /** VARIABLE: 초기화식 문자열에 new 타입 패턴이 있으면 true — 정규식으로 판별 */
@@ -47,9 +47,9 @@ public class Node {
     public String schema;         // 스키마명 (schema.procedure_name)
     
     // ========================================
-    // 소속 클래스 관련 (CLASS/INTERFACE 자식 노드)
+    // 소속 모듈 관련 (CLASS/INTERFACE 자식 노드)
     // ========================================
-    public String className;      // 소속 클래스/인터페이스명
+    public String moduleName;     // 소속 모듈명 (클래스/파일/구조체 등)
     
     // ========================================
     // 파일 관련 (FILE 노드)
@@ -95,11 +95,11 @@ public class Node {
         appendJsonField(json, "genericType", genericType);
         appendJsonField(json, "extendsType", extendsType);
         appendJsonField(json, "implementsTypes", implementsTypes);
-        appendJsonField(json, "fieldType", fieldType);
+        appendJsonField(json, "variableType", variableType);
         if (Boolean.TRUE.equals(initializerContainsMethodCall)) json.append(",\"initializerContainsMethodCall\":true");
         if (Boolean.TRUE.equals(initializerContainsNewInstance)) json.append(",\"initializerContainsNewInstance\":true");
         appendJsonField(json, "schema", schema);
-        appendJsonField(json, "className", className);
+        appendJsonField(json, "moduleName", moduleName);
         appendJsonField(json, "fileName", fileName);
         appendJsonField(json, "filePath", filePath);
         appendJsonField(json, "packageName", packageName);
@@ -143,8 +143,8 @@ public class Node {
         if (packageName != null) {
             json.append(",\"packageName\":\"").append(escapeJson(packageName)).append("\"");
         }
-        if (className != null) {
-            json.append(",\"className\":\"").append(escapeJson(className)).append("\"");
+        if (moduleName != null) {
+            json.append(",\"moduleName\":\"").append(escapeJson(moduleName)).append("\"");
         }
         
         json.append(",\"startLine\":").append(startLine);

@@ -78,15 +78,15 @@ public class CustomCListener extends CParserBaseListener {
                     Node node = new Node("INCLUDE", includeName, token.getLine(), root);
                     node.endLine = token.getLine();
                 }
-                // #define 대문자 상수를 FIELD로 추출
+                // #define 대문자 상수를 DEFINE으로 추출
                 if (text.startsWith("#define") || text.startsWith("# define")) {
                     Matcher m = Pattern
                         .compile("^#\\s*define\\s+([A-Z_][A-Z0-9_]*)\\s+([-+]?(?:0[xX][0-9a-fA-F]+|\\d+(?:\\.\\d+)?))")
                         .matcher(text);
                     if (m.find()) {
-                        Node node = new Node("FIELD", m.group(1), token.getLine(), root);
+                        Node node = new Node("DEFINE", m.group(1), token.getLine(), root);
                         node.endLine = token.getLine();
-                        node.fieldType = m.group(2);
+                        node.variableType = m.group(2);
                     }
                 }
             }
@@ -151,7 +151,7 @@ public class CustomCListener extends CParserBaseListener {
             Node node = nodeStack.peek();
             node.comment = ParserUtils.getComment(ctx, tokens);
             exitStatement(type, ctx.getStop().getLine(), ctx);
-            propagateClassName(node, node.name);
+            propagateModuleName(node, node.name);
         }
         // typedef struct 처리 완료 시 pending 이름 초기화
         pendingTypedefName = null;
@@ -272,7 +272,7 @@ public class CustomCListener extends CParserBaseListener {
         }
 
         // returnType/modifiers를 공통 메서드로 추출
-        String fieldType = extractReturnType(ctx.declarationSpecifiers());
+        String variableType = extractReturnType(ctx.declarationSpecifiers());
         String modifierStr = extractModifiers(ctx.declarationSpecifiers());
         // typedef는 modifiers에서 제외 (별도 처리)
         if (modifierStr != null) {
@@ -324,10 +324,10 @@ public class CustomCListener extends CParserBaseListener {
                 }
 
                 // 포인터 확인
-                String actualFieldType = fieldType;
+                String actualVariableType = variableType;
                 if (initDecl.declarator() != null && !initDecl.declarator().pointer().isEmpty()) {
-                    actualFieldType = (actualFieldType != null ? actualFieldType : "") + " *";
-                    actualFieldType = actualFieldType.trim();
+                    actualVariableType = (actualVariableType != null ? actualVariableType : "") + " *";
+                    actualVariableType = actualVariableType.trim();
                 }
 
                 String nodeType;
@@ -343,11 +343,11 @@ public class CustomCListener extends CParserBaseListener {
                 }
 
                 Node node = enterStatement(nodeType, name, ctx.getStart().getLine());
-                node.fieldType = actualFieldType;
+                node.variableType = actualVariableType;
                 if (isFunctionPrototype) {
-                    node.returnType = actualFieldType;
+                    node.returnType = actualVariableType;
                     node.parameters = parameters;
-                    node.fieldType = null;
+                    node.variableType = null;
                 }
                 if (modifierStr != null) {
                     node.modifiers = modifierStr;
@@ -358,7 +358,7 @@ public class CustomCListener extends CParserBaseListener {
                 node.comment = ParserUtils.getComment(ctx, tokens);
                 nodeStack.pop();
             }
-        } else if (!isTypedef && fieldType != null) {
+        } else if (!isTypedef && variableType != null) {
             // initDeclaratorList 없는 선언 (ex: struct 정의만)은 무시
         }
     }
@@ -427,7 +427,7 @@ public class CustomCListener extends CParserBaseListener {
         if (ctx.specifierQualifierList() == null) return;
         if (ctx.memberDeclaratorList() == null) return;
 
-        String fieldType = ParserUtils.getOriginalText(ctx.specifierQualifierList(), tokens);
+        String variableType = ParserUtils.getOriginalText(ctx.specifierQualifierList(), tokens);
 
         for (CParser.MemberDeclaratorContext md : ctx.memberDeclaratorList().memberDeclarator()) {
             String name = null;
@@ -435,8 +435,8 @@ public class CustomCListener extends CParserBaseListener {
                 name = extractDeclaratorName(md.declarator());
             }
 
-            Node node = new Node("FIELD", name, ctx.getStart().getLine(), nodeStack.peek());
-            node.fieldType = fieldType;
+            Node node = new Node("MEMBER", name, ctx.getStart().getLine(), nodeStack.peek());
+            node.variableType = variableType;
             node.endLine = ctx.getStop().getLine();
             node.comment = ParserUtils.getComment(ctx, tokens);
         }
@@ -555,12 +555,12 @@ public class CustomCListener extends CParserBaseListener {
     }
 
     /**
-     * 클래스명(구조체명)을 모든 자식 노드에 재귀적으로 전파
+     * 모듈명(구조체명 등)을 모든 자식 노드에 재귀적으로 전파
      */
-    private void propagateClassName(Node node, String className) {
+    private void propagateModuleName(Node node, String moduleName) {
         for (Node child : node.children) {
-            child.className = className;
-            propagateClassName(child, className);
+            child.moduleName = moduleName;
+            propagateModuleName(child, moduleName);
         }
     }
 
@@ -573,7 +573,7 @@ public class CustomCListener extends CParserBaseListener {
         info.append(indent).append(node.type);
         if (node.name != null) info.append(" [").append(node.name).append("]");
         if (node.modifiers != null) info.append(" {").append(node.modifiers).append("}");
-        if (node.fieldType != null) info.append(" type:").append(node.fieldType);
+        if (node.variableType != null) info.append(" type:").append(node.variableType);
         if (node.returnType != null) info.append(" returns:").append(node.returnType);
         info.append(" (").append(node.startLine).append("-").append(node.endLine).append(")");
 
