@@ -11,8 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * Target별 파싱 전략 팩토리
- * 
- * 지원 타입: java, c, oracle, postgresql
+ *
+ * 지원 타입: java, c, oracle, postgresql, python
  */
 @Slf4j
 @Component
@@ -23,18 +23,20 @@ public class ParserStrategyFactory {
     private final CParserStrategy cStrategy;
     private final PlSqlParserStrategy plSqlStrategy;
     private final PostgreSqlParserStrategy postgreSqlStrategy;
+    private final PythonParserStrategy pythonStrategy;
 
     private Map<String, TargetParserStrategy> strategies;
 
     @PostConstruct
     private void init() {
-        strategies = Map.of(
-                "java", javaStrategy,
-                "c", cStrategy,
-                "oracle", plSqlStrategy,
-                "plsql", plSqlStrategy,
-                "postgresql", postgreSqlStrategy,
-                "postgres", postgreSqlStrategy);
+        strategies = Map.ofEntries(
+                Map.entry("java", javaStrategy),
+                Map.entry("c", cStrategy),
+                Map.entry("oracle", plSqlStrategy),
+                Map.entry("plsql", plSqlStrategy),
+                Map.entry("postgresql", postgreSqlStrategy),
+                Map.entry("postgres", postgreSqlStrategy),
+                Map.entry("python", pythonStrategy));
 
         log.info("파서 전략 초기화: {}", strategies.keySet());
     }
