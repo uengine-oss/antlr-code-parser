@@ -353,6 +353,9 @@ public class CustomPythonListener extends PythonParserBaseListener {
             typeAnnotation = assignPart.test().getText();
         }
 
+        // 초기화식(= 오른쪽) 텍스트 추출 → 플래그 판별용
+        String initializerText = extractInitializerText(assignPart);
+
         // self.xxx = ... → FIELD (인스턴스 변수)
         if (varName.startsWith("self.")) {
             String fieldName = varName.substring(5);
@@ -364,6 +367,7 @@ public class CustomPythonListener extends PythonParserBaseListener {
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
+            applyInitializerFlags(node, initializerText);
             return;
         }
 
@@ -375,18 +379,21 @@ public class CustomPythonListener extends PythonParserBaseListener {
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
+            applyInitializerFlags(node, initializerText);
         } else if ("METHOD".equals(enclosing) || "FUNCTION".equals(enclosing)) {
             // 함수/메서드 내부 → VARIABLE (로컬)
             Node node = enterStatement("VARIABLE", varName, ctx.getStart().getLine());
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
+            applyInitializerFlags(node, initializerText);
         } else {
             // 모듈 레벨 → VARIABLE
             Node node = enterStatement("VARIABLE", varName, ctx.getStart().getLine());
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
+            applyInitializerFlags(node, initializerText);
         }
     }
 
@@ -405,6 +412,74 @@ public class CustomPythonListener extends PythonParserBaseListener {
             if ("FIELD".equals(topType) || "VARIABLE".equals(topType)) {
                 Node node = nodeStack.pop();
                 node.endLine = ctx.getStop().getLine();
+            }
+        }
+    }
+
+    // ========================================
+    // 초기화식 플래그 판별 (Java CustomJavaListener와 동일 패턴)
+    // ========================================
+
+    /**
+     * assign_part에서 = 오른쪽 텍스트를 추출.
+     * Python: name = StatsService(db) → "StatsService(db)"
+     */
+    private String extractInitializerText(PythonParser.Assign_partContext assignPart) {
+        if (assignPart == null) return null;
+        // ASSIGN ... testlist_star_expr 형태
+        if (assignPart.ASSIGN() != null && !assignPart.ASSIGN().isEmpty()
+                && assignPart.testlist_star_expr() != null && !assignPart.testlist_star_expr().isEmpty()) {
+            // 첫 번째 = 오른쪽 값
+            return assignPart.testlist_star_expr(0).getText();
+        }
+        // COLON test ASSIGN testlist 형태 (name: Type = value)
+        if (assignPart.COLON() != null && assignPart.testlist() != null) {
+            return assignPart.testlist().getText();
+        }
+        return null;
+    }
+
+    /**
+     * 초기화식에 함수 호출 패턴이 있는지 판별.
+     * Python에서는 ClassName(args) 패턴 = Java의 new ClassName(args)에 해당.
+     * 예: StatsService(db), Database(), Config.from_file(path)
+     */
+    private static boolean initializerMatchesMethodCall(String text) {
+        if (text == null || text.isEmpty()) return false;
+        return text.matches("(?s).*\\w+\\s*\\(.*");
+    }
+
+    /**
+     * 초기화식에 대문자로 시작하는 생성자 호출 패턴이 있는지 판별.
+     * Python: ClassName(args) = Java의 new ClassName(args)
+     * 예: StatsService(db), BookService(db)
+     */
+    private static boolean initializerMatchesNewInstance(String text) {
+        if (text == null || text.isEmpty()) return false;
+        return text.matches("(?s).*\\b[A-Z]\\w*\\s*\\(.*");
+    }
+
+    /**
+     * 초기화식에서 생성자 클래스명 추출.
+     * "StatsService(db)" → "StatsService", "Config.from_file(x)" → null
+     */
+    private static String extractNewInstanceType(String text) {
+        if (text == null || text.isEmpty()) return null;
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("^([A-Z]\\w*)\\s*\\(").matcher(text);
+        return m.find() ? m.group(1) : null;
+    }
+
+    /** VARIABLE/FIELD 노드에 초기화식 플래그 + variableType 세팅 */
+    private static void applyInitializerFlags(Node node, String initializerText) {
+        if (initializerText == null || initializerText.isEmpty()) return;
+        node.initializerContainsMethodCall = initializerMatchesMethodCall(initializerText);
+        node.initializerContainsNewInstance = initializerMatchesNewInstance(initializerText);
+        // 생성자 호출이면 variableType을 클래스명으로 세팅 (타입 어노테이션이 없는 경우만)
+        if (Boolean.TRUE.equals(node.initializerContainsNewInstance) && node.variableType == null) {
+            String className = extractNewInstanceType(initializerText);
+            if (className != null) {
+                node.variableType = className;
             }
         }
     }

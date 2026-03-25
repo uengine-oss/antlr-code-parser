@@ -352,6 +352,13 @@ public class CustomCListener extends CParserBaseListener {
                 if (modifierStr != null) {
                     node.modifiers = modifierStr;
                 }
+                // 초기화식 플래그: = 오른쪽에 함수 호출이 있는지 판별
+                if (!isFunctionPrototype && !isTypedef && initDecl.initializer() != null) {
+                    String initText = ParserUtils.getOriginalText(initDecl.initializer(), tokens);
+                    if (initText != null && initText.matches("(?s).*\\w+\\s*\\(.*")) {
+                        node.initializerContainsMethodCall = true;
+                    }
+                }
 
                 // 즉시 닫기 (declaration은 한 줄)
                 node.endLine = ctx.getStop().getLine();
