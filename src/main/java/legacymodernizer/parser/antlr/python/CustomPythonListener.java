@@ -92,6 +92,31 @@ public class CustomPythonListener extends PythonParserBaseListener {
         return "FILE";
     }
 
+    /**
+     * 현재 스코프가 frozen=True dataclass 내부인지 확인.
+     */
+    private boolean isInsideFrozenDataclass() {
+        for (int i = nodeStack.size() - 1; i >= 0; i--) {
+            Node n = nodeStack.get(i);
+            if ("CLASS".equals(n.type) && n.annotations != null && n.annotations.contains("frozen=True")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static final java.util.regex.Pattern ALL_CAPS = java.util.regex.Pattern.compile("^[A-Z][A-Z0-9_]*$");
+
+    /**
+     * Python 상수 판별: Final 타입 힌트, ALL_CAPS 변수명, frozen dataclass 필드.
+     */
+    private boolean isPythonConstant(String varName, String typeAnnotation) {
+        if (typeAnnotation != null && typeAnnotation.contains("Final")) return true;
+        if (varName != null && varName.length() > 1 && ALL_CAPS.matcher(varName).matches()) return true;
+        if (isInsideFrozenDataclass()) return true;
+        return false;
+    }
+
     // ========================================
     // 주석 추출
     // ========================================
@@ -356,14 +381,14 @@ public class CustomPythonListener extends PythonParserBaseListener {
         // 초기화식(= 오른쪽) 텍스트 추출 → 플래그 판별용
         String initializerText = extractInitializerText(assignPart);
 
-        // self.xxx = ... → FIELD (인스턴스 변수)
+        // self.xxx = ... → FIELD 또는 CONSTANT_FIELD (인스턴스 변수)
         if (varName.startsWith("self.")) {
             String fieldName = varName.substring(5);
-            // self.xxx.yyy = ... 은 기존 객체 속성 변경이므로 필드 선언이 아님 → 무시
             if (fieldName.contains(".")) {
                 return;
             }
-            Node node = enterStatement("FIELD", fieldName, ctx.getStart().getLine());
+            String fieldType = isPythonConstant(fieldName, typeAnnotation) ? "CONSTANT_FIELD" : "FIELD";
+            Node node = enterStatement(fieldType, fieldName, ctx.getStart().getLine());
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
@@ -374,22 +399,22 @@ public class CustomPythonListener extends PythonParserBaseListener {
         String enclosing = findEnclosingType();
 
         if ("CLASS".equals(enclosing)) {
-            // 클래스 바디 직속 변수 → FIELD (클래스 변수 또는 타입 어노테이션 필드)
-            Node node = enterStatement("FIELD", varName, ctx.getStart().getLine());
+            String fieldType = isPythonConstant(varName, typeAnnotation) ? "CONSTANT_FIELD" : "FIELD";
+            Node node = enterStatement(fieldType, varName, ctx.getStart().getLine());
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
             applyInitializerFlags(node, initializerText);
         } else if ("METHOD".equals(enclosing) || "FUNCTION".equals(enclosing)) {
-            // 함수/메서드 내부 → VARIABLE (로컬)
             Node node = enterStatement("VARIABLE", varName, ctx.getStart().getLine());
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
             applyInitializerFlags(node, initializerText);
         } else {
-            // 모듈 레벨 → VARIABLE
-            Node node = enterStatement("VARIABLE", varName, ctx.getStart().getLine());
+            // 모듈 레벨: ALL_CAPS면 CONSTANT_FIELD, 아니면 VARIABLE
+            String modType = isPythonConstant(varName, typeAnnotation) ? "CONSTANT_FIELD" : "VARIABLE";
+            Node node = enterStatement(modType, varName, ctx.getStart().getLine());
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
@@ -406,10 +431,10 @@ public class CustomPythonListener extends PythonParserBaseListener {
         boolean hasColon = assignPart.COLON() != null;
         if (!hasAssign && !hasColon) return;
 
-        // FIELD 또는 VARIABLE 종료
+        // FIELD, CONSTANT_FIELD, VARIABLE 종료
         if (!nodeStack.isEmpty()) {
             String topType = nodeStack.peek().type;
-            if ("FIELD".equals(topType) || "VARIABLE".equals(topType)) {
+            if ("FIELD".equals(topType) || "CONSTANT_FIELD".equals(topType) || "VARIABLE".equals(topType)) {
                 Node node = nodeStack.pop();
                 node.endLine = ctx.getStop().getLine();
             }

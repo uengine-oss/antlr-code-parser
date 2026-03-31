@@ -330,12 +330,15 @@ public class CustomCListener extends CParserBaseListener {
                     actualVariableType = actualVariableType.trim();
                 }
 
+                boolean isConst = actualVariableType != null && actualVariableType.contains("const");
                 String nodeType;
                 if (isTypedef) {
                     nodeType = "TYPEDEF";
                 } else if (isFunctionPrototype && isGlobal) {
-                    if (isHeaderFile()) continue; // .h 파일에서는 함수 원형 무시
+                    if (isHeaderFile()) continue;
                     nodeType = "FUNCTION";
+                } else if (isConst) {
+                    nodeType = "CONSTANT_FIELD";
                 } else if (isGlobal) {
                     nodeType = "GLOBAL_VARIABLE";
                 } else {

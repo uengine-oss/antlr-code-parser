@@ -144,16 +144,18 @@ public class CustomPlSqlListener extends PlSqlParserBaseListener {
         if (text.startsWith("FUNCTION") || text.startsWith("PROCEDURE")) {
             return;
         }
-        enterStatement("PACKAGE_VARIABLE", ctx.getStart().getLine());
+        String nodeType = text.contains("CONSTANT") ? "CONSTANT_FIELD" : "PACKAGE_VARIABLE";
+        enterStatement(nodeType, ctx.getStart().getLine());
     }
-    
+
     @Override
     public void exitPackage_obj_spec(PlSqlParser.Package_obj_specContext ctx) {
         String text = ctx.getText().toUpperCase().trim();
         if (text.startsWith("FUNCTION") || text.startsWith("PROCEDURE")) {
             return;
         }
-        exitStatement("PACKAGE_VARIABLE", ctx.getStop().getLine(), ctx);
+        String nodeType = text.contains("CONSTANT") ? "CONSTANT_FIELD" : "PACKAGE_VARIABLE";
+        exitStatement(nodeType, ctx.getStop().getLine(), ctx);
     }
 
     @Override

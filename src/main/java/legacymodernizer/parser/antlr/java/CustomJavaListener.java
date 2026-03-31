@@ -394,13 +394,18 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     @Override
     public void enterFieldDeclaration(Java20Parser.FieldDeclarationContext ctx) {
         Node node = enterStatement("FIELD", null, ctx.getStart().getLine());
-        
+
         extractFieldModifiers(node, ctx.fieldModifier());
-        
+
+        // final 필드 → CONSTANT_FIELD
+        if (node.modifiers != null && node.modifiers.contains("final")) {
+            node.type = "CONSTANT_FIELD";
+        }
+
         if (ctx.unannType() != null) {
             node.variableType = ctx.unannType().getText();
         }
-        
+
         if (ctx.variableDeclaratorList() != null) {
             node.name = ctx.variableDeclaratorList().getText();
             if (node.name != null && node.name.contains("=")) {
@@ -408,10 +413,12 @@ public class CustomJavaListener extends Java20ParserBaseListener {
             }
         }
     }
-    
+
     @Override
     public void exitFieldDeclaration(Java20Parser.FieldDeclarationContext ctx) {
-        exitStatement("FIELD", ctx.getStop().getLine(), ctx);
+        // exitStatement의 타입도 현재 노드 타입에 맞춤
+        Node current = nodeStack.peek();
+        exitStatement(current != null ? current.type : "FIELD", ctx.getStop().getLine(), ctx);
     }
     
     // ========================================
