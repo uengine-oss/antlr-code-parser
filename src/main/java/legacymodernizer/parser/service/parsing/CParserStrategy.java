@@ -1,8 +1,6 @@
 package legacymodernizer.parser.service.parsing;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
@@ -60,44 +58,43 @@ public class CParserStrategy implements TargetParserStrategy {
     public void parseFileWithStream(File file, String outputPath, ParseProgressTracker tracker) throws Exception {
         log.debug("[C] 파싱: {}", file.getName());
 
-        try (InputStream in = new FileInputStream(file)) {
-            // 전처리기 조건부 컴파일(#ifdef/#else/#endif) 처리
-            String source = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-            source = preprocessSource(source);
-            CharStream charStream = CharStreams.fromString(source);
-            CLexer lexer = new CLexer(charStream);
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            CParser parser = new CParser(tokens);
+        // 인코딩 폴백으로 소스 읽기 (UTF-8 → EUC-KR → MS949)
+        String source = readFileContent(file.toPath());
+        // 전처리기 조건부 컴파일(#ifdef/#else/#endif) 처리
+        source = preprocessSource(source);
+        CharStream charStream = CharStreams.fromString(source);
+        CLexer lexer = new CLexer(charStream);
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        CParser parser = new CParser(tokens);
 
-            // 수집된 사용자 정의 타입 이름을 파서에 등록
-            if (!collectedTypeNames.isEmpty()) {
-                parser.registerTypeNames(collectedTypeNames);
-            }
-
-            CParser.CompilationUnitContext tree = parser.compilationUnit();
-
-            CustomCListener listener = new CustomCListener(tokens, tracker);
-
-            // 파일 정보 설정
-            String fileName = file.getName();
-            Path sourceDir = fileParserService.sourceDir();
-            Path filePath = file.toPath();
-            String relativePath = null;
-            try {
-                if (filePath.startsWith(sourceDir)) {
-                    relativePath = sourceDir.relativize(filePath).toString().replace('\\', '/');
-                } else {
-                    relativePath = filePath.toString().replace('\\', '/');
-                }
-            } catch (Exception e) {
-                relativePath = fileName;
-            }
-            listener.setFileInfo(fileName, relativePath);
-
-            new ParseTreeWalker().walk(listener, tree);
-
-            Files.writeString(Path.of(outputPath), listener.getRoot().toJson(), StandardCharsets.UTF_8);
+        // 수집된 사용자 정의 타입 이름을 파서에 등록
+        if (!collectedTypeNames.isEmpty()) {
+            parser.registerTypeNames(collectedTypeNames);
         }
+
+        CParser.CompilationUnitContext tree = parser.compilationUnit();
+
+        CustomCListener listener = new CustomCListener(tokens, tracker);
+
+        // 파일 정보 설정
+        String fileName = file.getName();
+        Path sourceDir = fileParserService.sourceDir();
+        Path filePath = file.toPath();
+        String relativePath = null;
+        try {
+            if (filePath.startsWith(sourceDir)) {
+                relativePath = sourceDir.relativize(filePath).toString().replace('\\', '/');
+            } else {
+                relativePath = filePath.toString().replace('\\', '/');
+            }
+        } catch (Exception e) {
+            relativePath = fileName;
+        }
+        listener.setFileInfo(fileName, relativePath);
+
+        new ParseTreeWalker().walk(listener, tree);
+
+        Files.writeString(Path.of(outputPath), listener.getRoot().toJson(), StandardCharsets.UTF_8);
     }
 
     @Override
@@ -134,6 +131,7 @@ public class CParserStrategy implements TargetParserStrategy {
                         try {
                             String content = readFileContent(p);
                             extractTypeNames(content);
+                            inferTypeNamesFromUsage(content);
                         } catch (Exception e) {
                             log.warn("타입 이름 수집 중 파일 읽기 실패: {}", p, e);
                         }
@@ -202,6 +200,67 @@ public class CParserStrategy implements TargetParserStrategy {
                 collectedTypeNames.add(name);
             }
         }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 사용 패턴 기반 타입 이름 추론 (헤더 파일 없이도 동작)
+    // ═══════════════════════════════════════════════════════════════════
+
+    // 함수 정의 패턴: returnType funcName(params) { — 함수 호출과 구분
+    private static final Pattern FUNC_DEFINITION = Pattern.compile(
+            "\\w+\\s+\\*?\\s*\\w+\\s*\\(([^)]+)\\)\\s*\\{");
+
+    // 파라미터 내 포인터 타입: TypeName *varName
+    private static final Pattern PARAM_PTR_TYPE = Pattern.compile(
+            "(\\w+)\\s+\\*\\s*\\w+");
+
+    // 줄 시작 포인터 변수 선언: TypeName *var;
+    private static final Pattern USAGE_LINE_PTR_DECL = Pattern.compile(
+            "^\\s*(\\w+)\\s+\\*\\s*\\w+\\s*[;=,\\[]", Pattern.MULTILINE);
+
+    // const/static/extern 뒤 포인터 타입: static TypeName *var
+    private static final Pattern USAGE_QUALIFIED_PTR = Pattern.compile(
+            "(?:const|volatile|static|extern)\\s+(\\w+)\\s+\\*\\s*\\w+");
+
+    // 포인터 캐스트: (TypeName *)
+    private static final Pattern USAGE_CAST_PTR = Pattern.compile(
+            "\\(\\s*(\\w+)\\s*\\*\\s*\\)");
+
+    // _t 접미사 비포인터 사용: TypeName_t varName; 또는 (TypeName_t var,
+    private static final Pattern USAGE_T_SUFFIX = Pattern.compile(
+            "[,(;{}\\s](\\w+_t)\\s+\\w+\\s*[;=,\\[)]");
+
+    /**
+     * 소스 코드의 사용 패턴에서 타입 이름을 추론.
+     * 헤더 파일이 없어도 .c 파일 내에서 타입이 사용되는 문맥을 분석하여 타입 식별.
+     *
+     * 핵심: 함수 정의(returnType funcName(params) {)의 파라미터에서만 포인터 타입을 추출.
+     *       함수 호출(func(a * b, c))과 구분하여 오인식 방지.
+     */
+    private void inferTypeNamesFromUsage(String content) {
+        String cleaned = content.replaceAll("//[^\n]*", "");
+        cleaned = cleaned.replaceAll("/\\*.*?\\*/", " ");
+
+        // 1. 함수 정의 파라미터에서 포인터 타입 추출 (가장 정확)
+        Matcher funcMatcher = FUNC_DEFINITION.matcher(cleaned);
+        while (funcMatcher.find()) {
+            String params = funcMatcher.group(1);
+            Matcher paramMatcher = PARAM_PTR_TYPE.matcher(params);
+            while (paramMatcher.find()) {
+                String name = paramMatcher.group(1);
+                if (name != null && !name.isEmpty()
+                        && !C_KEYWORDS.contains(name)
+                        && name.matches("[A-Za-z_]\\w*")) {
+                    collectedTypeNames.add(name);
+                }
+            }
+        }
+
+        // 2. 기타 안전한 패턴
+        extractWithPattern(USAGE_LINE_PTR_DECL, cleaned);
+        extractWithPattern(USAGE_QUALIFIED_PTR, cleaned);
+        extractWithPattern(USAGE_CAST_PTR, cleaned);
+        extractWithPattern(USAGE_T_SUFFIX, cleaned);
     }
 
     /** #define NAME 숫자값 패턴 (매크로 상수) */

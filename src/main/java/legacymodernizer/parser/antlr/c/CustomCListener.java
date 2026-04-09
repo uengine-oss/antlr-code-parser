@@ -86,7 +86,7 @@ public class CustomCListener extends CParserBaseListener {
                     if (m.find()) {
                         Node node = new Node("DEFINE", m.group(1), token.getLine(), root);
                         node.endLine = token.getLine();
-                        node.variableType = m.group(2);
+                        // DEFINE은 타입이 없음. 값(m.group(2))은 variableType에 넣지 않음.
                     }
                 }
             }
@@ -335,8 +335,7 @@ public class CustomCListener extends CParserBaseListener {
                 if (isTypedef) {
                     nodeType = "TYPEDEF";
                 } else if (isFunctionPrototype && isGlobal) {
-                    if (isHeaderFile()) continue;
-                    nodeType = "FUNCTION";
+                    continue;  // 함수 프로토타입(forward declaration)은 무시 — 실제 정의만 FUNCTION으로 처리
                 } else if (isConst) {
                     nodeType = "CONSTANT_FIELD";
                 } else if (isGlobal) {

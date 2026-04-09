@@ -35,7 +35,7 @@ public class AntlrAnalysisTest {
     @Autowired
     private FileParserService fileParserService;
     
-    @Value("${test.target:java}")
+    @Value("${test.target:c}")
     private String TEST_TARGET;
 
     // ========================================
@@ -170,7 +170,10 @@ public class AntlrAnalysisTest {
         // 1) 하드코딩된 업로드 대상 경로 (필요시 변경해서 사용)**
         // 예: 기존 레거시 자바 프로젝트 루트 등
         // Path projectRoot = Paths.get("D:/문서/카카오톡 받은 파일/loan-ejb-app");
-        Path projectRoot = Paths.get("C:/uEngine/robo/테스트데이터/library_system");
+        // RWIS 테스트데이터를 data/source + data/ddl로 적재하기 위한 경로
+        // - 이 경로 아래에 ddl/ 폴더와 RWIS/ (소스) 폴더가 존재
+        // - ddl/ 아래 파일은 data/ddl로, 그 외 타겟 확장자(.sql 등)는 data/source로 적재됨
+        Path projectRoot = Paths.get("C:/uEngine/robo/테스트데이터/apascrt00010t02_20260406");
         
         System.out.println("=== 업로드 대상 프로젝트 루트 ===");
         System.out.println("projectRoot: " + projectRoot);
