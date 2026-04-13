@@ -42,3 +42,5 @@ src/main/resources/application.properties
 p_*
 .temp
 .claude
+# 런타임 업로드 데이터 (런마다 변동)
+data/
