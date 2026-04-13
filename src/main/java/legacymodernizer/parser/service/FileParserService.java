@@ -2,6 +2,7 @@ package legacymodernizer.parser.service;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -92,9 +95,13 @@ public class FileParserService {
      */
     public Map<String, Object> uploadFiles(MultipartFile[] files, Set<String> targetExtensions) {
         // 기존 폴더 비우기
-        clearDirectory(sourceDir());
-        clearDirectory(ddlDir());
-        clearDirectory(analysisDir());
+        try {
+            clearDirectory(sourceDir());
+            clearDirectory(ddlDir());
+            clearDirectory(analysisDir());
+        } catch (IOException e) {
+            throw new RuntimeException("업로드 전 디렉토리 초기화 실패", e);
+        }
 
         List<Map<String, String>> srcList = new ArrayList<>();
         List<Map<String, String>> ddlList = new ArrayList<>();
@@ -168,32 +175,39 @@ public class FileParserService {
     }
 
     /**
-     * 디렉토리 내용 전체 삭제 (디렉토리 자체는 유지)
+     * 디렉토리 내용 전체 삭제 (디렉토리 자체는 유지).
+     *
+     * 주의: Files.walk() 는 반드시 try-with-resources 로 감싸야 한다.
+     * 그렇지 않으면 Windows 에서 디렉터리/파일 핸들이 스트림 GC 전까지 남아,
+     * 이후 같은 파일을 REPLACE_EXISTING 으로 쓸 때 FileSystemException 이 발생한다.
      */
-    private void clearDirectory(Path dir) {
+    private void clearDirectory(Path dir) throws IOException {
         if (!Files.exists(dir)) {
             return;
         }
-        try {
-            Files.walk(dir)
-                    .sorted((a, b) -> b.compareTo(a)) // 역순 (파일 먼저, 디렉토리 나중)
+        List<Path> entries;
+        try (Stream<Path> walk = Files.walk(dir)) {
+            entries = walk
                     .filter(p -> !p.equals(dir))
-                    .forEach(p -> {
-                        try {
-                            Files.delete(p);
-                        } catch (IOException e) {
-                            log.warn("파일 삭제 실패: {}", p, e);
-                        }
-                    });
-            log.debug("디렉토리 초기화: {}", dir);
-        } catch (IOException e) {
-            log.warn("디렉토리 탐색 실패: {}", dir, e);
+                    .sorted((a, b) -> b.compareTo(a)) // 역순 (파일 먼저, 디렉토리 나중)
+                    .collect(Collectors.toList());
         }
+        // 스트림은 여기서 이미 닫힘 → 핸들 누수 없음
+        for (Path p : entries) {
+            Files.deleteIfExists(p);
+        }
+        log.debug("디렉토리 초기화: {}", dir);
     }
 
+    /**
+     * MultipartFile 을 대상 경로에 저장.
+     * InputStream 은 try-with-resources 로 확실히 닫아 핸들 누수를 방지한다.
+     */
     private void saveFile(MultipartFile mf, Path dest) throws IOException {
         Files.createDirectories(dest.getParent());
-        Files.copy(mf.getInputStream(), dest, StandardCopyOption.REPLACE_EXISTING);
+        try (InputStream in = mf.getInputStream()) {
+            Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     private String readContent(Path path) throws IOException {

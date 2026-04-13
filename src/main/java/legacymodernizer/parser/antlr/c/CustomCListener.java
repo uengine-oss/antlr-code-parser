@@ -79,9 +79,11 @@ public class CustomCListener extends CParserBaseListener {
                     node.endLine = token.getLine();
                 }
                 // #define 대문자 상수를 DEFINE으로 추출
+                // 값은 숫자/문자열/문자/수식/식별자 매크로 참조 모두 허용.
+                // 이름 뒤에 공백을 요구하므로 함수형 매크로 `#define FOO(x) ...`는 자동 제외됨.
                 if (text.startsWith("#define") || text.startsWith("# define")) {
                     Matcher m = Pattern
-                        .compile("^#\\s*define\\s+([A-Z_][A-Z0-9_]*)\\s+([-+]?(?:0[xX][0-9a-fA-F]+|\\d+(?:\\.\\d+)?))")
+                        .compile("^#\\s*define\\s+([A-Z_][A-Z0-9_]*)\\s+(.+)$")
                         .matcher(text);
                     if (m.find()) {
                         Node node = new Node("DEFINE", m.group(1), token.getLine(), root);
