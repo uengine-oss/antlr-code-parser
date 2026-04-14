@@ -1,5 +1,7 @@
 package legacymodernizer.parser.antlr.c;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Stack;
 import java.util.regex.Matcher;
@@ -8,6 +10,8 @@ import java.util.regex.Pattern;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import legacymodernizer.parser.antlr.Node;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -49,7 +53,43 @@ public class CustomCListener extends CParserBaseListener {
     public CustomCListener(CommonTokenStream tokens) {
         this.tokens = tokens;
         nodeStack.push(root);
+        extractFileHeaderComment();
         extractIncludes();
+    }
+
+    /**
+     * 파일 최상단 주석 블록을 FILE 노드의 comment로 저장한다.
+     *
+     * C 파일은 클래스 개념이 없어 파일 자체가 모듈이며, 첫 주석은 통상
+     * 모듈 목적·작성자·변경이력 등을 담은 모듈 차원 문서이다.
+     * 이 정보는 자식 함수들의 부모 컨텍스트로 활용된다.
+     *
+     * 동작: 코드 토큰이 등장하기 전까지 BlockComment / LineComment를
+     * 줄 단위로 모아 첫 연속 주석 블록만 root.comment에 저장한다.
+     */
+    private void extractFileHeaderComment() {
+        tokens.fill();
+        StringBuilder header = new StringBuilder();
+        int prevCommentLine = -2;
+        for (Token token : tokens.getTokens()) {
+            int type = token.getType();
+            if (type == CLexer.BlockComment || type == CLexer.LineComment) {
+                int line = token.getLine();
+                if (header.length() == 0 || line - prevCommentLine <= 1) {
+                    header.append(token.getText()).append("\n");
+                    prevCommentLine = line;
+                } else {
+                    break; // 코드 사이에 끼어든 두 번째 주석 블록은 무시
+                }
+            } else if (type != CLexer.Directive
+                    && type != Token.EOF
+                    && !token.getText().trim().isEmpty()) {
+                break; // 코드 토큰 등장 → 헤더 종료
+            }
+        }
+        if (header.length() > 0) {
+            root.comment = header.toString().trim();
+        }
     }
 
     public CustomCListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
@@ -363,6 +403,13 @@ public class CustomCListener extends CParserBaseListener {
                         node.initializerContainsMethodCall = true;
                     }
                 }
+                // 선언부(배열크기·초기화식 등)에서 참조한 식별자 수집 — 변수 이름 자신은 제외
+                if (!isFunctionPrototype && !isTypedef) {
+                    ArrayList<String> refs = collectReferencedIdentifiers(initDecl, name);
+                    if (!refs.isEmpty()) {
+                        node.references = refs;
+                    }
+                }
 
                 // 즉시 닫기 (declaration은 한 줄)
                 node.endLine = ctx.getStop().getLine();
@@ -371,6 +418,36 @@ public class CustomCListener extends CParserBaseListener {
             }
         } else if (!isTypedef && variableType != null) {
             // initDeclaratorList 없는 선언 (ex: struct 정의만)은 무시
+        }
+    }
+
+    /**
+     * 변수 선언 트리에서 참조된 식별자를 수집한다.
+     * 대상: 배열 크기 표현식, 초기화식 등 선언부 내부의 Identifier 토큰.
+     * 제외: 변수 자신의 이름, 함수 호출의 함수명(괄호 앞에 있는 Identifier).
+     *
+     * 예: static char gc_get_date_time [LEN_GET_DATE_TIME +1];
+     *   → ["LEN_GET_DATE_TIME"]
+     */
+    private ArrayList<String> collectReferencedIdentifiers(
+            CParser.InitDeclaratorContext initDecl, String ownName) {
+        LinkedHashSet<String> collected = new LinkedHashSet<>();
+        collectIdentifiers(initDecl, collected);
+        collected.remove(ownName);  // 변수 자신의 이름은 제외
+        return new ArrayList<>(collected);
+    }
+
+    private void collectIdentifiers(ParseTree tree, LinkedHashSet<String> out) {
+        if (tree == null) return;
+        if (tree instanceof TerminalNode) {
+            TerminalNode tn = (TerminalNode) tree;
+            if (tn.getSymbol().getType() == CLexer.Identifier) {
+                out.add(tn.getText());
+            }
+            return;
+        }
+        for (int i = 0; i < tree.getChildCount(); i++) {
+            collectIdentifiers(tree.getChild(i), out);
         }
     }
 

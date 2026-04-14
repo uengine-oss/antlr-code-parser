@@ -40,6 +40,8 @@ public class Node {
     public Boolean initializerContainsMethodCall;
     /** VARIABLE: 초기화식 문자열에 new 타입 패턴이 있으면 true — 정규식으로 판별 */
     public Boolean initializerContainsNewInstance;
+    /** VARIABLE/CONSTANT_FIELD/GLOBAL_VARIABLE: 선언부(배열크기·초기화식 등)에서 참조한 식별자 목록 — AST에서 직접 수집 */
+    public ArrayList<String> references;
     
     // ========================================
     // 스키마 관련 (PL/SQL, PostgreSQL)
@@ -98,6 +100,14 @@ public class Node {
         appendJsonField(json, "variableType", variableType);
         if (Boolean.TRUE.equals(initializerContainsMethodCall)) json.append(",\"initializerContainsMethodCall\":true");
         if (Boolean.TRUE.equals(initializerContainsNewInstance)) json.append(",\"initializerContainsNewInstance\":true");
+        if (references != null && !references.isEmpty()) {
+            json.append(",\"references\":[");
+            for (int i = 0; i < references.size(); i++) {
+                if (i > 0) json.append(",");
+                json.append("\"").append(escapeJson(references.get(i))).append("\"");
+            }
+            json.append("]");
+        }
         appendJsonField(json, "schema", schema);
         appendJsonField(json, "moduleName", moduleName);
         appendJsonField(json, "fileName", fileName);
