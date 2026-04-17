@@ -7,7 +7,8 @@ import java.util.Stack;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
-import legacymodernizer.parser.antlr.Node;
+import legacymodernizer.parser.model.Node;
+import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
 import legacymodernizer.parser.service.ParseProgressTracker;
 
@@ -24,57 +25,38 @@ import legacymodernizer.parser.service.ParseProgressTracker;
  * - 선행 주석(# 주석)과 docstring은 comment 속성에 포함
  * - 통일된 속성명 사용 (Node 클래스 참조)
  */
-public class CustomPythonListener extends PythonParserBaseListener {
+public class PythonAstListener extends PythonParserBaseListener {
 
-    private CommonTokenStream tokens;
-    private Stack<Node> nodeStack = new Stack<>();
-    private Node root = new Node("FILE", 0, null);
-    private ParseProgressTracker progressTracker;
+    private final ListenerHelper h;
     private List<String> pendingDecorators = new ArrayList<>();
 
+    public PythonAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
+        this.h = new ListenerHelper(tokens, tracker);
+    }
+
     public Node getRoot() {
-        return root;
+        return h.getRoot();
     }
 
     public void setFileInfo(String fileName, String filePath) {
-        root.fileName = fileName;
-        root.filePath = filePath;
-        // filePath에서 디렉토리 부분을 패키지로 설정. 없으면 "root".
-        String normalized = filePath.replace("\\", "/");
-        int lastSlash = normalized.lastIndexOf('/');
-        String dir = (lastSlash > 0) ? normalized.substring(0, lastSlash).replace("/", ".") : "";
-        while (dir.startsWith(".")) dir = dir.substring(1);
-        root.packageName = "root" + (dir.isEmpty() ? "" : "." + dir);
-    }
-
-    public CustomPythonListener(CommonTokenStream tokens) {
-        this.tokens = tokens;
-        nodeStack.push(root);
-    }
-
-    public CustomPythonListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
-        this(tokens);
-        this.progressTracker = tracker;
+        h.setFileInfo(fileName, filePath);
     }
 
     @Override
     public void enterEveryRule(ParserRuleContext ctx) {
-        if (progressTracker != null && ctx.getStart() != null) {
-            progressTracker.checkLine(ctx.getStart().getLine());
-        }
+        h.checkProgress(ctx);
     }
 
     // ========================================
     // 노드 생성/종료
     // ========================================
 
-    private Node enterStatement(String type, String name, int line) {
-        Node node = new Node(type, name, line, nodeStack.peek());
-        nodeStack.push(node);
-        return node;
-    }
-
+    /**
+     * Python용 exitStatement: 로컬 getLeadingComment(# 주석)을 사용하고
+     * comment가 null인 경우에만 설정한다.
+     */
     private void exitStatement(String type, int line, ParserRuleContext ctx) {
+        Stack<Node> nodeStack = h.getNodeStack();
         if (!nodeStack.isEmpty() && nodeStack.peek().type.equals(type)) {
             Node node = nodeStack.pop();
             node.endLine = line;
@@ -89,6 +71,7 @@ public class CustomPythonListener extends PythonParserBaseListener {
      * 현재 노드가 CLASS/METHOD/FUNCTION 중 어디에 속하는지 판별용.
      */
     private String findEnclosingType() {
+        Stack<Node> nodeStack = h.getNodeStack();
         for (int i = nodeStack.size() - 1; i >= 0; i--) {
             String t = nodeStack.get(i).type;
             if ("CLASS".equals(t) || "METHOD".equals(t) || "FUNCTION".equals(t) || "FILE".equals(t)) {
@@ -102,6 +85,7 @@ public class CustomPythonListener extends PythonParserBaseListener {
      * 현재 스코프가 frozen=True dataclass 내부인지 확인.
      */
     private boolean isInsideFrozenDataclass() {
+        Stack<Node> nodeStack = h.getNodeStack();
         for (int i = nodeStack.size() - 1; i >= 0; i--) {
             Node n = nodeStack.get(i);
             if ("CLASS".equals(n.type) && n.annotations != null && n.annotations.contains("frozen=True")) {
@@ -132,7 +116,7 @@ public class CustomPythonListener extends PythonParserBaseListener {
         if (startToken == null) return null;
 
         int tokenIndex = startToken.getTokenIndex();
-        List<Token> comments = tokens.getHiddenTokensToLeft(tokenIndex, Token.HIDDEN_CHANNEL);
+        List<Token> comments = h.getTokens().getHiddenTokensToLeft(tokenIndex, Token.HIDDEN_CHANNEL);
         if (comments == null || comments.isEmpty()) return null;
 
         StringBuilder sb = new StringBuilder();
@@ -178,7 +162,7 @@ public class CustomPythonListener extends PythonParserBaseListener {
                 String text = exprStmt.testlist_star_expr().getText();
                 if (text != null && (text.startsWith("\"\"\"") || text.startsWith("'''"))) {
                     // 원본 텍스트 사용 (공백/개행 보존)
-                    return ParserUtils.getOriginalText(exprStmt.testlist_star_expr(), tokens);
+                    return ParserUtils.getOriginalText(exprStmt.testlist_star_expr(), h.getTokens());
                 }
             }
         }
@@ -194,7 +178,7 @@ public class CustomPythonListener extends PythonParserBaseListener {
         if (ctx.dotted_name() != null) {
             String decoratorText = "@" + ctx.dotted_name().getText();
             if (ctx.arglist() != null) {
-                decoratorText += "(" + ParserUtils.getOriginalText(ctx.arglist(), tokens) + ")";
+                decoratorText += "(" + ParserUtils.getOriginalText(ctx.arglist(), h.getTokens()) + ")";
             }
             pendingDecorators.add(decoratorText);
         }
@@ -208,9 +192,9 @@ public class CustomPythonListener extends PythonParserBaseListener {
     public void enterImport_stmt(PythonParser.Import_stmtContext ctx) {
         String name = null;
         if (ctx.dotted_as_names() != null) {
-            name = ParserUtils.getOriginalText(ctx.dotted_as_names(), tokens);
+            name = ParserUtils.getOriginalText(ctx.dotted_as_names(), h.getTokens());
         }
-        enterStatement("IMPORT", name, ctx.getStart().getLine());
+        h.enterStatement("IMPORT", name, ctx.getStart().getLine());
     }
 
     @Override
@@ -220,24 +204,13 @@ public class CustomPythonListener extends PythonParserBaseListener {
 
     @Override
     public void enterFrom_stmt(PythonParser.From_stmtContext ctx) {
-        String text = ParserUtils.getOriginalText(ctx, tokens);
-        enterStatement("IMPORT", text, ctx.getStart().getLine());
+        String text = ParserUtils.getOriginalText(ctx, h.getTokens());
+        h.enterStatement("IMPORT", text, ctx.getStart().getLine());
     }
 
     @Override
     public void exitFrom_stmt(PythonParser.From_stmtContext ctx) {
         exitStatement("IMPORT", ctx.getStop().getLine(), ctx);
-    }
-
-    // ========================================
-    // 모듈명 전파
-    // ========================================
-
-    private void propagateModuleName(Node node, String moduleName) {
-        for (Node child : node.children) {
-            child.moduleName = moduleName;
-            propagateModuleName(child, moduleName);
-        }
     }
 
     // ========================================
@@ -247,10 +220,10 @@ public class CustomPythonListener extends PythonParserBaseListener {
     @Override
     public void enterClassdef(PythonParser.ClassdefContext ctx) {
         String name = ctx.name() != null ? ctx.name().getText() : null;
-        Node node = enterStatement("CLASS", name, ctx.getStart().getLine());
+        Node node = h.enterStatement("CLASS", name, ctx.getStart().getLine());
 
         // 시그니처: class Name(bases):
-        node.signature = ParserUtils.extractSignature(ctx, tokens, ":");
+        node.signature = ParserUtils.extractSignature(ctx, h.getTokens(), ":");
 
         // 데코레이터
         if (!pendingDecorators.isEmpty()) {
@@ -260,7 +233,7 @@ public class CustomPythonListener extends PythonParserBaseListener {
 
         // 상속 관계
         if (ctx.arglist() != null) {
-            String bases = ParserUtils.getOriginalText(ctx.arglist(), tokens);
+            String bases = ParserUtils.getOriginalText(ctx.arglist(), h.getTokens());
             node.extendsType = bases;
         }
 
@@ -275,10 +248,11 @@ public class CustomPythonListener extends PythonParserBaseListener {
 
     @Override
     public void exitClassdef(PythonParser.ClassdefContext ctx) {
+        Stack<Node> nodeStack = h.getNodeStack();
         if (!nodeStack.isEmpty() && nodeStack.peek().type.equals("CLASS")) {
             Node node = nodeStack.peek();
             exitStatement("CLASS", ctx.getStop().getLine(), ctx);
-            propagateModuleName(node, node.name);
+            ListenerHelper.propagateModuleName(node, node.name);
         } else {
             exitStatement("CLASS", ctx.getStop().getLine(), ctx);
         }
@@ -293,6 +267,7 @@ public class CustomPythonListener extends PythonParserBaseListener {
         String name = ctx.name() != null ? ctx.name().getText() : null;
 
         // 클래스 내부이면 METHOD, 아니면 FUNCTION
+        Stack<Node> nodeStack = h.getNodeStack();
         String nodeType = "FUNCTION";
         if (!nodeStack.isEmpty()) {
             String parentType = nodeStack.peek().type;
@@ -301,10 +276,10 @@ public class CustomPythonListener extends PythonParserBaseListener {
             }
         }
 
-        Node node = enterStatement(nodeType, name, ctx.getStart().getLine());
+        Node node = h.enterStatement(nodeType, name, ctx.getStart().getLine());
 
         // 시그니처
-        node.signature = ParserUtils.extractSignature(ctx, tokens, ":");
+        node.signature = ParserUtils.extractSignature(ctx, h.getTokens(), ":");
 
         // async 키워드
         if (ctx.ASYNC() != null) {
@@ -319,7 +294,7 @@ public class CustomPythonListener extends PythonParserBaseListener {
 
         // 파라미터
         if (ctx.typedargslist() != null) {
-            node.parameters = ParserUtils.getOriginalText(ctx.typedargslist(), tokens);
+            node.parameters = ParserUtils.getOriginalText(ctx.typedargslist(), h.getTokens());
         }
 
         // 리턴 타입 (-> type)
@@ -338,6 +313,7 @@ public class CustomPythonListener extends PythonParserBaseListener {
 
     @Override
     public void exitFuncdef(PythonParser.FuncdefContext ctx) {
+        Stack<Node> nodeStack = h.getNodeStack();
         if (!nodeStack.isEmpty()) {
             String topType = nodeStack.peek().type;
             if ("METHOD".equals(topType) || "FUNCTION".equals(topType)) {
@@ -394,11 +370,11 @@ public class CustomPythonListener extends PythonParserBaseListener {
                 return;
             }
             String fieldType = isPythonConstant(fieldName, typeAnnotation) ? "CONSTANT_FIELD" : "FIELD";
-            Node node = enterStatement(fieldType, fieldName, ctx.getStart().getLine());
+            Node node = h.enterStatement(fieldType, fieldName, ctx.getStart().getLine());
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
-            applyInitializerFlags(node, initializerText);
+            ParserUtils.applyInitializerFlags(node, initializerText, true);
             return;
         }
 
@@ -406,25 +382,25 @@ public class CustomPythonListener extends PythonParserBaseListener {
 
         if ("CLASS".equals(enclosing)) {
             String fieldType = isPythonConstant(varName, typeAnnotation) ? "CONSTANT_FIELD" : "FIELD";
-            Node node = enterStatement(fieldType, varName, ctx.getStart().getLine());
+            Node node = h.enterStatement(fieldType, varName, ctx.getStart().getLine());
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
-            applyInitializerFlags(node, initializerText);
+            ParserUtils.applyInitializerFlags(node, initializerText, true);
         } else if ("METHOD".equals(enclosing) || "FUNCTION".equals(enclosing)) {
-            Node node = enterStatement("VARIABLE", varName, ctx.getStart().getLine());
+            Node node = h.enterStatement("VARIABLE", varName, ctx.getStart().getLine());
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
-            applyInitializerFlags(node, initializerText);
+            ParserUtils.applyInitializerFlags(node, initializerText, true);
         } else {
             // 모듈 레벨: ALL_CAPS면 CONSTANT_FIELD, 아니면 VARIABLE
             String modType = isPythonConstant(varName, typeAnnotation) ? "CONSTANT_FIELD" : "VARIABLE";
-            Node node = enterStatement(modType, varName, ctx.getStart().getLine());
+            Node node = h.enterStatement(modType, varName, ctx.getStart().getLine());
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
-            applyInitializerFlags(node, initializerText);
+            ParserUtils.applyInitializerFlags(node, initializerText, true);
         }
     }
 
@@ -438,6 +414,7 @@ public class CustomPythonListener extends PythonParserBaseListener {
         if (!hasAssign && !hasColon) return;
 
         // FIELD, CONSTANT_FIELD, VARIABLE 종료
+        Stack<Node> nodeStack = h.getNodeStack();
         if (!nodeStack.isEmpty()) {
             String topType = nodeStack.peek().type;
             if ("FIELD".equals(topType) || "CONSTANT_FIELD".equals(topType) || "VARIABLE".equals(topType)) {
@@ -447,72 +424,19 @@ public class CustomPythonListener extends PythonParserBaseListener {
         }
     }
 
-    // ========================================
-    // 초기화식 플래그 판별 (Java CustomJavaListener와 동일 패턴)
-    // ========================================
-
     /**
      * assign_part에서 = 오른쪽 텍스트를 추출.
-     * Python: name = StatsService(db) → "StatsService(db)"
      */
     private String extractInitializerText(PythonParser.Assign_partContext assignPart) {
         if (assignPart == null) return null;
-        // ASSIGN ... testlist_star_expr 형태
         if (assignPart.ASSIGN() != null && !assignPart.ASSIGN().isEmpty()
                 && assignPart.testlist_star_expr() != null && !assignPart.testlist_star_expr().isEmpty()) {
-            // 첫 번째 = 오른쪽 값
             return assignPart.testlist_star_expr(0).getText();
         }
-        // COLON test ASSIGN testlist 형태 (name: Type = value)
         if (assignPart.COLON() != null && assignPart.testlist() != null) {
             return assignPart.testlist().getText();
         }
         return null;
-    }
-
-    /**
-     * 초기화식에 함수 호출 패턴이 있는지 판별.
-     * Python에서는 ClassName(args) 패턴 = Java의 new ClassName(args)에 해당.
-     * 예: StatsService(db), Database(), Config.from_file(path)
-     */
-    private static boolean initializerMatchesMethodCall(String text) {
-        if (text == null || text.isEmpty()) return false;
-        return text.matches("(?s).*\\w+\\s*\\(.*");
-    }
-
-    /**
-     * 초기화식에 대문자로 시작하는 생성자 호출 패턴이 있는지 판별.
-     * Python: ClassName(args) = Java의 new ClassName(args)
-     * 예: StatsService(db), BookService(db)
-     */
-    private static boolean initializerMatchesNewInstance(String text) {
-        if (text == null || text.isEmpty()) return false;
-        return text.matches("(?s).*\\b[A-Z]\\w*\\s*\\(.*");
-    }
-
-    /**
-     * 초기화식에서 생성자 클래스명 추출.
-     * "StatsService(db)" → "StatsService", "Config.from_file(x)" → null
-     */
-    private static String extractNewInstanceType(String text) {
-        if (text == null || text.isEmpty()) return null;
-        java.util.regex.Matcher m = java.util.regex.Pattern
-                .compile("^([A-Z]\\w*)\\s*\\(").matcher(text);
-        return m.find() ? m.group(1) : null;
-    }
-
-    /** VARIABLE/FIELD 노드에 초기화식 플래그 + variableType 세팅 */
-    private static void applyInitializerFlags(Node node, String initializerText) {
-        if (initializerText == null || initializerText.isEmpty()) return;
-        node.initializerContainsMethodCall = initializerMatchesMethodCall(initializerText);
-        node.initializerContainsNewInstance = initializerMatchesNewInstance(initializerText);
-        // 생성자 호출이면 variableType을 클래스명으로 세팅 (타입 어노테이션이 없는 경우만)
-        if (Boolean.TRUE.equals(node.initializerContainsNewInstance) && node.variableType == null) {
-            String className = extractNewInstanceType(initializerText);
-            if (className != null) {
-                node.variableType = className;
-            }
-        }
     }
 
     // ========================================
@@ -547,7 +471,7 @@ public class CustomPythonListener extends PythonParserBaseListener {
         }
 
         if (callName != null) {
-            enterStatement("METHOD_CALL", callName, ctx.getStart().getLine());
+            h.enterStatement("METHOD_CALL", callName, ctx.getStart().getLine());
         }
     }
 
@@ -572,31 +496,5 @@ public class CustomPythonListener extends PythonParserBaseListener {
             }
         }
         return null;
-    }
-
-    // ========================================
-    // 디버깅용
-    // ========================================
-
-    public void printTree(Node node, String indent) {
-        StringBuilder info = new StringBuilder();
-        info.append(indent).append(node.type);
-        if (node.name != null) info.append(" [").append(node.name).append("]");
-        if (node.annotations != null) info.append(" @{").append(node.annotations).append("}");
-        if (node.modifiers != null) info.append(" {").append(node.modifiers).append("}");
-        if (node.extendsType != null) info.append(" extends:").append(node.extendsType);
-        if (node.variableType != null) info.append(" type:").append(node.variableType);
-        if (node.returnType != null) info.append(" returns:").append(node.returnType);
-        if (node.parameters != null) info.append(" params:").append(node.parameters);
-        info.append(" (").append(node.startLine).append("-").append(node.endLine).append(")");
-
-        System.out.println(info.toString());
-        for (Node child : node.children) {
-            printTree(child, indent + "  ");
-        }
-    }
-
-    public void printStructure() {
-        printTree(root, "");
     }
 }

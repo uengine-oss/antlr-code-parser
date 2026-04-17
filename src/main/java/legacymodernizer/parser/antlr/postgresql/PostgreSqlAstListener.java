@@ -1,12 +1,12 @@
 package legacymodernizer.parser.antlr.postgresql;
 
-import java.util.Stack;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
-import legacymodernizer.parser.antlr.Node;
+import legacymodernizer.parser.model.Node;
+import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
-import legacymodernizer.parser.antlr.plpgsql.CustomPlpgsqlVisitor;
+import legacymodernizer.parser.antlr.plpgsql.PlpgsqlAstVisitor;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlLexer;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlParser;
 import legacymodernizer.parser.service.ParseProgressTracker;
@@ -16,36 +16,29 @@ import legacymodernizer.parser.service.ParseProgressTracker;
  * - DDL/DML/DCL 구조 추출
  * - 통일된 속성명 사용 (Node 클래스 참조)
  */
-public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
-    private TokenStream tokens;
-    private Stack<Node> nodeStack = new Stack<>();
-    private Node root = new Node("FILE", 0, null);
+public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
+    private final ListenerHelper h;
     private boolean insideInsert = false;
     private boolean insideExplain = false;
     private boolean plpgsqlLogErrors = false;
-    private ParseProgressTracker progressTracker;
 
     public Node getRoot() {
-        return root;
+        return h.getRoot();
     }
 
-    public CustomPostgreSQLListener(TokenStream tokens) {
-        this.tokens = tokens;
-        nodeStack.push(root);
+    public PostgreSqlAstListener(TokenStream tokens) {
+        this.h = new ListenerHelper((CommonTokenStream) tokens, null);
     }
-    
-    public CustomPostgreSQLListener(TokenStream tokens, ParseProgressTracker tracker) {
-        this(tokens);
-        this.progressTracker = tracker;
+
+    public PostgreSqlAstListener(TokenStream tokens, ParseProgressTracker tracker) {
+        this.h = new ListenerHelper((CommonTokenStream) tokens, tracker);
     }
-    
+
     @Override
     public void enterEveryRule(ParserRuleContext ctx) {
-        if (progressTracker != null && ctx.getStart() != null) {
-            progressTracker.checkLine(ctx.getStart().getLine());
-        }
+        h.checkProgress(ctx);
     }
-    
+
     // ========================================
     // 노드 생성/종료
     // ========================================
@@ -53,30 +46,30 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     private Node enterStatement(String type, int line) {
         return enterStatement(type, null, line);
     }
-    
+
     private Node enterStatement(String type, String name, int line) {
-        Node node = new Node(type, name, line, nodeStack.peek());
-        nodeStack.push(node);
+        Node node = new Node(type, name, line, h.getNodeStack().peek());
+        h.getNodeStack().push(node);
         return node;
     }
 
     private void exitStatement(String type, int line) {
         exitStatement(type, line, null);
     }
-    
+
     private void exitStatement(String type, int line, ParserRuleContext ctx) {
-        if (nodeStack.isEmpty()) return;
-        Node node = nodeStack.pop();
+        if (h.getNodeStack().isEmpty()) return;
+        Node node = h.getNodeStack().pop();
         node.endLine = line;
-        if (ctx != null && tokens instanceof CommonTokenStream) {
-            node.comment = ParserUtils.getLeadingComment(ctx, (CommonTokenStream) tokens);
+        if (ctx != null) {
+            node.comment = ParserUtils.getLeadingComment(ctx, h.getTokens());
         }
     }
 
     // ========================================
     // 유틸리티 메서드
     // ========================================
-    
+
     /**
      * 스키마.이름 형태에서 분리
      */
@@ -88,18 +81,18 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
         }
         return new String[]{null, fullName};
     }
-    
+
     /**
      * PostgreSQL 함수 파라미터 목록 추출
      */
     private String extractPostgreSQLParameters(PostgreSQLParser.Func_args_with_defaultsContext funcArgs) {
         if (funcArgs == null || funcArgs.func_args_with_defaults_list() == null) return null;
-        
-        java.util.List<PostgreSQLParser.Func_arg_with_defaultContext> args = 
+
+        java.util.List<PostgreSQLParser.Func_arg_with_defaultContext> args =
             funcArgs.func_args_with_defaults_list().func_arg_with_default();
-        
+
         if (args == null || args.isEmpty()) return null;
-        
+
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < args.size(); i++) {
             if (i > 0) sb.append(", ");
@@ -107,7 +100,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
         }
         return sb.toString();
     }
-    
+
     /**
      * PostgreSQL 함수 리턴 타입 추출
      */
@@ -127,28 +120,28 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
         if (ctx.func_name() != null) {
             fullName = ctx.func_name().getText();
         }
-        
+
         // 스키마와 이름 분리
         String[] parts = extractSchemaAndName(fullName);
         String name = parts[1];
-        
+
         Node node = enterStatement("PROCEDURE", name, ctx.getStart().getLine());
         node.schema = parts[0];
-        
+
         // 파라미터 추출
         if (ctx.func_args_with_defaults() != null) {
             node.parameters = extractPostgreSQLParameters(ctx.func_args_with_defaults());
         }
-        
+
         // 리턴 타입 추출
         if (ctx.func_return() != null) {
             node.returnType = extractPostgreSQLReturnType(ctx.func_return());
         }
-        
+
         // 시그니처 추출 (AS $$ 이전까지)
         int dollarLineNumber = findDollarStringLine(ctx);
         node.signature = extractSignatureUntil(ctx, dollarLineNumber);
-        
+
         if (dollarLineNumber > 0) {
             String plpgsqlCode = extractDollarQuotedString(ctx);
             if (plpgsqlCode != null && !plpgsqlCode.trim().isEmpty()) {
@@ -158,32 +151,32 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
             }
         }
     }
-    
+
     private String extractSignatureUntil(PostgreSQLParser.CreatefunctionstmtContext ctx, int dollarLine) {
-        if (ctx == null || tokens == null || dollarLine <= 0) return null;
-        
+        if (ctx == null || h.getTokens() == null || dollarLine <= 0) return null;
+
         StringBuilder sb = new StringBuilder();
         int startIndex = ctx.getStart().getTokenIndex();
         int stopIndex = ctx.getStop().getTokenIndex();
-        
+
         for (int i = startIndex; i <= stopIndex; i++) {
-            Token token = tokens.get(i);
+            Token token = h.getTokens().get(i);
             if (token.getLine() >= dollarLine && token.getText().startsWith("$")) {
                 break;
             }
             sb.append(token.getText());
             if (i < stopIndex) sb.append(" ");
         }
-        
+
         return sb.toString().trim();
     }
 
     private int findDollarStringLine(PostgreSQLParser.CreatefunctionstmtContext ctx) {
         int startIndex = ctx.getStart().getTokenIndex();
         int stopIndex = ctx.getStop().getTokenIndex();
-        
+
         for (int i = startIndex; i <= stopIndex; i++) {
-            Token token = tokens.get(i);
+            Token token = h.getTokens().get(i);
             if (token.getText().startsWith("$") && token.getText().endsWith("$")) {
                 return token.getLine();
             }
@@ -199,9 +192,9 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     @Override
     public void enterDostmt(PostgreSQLParser.DostmtContext ctx) {
         enterStatement("DO", ctx.getStart().getLine());
-        
+
         int dollarLineNumber = findDollarStringLineForDo(ctx);
-        
+
         if (dollarLineNumber > 0) {
             String plpgsqlCode = extractDollarQuotedStringForDo(ctx);
             if (plpgsqlCode != null && !plpgsqlCode.trim().isEmpty()) {
@@ -220,9 +213,9 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     private int findDollarStringLineForDo(PostgreSQLParser.DostmtContext ctx) {
         int startIndex = ctx.getStart().getTokenIndex();
         int stopIndex = ctx.getStop().getTokenIndex();
-        
+
         for (int i = startIndex; i <= stopIndex; i++) {
-            Token token = tokens.get(i);
+            Token token = h.getTokens().get(i);
             if (token.getText().startsWith("$") && token.getText().endsWith("$")) {
                 return token.getLine();
             }
@@ -244,7 +237,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     private String extractDollarQuotedString(PostgreSQLParser.CreatefunctionstmtContext ctx) {
         PostgreSQLParser.Createfunc_opt_listContext optList = ctx.createfunc_opt_list();
         if (optList == null) return null;
-        
+
         for (PostgreSQLParser.Createfunc_opt_itemContext optItem : optList.createfunc_opt_item()) {
             if (optItem.AS() != null && optItem.func_as() != null) {
                 PostgreSQLParser.Func_asContext funcAs = optItem.func_as();
@@ -258,10 +251,10 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
 
     private String extractFromSconst(PostgreSQLParser.SconstContext sconstCtx) {
         if (sconstCtx == null || sconstCtx.anysconst() == null) return null;
-        
+
         PostgreSQLParser.AnysconstContext anysconst = sconstCtx.anysconst();
         if (anysconst.BeginDollarStringConstant() == null) return null;
-        
+
         StringBuilder content = new StringBuilder();
         for (TerminalNode dollarText : anysconst.DollarText()) {
             content.append(dollarText.getText());
@@ -272,7 +265,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     private int countRemovedLeadingLines(String text) {
         int count = 0;
         int i = 0;
-        
+
         while (i < text.length() && Character.isWhitespace(text.charAt(i))) {
             char c = text.charAt(i);
             if (c == '\r') {
@@ -297,9 +290,9 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
             PlpgsqlLexer lexer = new PlpgsqlLexer(input);
             CommonTokenStream plTokens = new CommonTokenStream(lexer);
             PlpgsqlParser parser = new PlpgsqlParser(plTokens);
-            
+
             int adjustedBaseLineNumber = baseLineNumber;
-            
+
             parser.removeErrorListeners();
             parser.addErrorListener(new BaseErrorListener() {
                 @Override
@@ -312,16 +305,16 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
                     }
                 }
             });
-            
+
             ParseTree tree = parser.plpgsqlBlock();
-            
-            CustomPlpgsqlVisitor visitor = new CustomPlpgsqlVisitor(
-                nodeStack.peek(),
+
+            PlpgsqlAstVisitor visitor = new PlpgsqlAstVisitor(
+                h.getNodeStack().peek(),
                 adjustedBaseLineNumber,
                 plTokens
             );
             visitor.visit(tree);
-            
+
         } catch (Exception e) {
             System.err.println("Error parsing PL/pgSQL: " + e.getMessage());
             e.printStackTrace();
@@ -596,7 +589,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     public void enterDefinestmt(PostgreSQLParser.DefinestmtContext ctx) {
         String defineType = "DEFINE";
         String secondToken = ctx.getChild(1).getText().toUpperCase();
-        
+
         if (secondToken.equals("AGGREGATE")) {
             defineType = "CREATE_AGGREGATE";
         } else if (secondToken.equals("OPERATOR")) {
@@ -604,7 +597,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
         } else if (secondToken.equals("TYPE")) {
             defineType = "CREATE_TYPE";
         }
-        
+
         enterStatement(defineType, ctx.getStart().getLine());
     }
 
@@ -612,7 +605,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     public void exitDefinestmt(PostgreSQLParser.DefinestmtContext ctx) {
         String defineType = "DEFINE";
         String secondToken = ctx.getChild(1).getText().toUpperCase();
-        
+
         if (secondToken.equals("AGGREGATE")) {
             defineType = "CREATE_AGGREGATE";
         } else if (secondToken.equals("OPERATOR")) {
@@ -620,7 +613,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
         } else if (secondToken.equals("TYPE")) {
             defineType = "CREATE_TYPE";
         }
-        
+
         exitStatement(defineType, ctx.getStop().getLine(), ctx);
     }
 
@@ -774,7 +767,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     public void enterTransactionstmt(PostgreSQLParser.TransactionstmtContext ctx) {
         String transactionType = "TRANSACTION";
         String firstToken = ctx.getStart().getText().toUpperCase();
-        
+
         if (firstToken.equals("BEGIN") || firstToken.equals("START")) {
             transactionType = "BEGIN";
         } else if (firstToken.equals("COMMIT") || firstToken.equals("END")) {
@@ -788,7 +781,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
         } else if (firstToken.equals("PREPARE")) {
             transactionType = "PREPARE_TRANSACTION";
         }
-        
+
         enterStatement(transactionType, ctx.getStart().getLine());
     }
 
@@ -796,7 +789,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     public void exitTransactionstmt(PostgreSQLParser.TransactionstmtContext ctx) {
         String firstToken = ctx.getStart().getText().toUpperCase();
         String transactionType = "TRANSACTION";
-        
+
         if (firstToken.equals("BEGIN") || firstToken.equals("START")) {
             transactionType = "BEGIN";
         } else if (firstToken.equals("COMMIT") || firstToken.equals("END")) {
@@ -810,7 +803,7 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
         } else if (firstToken.equals("PREPARE")) {
             transactionType = "PREPARE_TRANSACTION";
         }
-        
+
         exitStatement(transactionType, ctx.getStop().getLine(), ctx);
     }
 
@@ -918,25 +911,5 @@ public class CustomPostgreSQLListener extends PostgreSQLParserBaseListener {
     @Override
     public void exitCase_expr(PostgreSQLParser.Case_exprContext ctx) {
         // SQL CASE 표현식은 노드로 만들지 않음
-    }
-
-    // ========================================
-    // 디버깅용
-    // ========================================
-    
-    public void printTree(Node node, String indent) {
-        StringBuilder info = new StringBuilder();
-        info.append(indent).append(node.type);
-        if (node.name != null) info.append(" [").append(node.name).append("]");
-        info.append(" (").append(node.startLine).append("-").append(node.endLine).append(")");
-        
-        System.out.println(info.toString());
-        for (Node child : node.children) {
-            printTree(child, indent + "  ");
-        }
-    }
-
-    public void printStructure() {
-        printTree(root, "");
     }
 }

@@ -333,6 +333,74 @@ public class ParserUtils {
             return null;
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 초기화식 패턴 판별 (Java/Python/C 공용)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * 초기화식에 메서드/함수 호출 패턴이 있는지 판별.
+     * Java: .getX(, getInstance(  Python: func(  C: func(
+     */
+    public static boolean matchesMethodCall(String initializerText) {
+        if (initializerText == null || initializerText.isEmpty()) return false;
+        return initializerText.matches("(?s).*\\.\\w+\\s*\\(.*")
+            || initializerText.matches("(?s).*\\b\\w+\\s*\\(.*");
+    }
+
+    /**
+     * 초기화식에 Java/C의 new Type 패턴이 있는지 판별.
+     */
+    public static boolean matchesNewInstance(String initializerText) {
+        if (initializerText == null) return false;
+        return initializerText.matches("(?s).*\\bnew\\s+\\w+.*");
+    }
+
+    /**
+     * 초기화식에 Python 생성자 호출 패턴(대문자 시작)이 있는지 판별.
+     * Python: ClassName(args) = Java의 new ClassName(args)
+     */
+    public static boolean matchesPythonNewInstance(String initializerText) {
+        if (initializerText == null || initializerText.isEmpty()) return false;
+        return initializerText.matches("(?s).*\\b[A-Z]\\w*\\s*\\(.*");
+    }
+
+    private static final java.util.regex.Pattern PYTHON_CTOR_PATTERN =
+            java.util.regex.Pattern.compile("^([A-Z]\\w*)\\s*\\(");
+
+    /**
+     * Python 초기화식에서 생성자 클래스명 추출.
+     * "StatsService(db)" → "StatsService"
+     */
+    public static String extractPythonNewInstanceType(String text) {
+        if (text == null || text.isEmpty()) return null;
+        java.util.regex.Matcher m = PYTHON_CTOR_PATTERN.matcher(text);
+        return m.find() ? m.group(1) : null;
+    }
+
+    /**
+     * 초기화식 플래그를 Node에 일괄 적용.
+     * @param node            대상 노드
+     * @param initializerText 초기화식 텍스트
+     * @param pythonMode      true면 Python 방식 (ClassName(args) = new instance)
+     */
+    public static void applyInitializerFlags(
+            legacymodernizer.parser.model.Node node, String initializerText, boolean pythonMode) {
+        if (initializerText == null || initializerText.isEmpty()) return;
+
+        boolean hasCall = matchesMethodCall(initializerText);
+        node.initializerContainsMethodCall = hasCall ? true : null;
+
+        boolean hasNew = pythonMode
+                ? matchesPythonNewInstance(initializerText)
+                : matchesNewInstance(initializerText);
+        node.initializerContainsNewInstance = hasNew ? true : null;
+
+        if (pythonMode && hasNew && node.variableType == null) {
+            String className = extractPythonNewInstanceType(initializerText);
+            if (className != null) {
+                node.variableType = className;
+            }
+        }
+    }
 }
-
-

@@ -5,13 +5,13 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import java.util.HashMap;
 import java.util.Map;
-import legacymodernizer.parser.antlr.Node;
+import legacymodernizer.parser.model.Node;
 
 /**
  * PL/pgSQL Parse Tree를 Node 트리로 변환하는 Visitor
  * - 통일된 속성명 사용 (Node 클래스 참조)
  */
-public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
+public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
 
     private Node parentNode;
     private int baseLineNumber;
@@ -29,7 +29,7 @@ public class CustomPlpgsqlVisitor extends PlpgsqlParserBaseVisitor<Node> {
         }
     }
 
-    public CustomPlpgsqlVisitor(Node parentNode, int baseLineNumber, CommonTokenStream tokens) {
+    public PlpgsqlAstVisitor(Node parentNode, int baseLineNumber, CommonTokenStream tokens) {
         this.parentNode = parentNode;
         this.baseLineNumber = baseLineNumber;
         this.tokens = tokens;

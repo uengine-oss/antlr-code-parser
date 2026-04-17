@@ -1,4 +1,4 @@
-package legacymodernizer.parser.service.parsing;
+package legacymodernizer.parser.service.strategy;
 
 import java.io.File;
 import java.util.Map;

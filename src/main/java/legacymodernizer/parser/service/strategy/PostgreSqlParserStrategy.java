@@ -1,4 +1,4 @@
-package legacymodernizer.parser.service.parsing;
+package legacymodernizer.parser.service.strategy;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.Set;
 
 import org.antlr.v4.runtime.CharStream;
@@ -14,15 +13,13 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 
-import legacymodernizer.parser.antlr.postgresql.CustomPostgreSQLListener;
+import legacymodernizer.parser.antlr.postgresql.PostgreSqlAstListener;
 import legacymodernizer.parser.antlr.postgresql.PostgreSQLLexer;
 import legacymodernizer.parser.antlr.postgresql.PostgreSQLParser;
-import legacymodernizer.parser.service.FileParserService;
+import legacymodernizer.parser.service.FileStorageService;
+import legacymodernizer.parser.service.ParsingOrchestrator;
 import legacymodernizer.parser.service.ParseProgressTracker;
-import legacymodernizer.parser.service.StreamCallback;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -30,19 +27,10 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class PostgreSqlParserStrategy implements TargetParserStrategy {
+public class PostgreSqlParserStrategy extends AbstractParserStrategy {
 
-    private final FileParserService fileParserService;
-
-    @Override
-    public Map<String, Object> upload(MultipartFile[] files) {
-        return fileParserService.uploadFiles(files, getTargetExtensions());
-    }
-
-    @Override
-    public void parseWithStream(StreamCallback callback) {
-        fileParserService.parseProjectWithStream(this::parseFileWithStream, callback);
+    public PostgreSqlParserStrategy(FileStorageService storageService, ParsingOrchestrator orchestrator) {
+        super(storageService, orchestrator);
     }
 
     @Override
@@ -57,7 +45,7 @@ public class PostgreSqlParserStrategy implements TargetParserStrategy {
 
             PostgreSQLParser.RootContext tree = parser.root();
 
-            CustomPostgreSQLListener listener = new CustomPostgreSQLListener(tokens, tracker);
+            PostgreSqlAstListener listener = new PostgreSqlAstListener(tokens, tracker);
             new ParseTreeWalker().walk(listener, tree);
 
             Files.writeString(Path.of(outputPath), listener.getRoot().toJson(), StandardCharsets.UTF_8);

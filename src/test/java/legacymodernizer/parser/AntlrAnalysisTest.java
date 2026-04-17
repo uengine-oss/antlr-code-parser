@@ -22,9 +22,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
-import legacymodernizer.parser.service.FileParserService;
-import legacymodernizer.parser.service.parsing.ParserStrategyFactory;
-import legacymodernizer.parser.service.parsing.TargetParserStrategy;
+import legacymodernizer.parser.service.FileStorageService;
+import legacymodernizer.parser.service.strategy.ParserStrategyFactory;
+import legacymodernizer.parser.service.strategy.TargetParserStrategy;
 
 @SpringBootTest
 public class AntlrAnalysisTest {
@@ -33,7 +33,7 @@ public class AntlrAnalysisTest {
     private ParserStrategyFactory parserStrategyFactory;
     
     @Autowired
-    private FileParserService fileParserService;
+    private FileStorageService storageService;
     
     @Value("${test.target:c}")
     private String TEST_TARGET;
@@ -54,7 +54,7 @@ public class AntlrAnalysisTest {
     @BeforeEach
     void setUp() throws Exception {
         // 기존 analysis/target 폴더만 정리
-        Path targetDir = fileParserService.analysisTargetDir();
+        Path targetDir = storageService.analysisTargetDir();
         if (Files.exists(targetDir)) {
             deleteRecursively(targetDir.toFile());
         }
@@ -74,7 +74,7 @@ public class AntlrAnalysisTest {
      */
     @Test
     void testAnalysisWithExistingFiles() throws Exception {
-        Path sourceDir = fileParserService.sourceDir();
+        Path sourceDir = storageService.sourceDir();
         
         System.out.println("========================================");
         System.out.println("Target: " + TEST_TARGET);
@@ -131,7 +131,7 @@ public class AntlrAnalysisTest {
         System.out.println("========================================");
         
         // analysis/target 폴더에서 생성된 JSON 파일 검증
-        Path targetDir = fileParserService.analysisTargetDir();
+        Path targetDir = storageService.analysisTargetDir();
         assertTrue(Files.exists(targetDir), "analysis/target 디렉토리가 생성되지 않았습니다");
         
         long jsonCount = Files.walk(targetDir)
@@ -228,7 +228,7 @@ public class AntlrAnalysisTest {
         }
 
         // 실제 파일 시스템상의 data/source/ 도 한 번 확인
-        Path sourceDir = fileParserService.sourceDir();
+        Path sourceDir = storageService.sourceDir();
         long uploadedCount = Files.exists(sourceDir)
                 ? Files.walk(sourceDir).filter(Files::isRegularFile).count()
                 : 0;

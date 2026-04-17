@@ -3,7 +3,6 @@ package legacymodernizer.parser.antlr.c;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,7 +12,8 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
-import legacymodernizer.parser.antlr.Node;
+import legacymodernizer.parser.model.Node;
+import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
 import legacymodernizer.parser.service.ParseProgressTracker;
 
@@ -27,12 +27,9 @@ import legacymodernizer.parser.service.ParseProgressTracker;
  * - 지역 declaration (블록 내) → VARIABLE 노드
  * - 함수 호출 → FUNCTION_CALL 노드 (postfixExpression 기반)
  */
-public class CustomCListener extends CParserBaseListener {
+public class CAstListener extends CParserBaseListener {
 
-    private CommonTokenStream tokens;
-    private Stack<Node> nodeStack = new Stack<>();
-    private Node root = new Node("FILE", 0, null);
-    private ParseProgressTracker progressTracker;
+    private final ListenerHelper h;
 
     /**
      * typedef struct { ... } Name; 패턴에서 Name을 임시 보관.
@@ -42,24 +39,15 @@ public class CustomCListener extends CParserBaseListener {
     private String pendingTypedefName = null;
 
     public Node getRoot() {
-        return root;
+        return h.getRoot();
     }
 
     public void setFileInfo(String fileName, String filePath) {
-        root.fileName = fileName;
-        root.filePath = filePath;
-        // filePath에서 디렉토리 부분을 패키지로 설정. 없으면 "root".
-        String normalized = filePath.replace("\\", "/");
-        int lastSlash = normalized.lastIndexOf('/');
-        String dir = (lastSlash > 0) ? normalized.substring(0, lastSlash).replace("/", ".") : "";
-        // 선행 . 제거
-        while (dir.startsWith(".")) dir = dir.substring(1);
-        root.packageName = "root" + (dir.isEmpty() ? "" : "." + dir);
+        h.setFileInfo(fileName, filePath);
     }
 
-    public CustomCListener(CommonTokenStream tokens) {
-        this.tokens = tokens;
-        nodeStack.push(root);
+    public CAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
+        this.h = new ListenerHelper(tokens, tracker);
         extractFileHeaderComment();
         extractIncludes();
     }
@@ -75,10 +63,10 @@ public class CustomCListener extends CParserBaseListener {
      * 줄 단위로 모아 첫 연속 주석 블록만 root.comment에 저장한다.
      */
     private void extractFileHeaderComment() {
-        tokens.fill();
+        h.getTokens().fill();
         StringBuilder header = new StringBuilder();
         int prevCommentLine = -2;
-        for (Token token : tokens.getTokens()) {
+        for (Token token : h.getTokens().getTokens()) {
             int type = token.getType();
             if (type == CLexer.BlockComment || type == CLexer.LineComment) {
                 int line = token.getLine();
@@ -95,20 +83,13 @@ public class CustomCListener extends CParserBaseListener {
             }
         }
         if (header.length() > 0) {
-            root.comment = header.toString().trim();
+            h.getRoot().comment = header.toString().trim();
         }
-    }
-
-    public CustomCListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
-        this(tokens);
-        this.progressTracker = tracker;
     }
 
     @Override
     public void enterEveryRule(ParserRuleContext ctx) {
-        if (progressTracker != null && ctx.getStart() != null) {
-            progressTracker.checkLine(ctx.getStart().getLine());
-        }
+        h.checkProgress(ctx);
     }
 
     // ========================================
@@ -116,13 +97,13 @@ public class CustomCListener extends CParserBaseListener {
     // ========================================
 
     private void extractIncludes() {
-        tokens.fill();
-        for (Token token : tokens.getTokens()) {
+        h.getTokens().fill();
+        for (Token token : h.getTokens().getTokens()) {
             if (token.getType() == CLexer.Directive) {
                 String text = token.getText().trim();
                 if (text.startsWith("#include") || text.startsWith("# include")) {
                     String includeName = text.replaceFirst("^#\\s*include\\s*", "").trim();
-                    Node node = new Node("INCLUDE", includeName, token.getLine(), root);
+                    Node node = new Node("INCLUDE", includeName, token.getLine(), h.getRoot());
                     node.endLine = token.getLine();
                 }
                 // #define 대문자 상수를 DEFINE으로 추출
@@ -133,31 +114,11 @@ public class CustomCListener extends CParserBaseListener {
                         .compile("^#\\s*define\\s+([A-Z_][A-Z0-9_]*)\\s+(.+)$")
                         .matcher(text);
                     if (m.find()) {
-                        Node node = new Node("DEFINE", m.group(1), token.getLine(), root);
+                        Node node = new Node("DEFINE", m.group(1), token.getLine(), h.getRoot());
                         node.endLine = token.getLine();
                         // DEFINE은 타입이 없음. 값(m.group(2))은 variableType에 넣지 않음.
                     }
                 }
-            }
-        }
-    }
-
-    // ========================================
-    // 노드 생성/종료
-    // ========================================
-
-    private Node enterStatement(String type, String name, int line) {
-        Node node = new Node(type, name, line, nodeStack.peek());
-        nodeStack.push(node);
-        return node;
-    }
-
-    private void exitStatement(String type, int line, ParserRuleContext ctx) {
-        if (!nodeStack.isEmpty() && nodeStack.peek().type.equals(type)) {
-            Node node = nodeStack.pop();
-            node.endLine = line;
-            if (ctx != null) {
-                node.comment = ParserUtils.getComment(ctx, tokens);
             }
         }
     }
@@ -185,8 +146,8 @@ public class CustomCListener extends CParserBaseListener {
             return; // 이름 없는 익명 struct (typedef도 아님) → 무시
         }
 
-        Node node = enterStatement(type, name, ctx.getStart().getLine());
-        node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
+        Node node = h.enterStatement(type, name, ctx.getStart().getLine());
+        node.signature = ParserUtils.extractSignature(ctx, h.getTokens(), "{");
     }
 
     @Override
@@ -196,11 +157,11 @@ public class CustomCListener extends CParserBaseListener {
         String structOrUnion = ctx.structOrUnion().getText();
         String type = structOrUnion.equals("union") ? "UNION" : "STRUCT";
 
-        if (!nodeStack.isEmpty() && nodeStack.peek().type.equals(type)) {
-            Node node = nodeStack.peek();
-            node.comment = ParserUtils.getComment(ctx, tokens);
-            exitStatement(type, ctx.getStop().getLine(), ctx);
-            propagateModuleName(node, node.name);
+        if (!h.getNodeStack().isEmpty() && h.getNodeStack().peek().type.equals(type)) {
+            Node node = h.getNodeStack().peek();
+            node.comment = ParserUtils.getComment(ctx, h.getTokens());
+            h.exitStatementWithFullComment(type, ctx.getStop().getLine(), ctx);
+            ListenerHelper.propagateModuleName(node, node.name);
         }
         // typedef struct 처리 완료 시 pending 이름 초기화
         pendingTypedefName = null;
@@ -225,15 +186,15 @@ public class CustomCListener extends CParserBaseListener {
             return; // 이름 없는 익명 enum → 무시
         }
 
-        Node node = enterStatement("ENUM", name, ctx.getStart().getLine());
-        node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
+        Node node = h.enterStatement("ENUM", name, ctx.getStart().getLine());
+        node.signature = ParserUtils.extractSignature(ctx, h.getTokens(), "{");
     }
 
     @Override
     public void exitEnumSpecifier(CParser.EnumSpecifierContext ctx) {
         if (ctx.enumeratorList() == null) return;
 
-        exitStatement("ENUM", ctx.getStop().getLine(), ctx);
+        h.exitStatementWithFullComment("ENUM", ctx.getStop().getLine(), ctx);
         // typedef enum 처리 완료 시 pending 이름 초기화
         pendingTypedefName = null;
     }
@@ -266,8 +227,8 @@ public class CustomCListener extends CParserBaseListener {
             returnType = returnType + " *";
         }
 
-        Node node = enterStatement("FUNCTION", name, ctx.getStart().getLine());
-        node.signature = ParserUtils.extractSignature(ctx, tokens, "{");
+        Node node = h.enterStatement("FUNCTION", name, ctx.getStart().getLine());
+        node.signature = ParserUtils.extractSignature(ctx, h.getTokens(), "{");
         node.returnType = returnType != null ? returnType.trim() : null;
         if (modifiers != null) {
             node.modifiers = modifiers;
@@ -278,14 +239,14 @@ public class CustomCListener extends CParserBaseListener {
             CParser.DirectDeclaratorContext dd = ctx.declarator().directDeclarator();
             if (dd.parameterTypeList() != null && !dd.parameterTypeList().isEmpty()) {
                 CParser.ParameterTypeListContext params = dd.parameterTypeList(0);
-                node.parameters = ParserUtils.getOriginalText(params, tokens);
+                node.parameters = ParserUtils.getOriginalText(params, h.getTokens());
             }
         }
     }
 
     @Override
     public void exitFunctionDefinition(CParser.FunctionDefinitionContext ctx) {
-        exitStatement("FUNCTION", ctx.getStop().getLine(), ctx);
+        h.exitStatementWithFullComment("FUNCTION", ctx.getStop().getLine(), ctx);
     }
 
     // ========================================
@@ -368,7 +329,7 @@ public class CustomCListener extends CParserBaseListener {
                     CParser.DirectDeclaratorContext dd = initDecl.declarator().directDeclarator();
                     if (dd.parameterTypeList() != null && !dd.parameterTypeList().isEmpty()) {
                         isFunctionPrototype = true;
-                        parameters = ParserUtils.getOriginalText(dd.parameterTypeList(0), tokens);
+                        parameters = ParserUtils.getOriginalText(dd.parameterTypeList(0), h.getTokens());
                     }
                 }
 
@@ -393,7 +354,7 @@ public class CustomCListener extends CParserBaseListener {
                     nodeType = "VARIABLE";
                 }
 
-                Node node = enterStatement(nodeType, name, ctx.getStart().getLine());
+                Node node = h.enterStatement(nodeType, name, ctx.getStart().getLine());
                 node.variableType = actualVariableType;
                 if (isFunctionPrototype) {
                     node.returnType = actualVariableType;
@@ -405,8 +366,8 @@ public class CustomCListener extends CParserBaseListener {
                 }
                 // 초기화식 플래그: = 오른쪽에 함수 호출이 있는지 판별
                 if (!isFunctionPrototype && !isTypedef && initDecl.initializer() != null) {
-                    String initText = ParserUtils.getOriginalText(initDecl.initializer(), tokens);
-                    if (initText != null && initText.matches("(?s).*\\w+\\s*\\(.*")) {
+                    String initText = ParserUtils.getOriginalText(initDecl.initializer(), h.getTokens());
+                    if (ParserUtils.matchesMethodCall(initText)) {
                         node.initializerContainsMethodCall = true;
                     }
                 }
@@ -420,8 +381,8 @@ public class CustomCListener extends CParserBaseListener {
 
                 // 즉시 닫기 (declaration은 한 줄)
                 node.endLine = ctx.getStop().getLine();
-                node.comment = ParserUtils.getComment(ctx, tokens);
-                nodeStack.pop();
+                node.comment = ParserUtils.getComment(ctx, h.getTokens());
+                h.getNodeStack().pop();
             }
         } else if (!isTypedef && variableType != null) {
             // initDeclaratorList 없는 선언 (ex: struct 정의만)은 무시
@@ -502,13 +463,13 @@ public class CustomCListener extends CParserBaseListener {
             }
         }
 
-        Node node = enterStatement("FUNCTION_CALL", name, ctx.getStart().getLine());
+        Node node = h.enterStatement("FUNCTION_CALL", name, ctx.getStart().getLine());
         node.endLine = ctx.getStop().getLine();
     }
 
     @Override
     public void exitPostfixExpression(CParser.PostfixExpressionContext ctx) {
-        exitStatement("FUNCTION_CALL", ctx.getStop().getLine(), ctx);
+        h.exitStatementWithFullComment("FUNCTION_CALL", ctx.getStop().getLine(), ctx);
     }
 
     // ========================================
@@ -522,7 +483,7 @@ public class CustomCListener extends CParserBaseListener {
         if (ctx.specifierQualifierList() == null) return;
         if (ctx.memberDeclaratorList() == null) return;
 
-        String variableType = ParserUtils.getOriginalText(ctx.specifierQualifierList(), tokens);
+        String variableType = ParserUtils.getOriginalText(ctx.specifierQualifierList(), h.getTokens());
 
         for (CParser.MemberDeclaratorContext md : ctx.memberDeclaratorList().memberDeclarator()) {
             String name = null;
@@ -530,10 +491,10 @@ public class CustomCListener extends CParserBaseListener {
                 name = extractDeclaratorName(md.declarator());
             }
 
-            Node node = new Node("MEMBER", name, ctx.getStart().getLine(), nodeStack.peek());
+            Node node = new Node("MEMBER", name, ctx.getStart().getLine(), h.getNodeStack().peek());
             node.variableType = variableType;
             node.endLine = ctx.getStop().getLine();
-            node.comment = ParserUtils.getComment(ctx, tokens);
+            node.comment = ParserUtils.getComment(ctx, h.getTokens());
         }
     }
 
@@ -546,9 +507,9 @@ public class CustomCListener extends CParserBaseListener {
         if (!isInsideType("ENUM")) return;
 
         String name = ctx.enumerationConstant() != null ? ctx.enumerationConstant().getText() : null;
-        Node node = new Node("ENUM_CONSTANT", name, ctx.getStart().getLine(), nodeStack.peek());
+        Node node = new Node("ENUM_CONSTANT", name, ctx.getStart().getLine(), h.getNodeStack().peek());
         node.endLine = ctx.getStop().getLine();
-        node.comment = ParserUtils.getComment(ctx, tokens);
+        node.comment = ParserUtils.getComment(ctx, h.getTokens());
     }
 
     // ========================================
@@ -567,7 +528,7 @@ public class CustomCListener extends CParserBaseListener {
             if (ds.storageClassSpecifier() != null) continue; // static, extern 등 제외
             if (ds.typeSpecifier() != null) {
                 if (sb.length() > 0) sb.append(" ");
-                sb.append(ParserUtils.getOriginalText(ds.typeSpecifier(), tokens));
+                sb.append(ParserUtils.getOriginalText(ds.typeSpecifier(), h.getTokens()));
             } else if (ds.typeQualifier() != null) {
                 if (sb.length() > 0) sb.append(" ");
                 sb.append(ds.typeQualifier().getText());
@@ -617,8 +578,8 @@ public class CustomCListener extends CParserBaseListener {
      * 현재 스코프가 전역(FILE 직접 하위)인지 확인
      */
     private boolean isGlobalScope() {
-        if (nodeStack.isEmpty()) return true;
-        Node current = nodeStack.peek();
+        if (h.getNodeStack().isEmpty()) return true;
+        Node current = h.getNodeStack().peek();
         return current.type.equals("FILE");
     }
 
@@ -626,8 +587,8 @@ public class CustomCListener extends CParserBaseListener {
      * 현재 FUNCTION 내부에 있는지 확인
      */
     private boolean isInsideFunction() {
-        for (int i = nodeStack.size() - 1; i >= 0; i--) {
-            if (nodeStack.get(i).type.equals("FUNCTION")) return true;
+        for (int i = h.getNodeStack().size() - 1; i >= 0; i--) {
+            if (h.getNodeStack().get(i).type.equals("FUNCTION")) return true;
         }
         return false;
     }
@@ -636,49 +597,16 @@ public class CustomCListener extends CParserBaseListener {
      * 현재 파일이 헤더(.h) 파일인지 확인
      */
     private boolean isHeaderFile() {
-        return root.fileName != null && root.fileName.endsWith(".h");
+        return h.getRoot().fileName != null && h.getRoot().fileName.endsWith(".h");
     }
 
     /**
      * 특정 타입의 노드 내부에 있는지 확인
      */
     private boolean isInsideType(String type) {
-        for (int i = nodeStack.size() - 1; i >= 0; i--) {
-            if (nodeStack.get(i).type.equals(type)) return true;
+        for (int i = h.getNodeStack().size() - 1; i >= 0; i--) {
+            if (h.getNodeStack().get(i).type.equals(type)) return true;
         }
         return false;
-    }
-
-    /**
-     * 모듈명(구조체명 등)을 모든 자식 노드에 재귀적으로 전파
-     */
-    private void propagateModuleName(Node node, String moduleName) {
-        for (Node child : node.children) {
-            child.moduleName = moduleName;
-            propagateModuleName(child, moduleName);
-        }
-    }
-
-    // ========================================
-    // 디버깅용
-    // ========================================
-
-    public void printTree(Node node, String indent) {
-        StringBuilder info = new StringBuilder();
-        info.append(indent).append(node.type);
-        if (node.name != null) info.append(" [").append(node.name).append("]");
-        if (node.modifiers != null) info.append(" {").append(node.modifiers).append("}");
-        if (node.variableType != null) info.append(" type:").append(node.variableType);
-        if (node.returnType != null) info.append(" returns:").append(node.returnType);
-        info.append(" (").append(node.startLine).append("-").append(node.endLine).append(")");
-
-        System.out.println(info.toString());
-        for (Node child : node.children) {
-            printTree(child, indent + "  ");
-        }
-    }
-
-    public void printStructure() {
-        printTree(root, "");
     }
 }

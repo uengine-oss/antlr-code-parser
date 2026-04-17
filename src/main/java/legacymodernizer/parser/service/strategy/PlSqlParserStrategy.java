@@ -1,4 +1,4 @@
-package legacymodernizer.parser.service.parsing;
+package legacymodernizer.parser.service.strategy;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.Set;
 
 import org.antlr.v4.runtime.CharStream;
@@ -15,16 +14,14 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 
 import legacymodernizer.parser.antlr.CaseChangingCharStream;
-import legacymodernizer.parser.antlr.plsql.CustomPlSqlListener;
+import legacymodernizer.parser.antlr.plsql.PlSqlAstListener;
 import legacymodernizer.parser.antlr.plsql.PlSqlLexer;
 import legacymodernizer.parser.antlr.plsql.PlSqlParser;
-import legacymodernizer.parser.service.FileParserService;
+import legacymodernizer.parser.service.FileStorageService;
+import legacymodernizer.parser.service.ParsingOrchestrator;
 import legacymodernizer.parser.service.ParseProgressTracker;
-import legacymodernizer.parser.service.StreamCallback;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -32,19 +29,10 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class PlSqlParserStrategy implements TargetParserStrategy {
+public class PlSqlParserStrategy extends AbstractParserStrategy {
 
-    private final FileParserService fileParserService;
-
-    @Override
-    public Map<String, Object> upload(MultipartFile[] files) {
-        return fileParserService.uploadFiles(files, getTargetExtensions());
-    }
-
-    @Override
-    public void parseWithStream(StreamCallback callback) {
-        fileParserService.parseProjectWithStream(this::parseFileWithStream, callback);
+    public PlSqlParserStrategy(FileStorageService storageService, ParsingOrchestrator orchestrator) {
+        super(storageService, orchestrator);
     }
 
     @Override
@@ -59,7 +47,7 @@ public class PlSqlParserStrategy implements TargetParserStrategy {
             PlSqlParser parser = new PlSqlParser(tokens);
             ParserRuleContext tree = parser.sql_script();
 
-            CustomPlSqlListener listener = new CustomPlSqlListener(tokens, tracker);
+            PlSqlAstListener listener = new PlSqlAstListener(tokens, tracker);
             new ParseTreeWalker().walk(listener, tree);
 
             Files.writeString(Path.of(outputPath), listener.getRoot().toJson(), StandardCharsets.UTF_8);

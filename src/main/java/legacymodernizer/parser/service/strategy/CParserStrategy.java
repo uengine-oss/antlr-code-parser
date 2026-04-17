@@ -1,4 +1,4 @@
-package legacymodernizer.parser.service.parsing;
+package legacymodernizer.parser.service.strategy;
 
 import java.io.File;
 import java.nio.charset.Charset;
@@ -17,15 +17,13 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
-
 import legacymodernizer.parser.antlr.c.CLexer;
 import legacymodernizer.parser.antlr.c.CParser;
-import legacymodernizer.parser.antlr.c.CustomCListener;
-import legacymodernizer.parser.service.FileParserService;
+import legacymodernizer.parser.antlr.c.CAstListener;
+import legacymodernizer.parser.service.FileStorageService;
+import legacymodernizer.parser.service.ParsingOrchestrator;
 import legacymodernizer.parser.service.ParseProgressTracker;
 import legacymodernizer.parser.service.StreamCallback;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -33,64 +31,41 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class CParserStrategy implements TargetParserStrategy {
-
-    private final FileParserService fileParserService;
+public class CParserStrategy extends AbstractParserStrategy {
 
     /** 소스 파일들에서 수집한 사용자 정의 타입 이름 */
     private Set<String> collectedTypeNames = new HashSet<>();
 
-    @Override
-    public Map<String, Object> upload(MultipartFile[] files) {
-        return fileParserService.uploadFiles(files, getTargetExtensions());
+    public CParserStrategy(FileStorageService storageService, ParsingOrchestrator orchestrator) {
+        super(storageService, orchestrator);
     }
 
     @Override
     public void parseWithStream(StreamCallback callback) {
-        // 파싱 전에 소스 파일에서 매크로 상수 + typedef/struct/enum 이름을 수집
         collectMacroConstants();
         collectTypeNamesFromSource();
-        fileParserService.parseProjectWithStream(this::parseFileWithStream, callback);
+        super.parseWithStream(callback);
     }
 
     @Override
     public void parseFileWithStream(File file, String outputPath, ParseProgressTracker tracker) throws Exception {
         log.debug("[C] 파싱: {}", file.getName());
 
-        // 인코딩 폴백으로 소스 읽기 (UTF-8 → EUC-KR → MS949)
         String source = readFileContent(file.toPath());
-        // 전처리기 조건부 컴파일(#ifdef/#else/#endif) 처리
         source = preprocessSource(source);
         CharStream charStream = CharStreams.fromString(source);
         CLexer lexer = new CLexer(charStream);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         CParser parser = new CParser(tokens);
 
-        // 수집된 사용자 정의 타입 이름을 파서에 등록
         if (!collectedTypeNames.isEmpty()) {
             parser.registerTypeNames(collectedTypeNames);
         }
 
         CParser.CompilationUnitContext tree = parser.compilationUnit();
 
-        CustomCListener listener = new CustomCListener(tokens, tracker);
-
-        // 파일 정보 설정
-        String fileName = file.getName();
-        Path sourceDir = fileParserService.sourceDir();
-        Path filePath = file.toPath();
-        String relativePath = null;
-        try {
-            if (filePath.startsWith(sourceDir)) {
-                relativePath = sourceDir.relativize(filePath).toString().replace('\\', '/');
-            } else {
-                relativePath = filePath.toString().replace('\\', '/');
-            }
-        } catch (Exception e) {
-            relativePath = fileName;
-        }
-        listener.setFileInfo(fileName, relativePath);
+        CAstListener listener = new CAstListener(tokens, tracker);
+        listener.setFileInfo(file.getName(), computeRelativePath(file));
 
         new ParseTreeWalker().walk(listener, tree);
 
@@ -117,7 +92,7 @@ public class CParserStrategy implements TargetParserStrategy {
      */
     private void collectTypeNamesFromSource() {
         collectedTypeNames.clear();
-        Path sourceDir = fileParserService.sourceDir();
+        Path sourceDir = storageService.sourceDir();
         if (!Files.exists(sourceDir)) return;
 
         try {
@@ -275,7 +250,7 @@ public class CParserStrategy implements TargetParserStrategy {
      */
     private void collectMacroConstants() {
         collectedMacroConstants.clear();
-        Path sourceDir = fileParserService.sourceDir();
+        Path sourceDir = storageService.sourceDir();
         if (!Files.exists(sourceDir)) return;
 
         try {

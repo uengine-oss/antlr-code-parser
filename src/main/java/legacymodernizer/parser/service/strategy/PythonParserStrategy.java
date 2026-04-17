@@ -1,4 +1,4 @@
-package legacymodernizer.parser.service.parsing;
+package legacymodernizer.parser.service.strategy;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Map;
 import java.util.Set;
 
 import org.antlr.v4.runtime.CharStream;
@@ -14,15 +13,13 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 
-import legacymodernizer.parser.antlr.python.CustomPythonListener;
+import legacymodernizer.parser.antlr.python.PythonAstListener;
 import legacymodernizer.parser.antlr.python.PythonLexer;
 import legacymodernizer.parser.antlr.python.PythonParser;
-import legacymodernizer.parser.service.FileParserService;
+import legacymodernizer.parser.service.FileStorageService;
+import legacymodernizer.parser.service.ParsingOrchestrator;
 import legacymodernizer.parser.service.ParseProgressTracker;
-import legacymodernizer.parser.service.StreamCallback;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -30,19 +27,10 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class PythonParserStrategy implements TargetParserStrategy {
+public class PythonParserStrategy extends AbstractParserStrategy {
 
-    private final FileParserService fileParserService;
-
-    @Override
-    public Map<String, Object> upload(MultipartFile[] files) {
-        return fileParserService.uploadFiles(files, getTargetExtensions());
-    }
-
-    @Override
-    public void parseWithStream(StreamCallback callback) {
-        fileParserService.parseProjectWithStream(this::parseFileWithStream, callback);
+    public PythonParserStrategy(FileStorageService storageService, ParsingOrchestrator orchestrator) {
+        super(storageService, orchestrator);
     }
 
     @Override
@@ -57,23 +45,8 @@ public class PythonParserStrategy implements TargetParserStrategy {
 
             PythonParser.RootContext tree = parser.root();
 
-            CustomPythonListener listener = new CustomPythonListener(tokens, tracker);
-
-            // 파일 정보 설정
-            String fileName = file.getName();
-            Path sourceDir = fileParserService.sourceDir();
-            Path filePath = file.toPath();
-            String relativePath = null;
-            try {
-                if (filePath.startsWith(sourceDir)) {
-                    relativePath = sourceDir.relativize(filePath).toString().replace('\\', '/');
-                } else {
-                    relativePath = filePath.toString().replace('\\', '/');
-                }
-            } catch (Exception e) {
-                relativePath = fileName;
-            }
-            listener.setFileInfo(fileName, relativePath);
+            PythonAstListener listener = new PythonAstListener(tokens, tracker);
+            listener.setFileInfo(file.getName(), computeRelativePath(file));
 
             new ParseTreeWalker().walk(listener, tree);
 

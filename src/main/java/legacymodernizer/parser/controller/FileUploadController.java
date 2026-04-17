@@ -19,8 +19,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import legacymodernizer.parser.service.parsing.ParserStrategyFactory;
-import legacymodernizer.parser.service.parsing.TargetParserStrategy;
+import legacymodernizer.parser.service.strategy.ParserStrategyFactory;
+import legacymodernizer.parser.service.strategy.TargetParserStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
