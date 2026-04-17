@@ -39,6 +39,13 @@ public class CustomJavaListener extends Java20ParserBaseListener {
     public void setFileInfo(String fileName, String filePath) {
         root.fileName = fileName;
         root.filePath = filePath;
+        // filePath에서 디렉토리 부분을 기본 패키지로 설정.
+        // Java의 package 선언이 있으면 이후 enterPackageDeclaration에서 덮어씀.
+        String normalized = filePath.replace("\\", "/");
+        int lastSlash = normalized.lastIndexOf('/');
+        String dir = (lastSlash > 0) ? normalized.substring(0, lastSlash).replace("/", ".") : "";
+        while (dir.startsWith(".")) dir = dir.substring(1);
+        root.packageName = "root" + (dir.isEmpty() ? "" : "." + dir);
     }
     
     public CustomJavaListener(CommonTokenStream tokens) {

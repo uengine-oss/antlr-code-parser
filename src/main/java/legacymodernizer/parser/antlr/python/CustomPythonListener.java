@@ -39,6 +39,12 @@ public class CustomPythonListener extends PythonParserBaseListener {
     public void setFileInfo(String fileName, String filePath) {
         root.fileName = fileName;
         root.filePath = filePath;
+        // filePath에서 디렉토리 부분을 패키지로 설정. 없으면 "root".
+        String normalized = filePath.replace("\\", "/");
+        int lastSlash = normalized.lastIndexOf('/');
+        String dir = (lastSlash > 0) ? normalized.substring(0, lastSlash).replace("/", ".") : "";
+        while (dir.startsWith(".")) dir = dir.substring(1);
+        root.packageName = "root" + (dir.isEmpty() ? "" : "." + dir);
     }
 
     public CustomPythonListener(CommonTokenStream tokens) {

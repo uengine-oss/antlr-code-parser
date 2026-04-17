@@ -213,7 +213,7 @@ public class AntlrAnalysisTest {
         // 3) target 타입에 맞는 전략 가져오기 (예: java)
         TargetParserStrategy strategy = parserStrategyFactory.getStrategy(TEST_TARGET);
 
-        // 4) upload 호출 → data/source, analysis/nontarget, ddl 등에 저장
+        // 4) upload 호출 → data/source, ddl 등에 저장
         MultipartFile[] array = multipartFiles.toArray(new MultipartFile[0]);
         System.out.println("업로드 호출 시작 (target=" + TEST_TARGET + ") ...");
         var result = strategy.upload(array);

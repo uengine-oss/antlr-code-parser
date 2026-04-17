@@ -41,7 +41,6 @@ public class FileParserService {
     private static final String DDL = "ddl";
     private static final String ANALYSIS = "analysis";
     private static final String TARGET = "target";
-    private static final String NONTARGET = "nontarget";
 
     private static String resolveBaseDir() {
         String dockerContext = System.getenv("DOCKER_COMPOSE_CONTEXT");
@@ -71,9 +70,6 @@ public class FileParserService {
         return Paths.get(BASE_DIR, ANALYSIS, TARGET);
     }
 
-    public Path analysisNontargetDir() {
-        return Paths.get(BASE_DIR, ANALYSIS, NONTARGET);
-    }
 
     // ═══════════════════════════════════════════════════════════════════
     // 파일 업로드
@@ -81,11 +77,13 @@ public class FileParserService {
 
     /**
      * 파일 업로드 (기존 폴더 비우고 새로 저장)
-     * 
-     * - 타겟 확장자 파일 → source/ 저장
-     * - 비타겟 확장자 파일 → analysis/nontarget/ 원본 저장
-     * - DDL 파일 → ddl/ 저장
-     * 
+     *
+     * - DDL 파일 (ddl/ 접두) → ddl/ 저장
+     * - 그 외 모든 파일 → source/ 저장 (타겟/비타겟 구분 없이)
+     *
+     * 분석 단계에서 타겟 확장자만 AST 파싱하므로, 업로드 시점에 분리할 필요 없음.
+     * 비타겟 파일(XML, properties 등)도 source/ 에 있어야 agent 도구가 접근 가능.
+     *
      * @param files 업로드 파일들 (filename: 상대경로)
      * @param targetExtensions 타겟 언어 확장자 목록 (예: {".java"})
      * @return {files: [...], ddlFiles: [...], nontargetFiles: [...]}
@@ -102,7 +100,6 @@ public class FileParserService {
 
         Path sourceBase = sourceDir();
         Path ddlBase = ddlDir();
-        Path nontargetBase = analysisNontargetDir();
 
         for (MultipartFile mf : files) {
             if (mf == null || mf.isEmpty()) continue;
@@ -126,24 +123,22 @@ public class FileParserService {
                             "fileName", relativePath,
                             "fileContent", readContent(dest)));
                     log.debug("  [DDL] {}", relativePath);
-                } else if (isTargetExtension(relativePath, targetExtensions)) {
-                    // 타겟 확장자 → source/ 저장
+                } else {
+                    // 모든 파일 → source/ 저장 (타겟/비타겟 구분 없이)
                     Path dest = sourceBase.resolve(relativePath);
                     saveFile(mf, dest);
 
-                    srcList.add(Map.of(
-                            "fileName", relativePath,
-                            "fileContent", readContent(dest)));
-                    log.debug("  [SOURCE] {}", relativePath);
-                } else {
-                    // 비타겟 확장자 → analysis/nontarget/ 원본 저장
-                    Path dest = nontargetBase.resolve(relativePath);
-                    saveFile(mf, dest);
-
-                    nontargetList.add(Map.of(
-                            "fileName", relativePath,
-                            "fileContent", readContent(dest)));
-                    log.debug("  [NONTARGET] {}", relativePath);
+                    if (isTargetExtension(relativePath, targetExtensions)) {
+                        srcList.add(Map.of(
+                                "fileName", relativePath,
+                                "fileContent", readContent(dest)));
+                        log.debug("  [SOURCE] {}", relativePath);
+                    } else {
+                        nontargetList.add(Map.of(
+                                "fileName", relativePath,
+                                "fileContent", readContent(dest)));
+                        log.debug("  [SOURCE:NONTARGET] {}", relativePath);
+                    }
                 }
             } catch (IOException e) {
                 throw new RuntimeException("파일 저장 실패: " + originalName, e);
