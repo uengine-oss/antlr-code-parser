@@ -17,130 +17,198 @@ import org.antlr.v4.runtime.misc.Interval;
 public class ParserUtils {
     
     /**
-     * 원본 텍스트 추출 (공백, 줄바꿈 유지)
-     * TokenStream을 우선 사용 (범위 오류 방지), 실패 시 CharStream 시도
-     * 
-     * 비교 결과:
-     * - TokenStream.getText(): 원본 그대로, 범위 오류 방지 ✅ 우선 사용
-     * - CharStream.getText(Interval): 원본 그대로, 범위 오류 가능 ⚠️ 대체로 사용
-     * - ctx.getText(): 공백이 모두 사라짐 ❌ 완전히 제거됨
+     * 단일 컨텍스트의 원본 텍스트 추출 (공백·줄바꿈 유지).
+     * ctx.getText()는 토큰을 공백 없이 이어붙이므로 사용 금지.
      */
     public static String getOriginalText(ParserRuleContext ctx, TokenStream tokens) {
         if (ctx == null) return null;
-        
-        // 1. TokenStream 우선 사용 (범위 오류 방지, 원본 그대로)
-        if (tokens instanceof CommonTokenStream) {
-            try {
-                return ((CommonTokenStream) tokens).getText(ctx);
-            } catch (Exception e) {
-                // TokenStream 실패 시 CharStream 시도
-            }
-        }
-        
-        // 2. CharStream 대체 시도 (TokenStream 실패 시)
-        if (ctx.getStart() != null && ctx.getStop() != null) {
-            CharStream input = ctx.getStart().getInputStream();
-            if (input != null) {
-                int startIndex = ctx.getStart().getStartIndex();
-                int stopIndex = ctx.getStop().getStopIndex();
-                
-                // 범위가 잘못된 경우 처리
-                if (startIndex > stopIndex) {
-                    int temp = startIndex;
-                    startIndex = stopIndex;
-                    stopIndex = temp;
-                }
-                
-                try {
-                    // 토큰 인덱스가 파일 범위를 벗어나는지 확인
-                    int fileSize = input.size();
-                    if (stopIndex >= fileSize) {
-                        stopIndex = fileSize - 1;
-                    }
-                    if (startIndex < 0) {
-                        startIndex = 0;
-                    }
-                    if (startIndex <= stopIndex) {
-                        return input.getText(new Interval(startIndex, stopIndex));
-                    }
-                } catch (Exception e) {
-                    // 최종 실패
-                }
-            }
-        }
-        
-        return null;
+        return sliceOriginalText(ctx.getStart(), ctx.getStop(), tokens);
     }
-    
+
     /**
-     * 디버깅용: 세 가지 방법으로 텍스트 추출하여 비교
-     * - CharStream: 원본 그대로
-     * - ctx.getText(): 토큰 연결
-     * - TokenStream: 토큰 기반 (숨겨진 채널 포함)
+     * 두 컨텍스트 구간의 원본 텍스트 추출 (first.start ~ last.stop).
+     * 사이의 콤마·공백·주석까지 모두 보존.
      */
-    public static String compareTextExtraction(ParserRuleContext ctx, TokenStream tokens) {
-        if (ctx == null) return null;
-        
-        StringBuilder result = new StringBuilder();
-        result.append("=== 텍스트 추출 방법 비교 ===\n\n");
-        
-        // 1. CharStream 방식 (원본 그대로)
-        try {
-            if (ctx.getStart() != null && ctx.getStop() != null) {
-                CharStream input = ctx.getStart().getInputStream();
-                if (input != null) {
-                    int startIndex = ctx.getStart().getStartIndex();
-                    int stopIndex = ctx.getStop().getStopIndex();
-                    if (startIndex <= stopIndex) {
-                        String charStreamText = input.getText(new Interval(startIndex, stopIndex));
-                        result.append("[1] CharStream.getText():\n");
-                        result.append("길이: ").append(charStreamText.length()).append("\n");
-                        result.append("내용: ").append(escapeForDisplay(charStreamText)).append("\n\n");
-                    }
-                }
-            }
-        } catch (Exception e) {
-            result.append("[1] CharStream.getText(): 실패 - ").append(e.getMessage()).append("\n\n");
-        }
-        
-        // 2. ctx.getText() 방식
-        try {
-            String ctxText = ctx.getText();
-            result.append("[2] ctx.getText():\n");
-            result.append("길이: ").append(ctxText.length()).append("\n");
-            result.append("내용: ").append(escapeForDisplay(ctxText)).append("\n\n");
-        } catch (Exception e) {
-            result.append("[2] ctx.getText(): 실패 - ").append(e.getMessage()).append("\n\n");
-        }
-        
-        // 3. TokenStream 방식
+    public static String getOriginalText(ParserRuleContext first, ParserRuleContext last, TokenStream tokens) {
+        if (first == null || last == null) return null;
+        return sliceOriginalText(first.getStart(), last.getStop(), tokens);
+    }
+
+    /**
+     * TokenStream 우선, 실패 시 CharStream 인덱스로 복구.
+     */
+    private static String sliceOriginalText(Token start, Token stop, TokenStream tokens) {
+        if (start == null || stop == null) return null;
+
         if (tokens instanceof CommonTokenStream) {
             try {
-                CommonTokenStream cts = (CommonTokenStream) tokens;
-                int startTokenIndex = ctx.getStart().getTokenIndex();
-                int stopTokenIndex = ctx.getStop().getTokenIndex();
-                String tokenStreamText = cts.getText(ctx);
-                result.append("[3] TokenStream.getText():\n");
-                result.append("토큰 범위: ").append(startTokenIndex).append(" ~ ").append(stopTokenIndex).append("\n");
-                result.append("길이: ").append(tokenStreamText.length()).append("\n");
-                result.append("내용: ").append(escapeForDisplay(tokenStreamText)).append("\n\n");
-            } catch (Exception e) {
-                result.append("[3] TokenStream.getText(): 실패 - ").append(e.getMessage()).append("\n\n");
+                return ((CommonTokenStream) tokens).getText(start, stop);
+            } catch (Exception ignored) {
+                // CharStream 대체로 넘어감
             }
         }
-        
-        return result.toString();
+
+        CharStream input = start.getInputStream();
+        if (input == null) return null;
+
+        int startIdx = Math.min(start.getStartIndex(), stop.getStopIndex());
+        int stopIdx  = Math.max(start.getStartIndex(), stop.getStopIndex());
+        int lastIdx  = input.size() - 1;
+        if (stopIdx > lastIdx) stopIdx = lastIdx;
+        if (startIdx < 0) startIdx = 0;
+        if (startIdx > stopIdx) return null;
+
+        try {
+            return input.getText(new Interval(startIdx, stopIdx));
+        } catch (Exception ignored) {
+            return null;
+        }
     }
-    
-    private static String escapeForDisplay(String text) {
-        if (text == null) return "null";
-        return text
-            .replace("\\", "\\\\")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t");
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 주석 토큰 판별 (다중 언어 공용)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * 주석 토큰 여부 판정: 블록 `/{@code *…*}/`, 라인 `--`, `//`.
+     * (현재 지원 언어: PL/SQL, PostgreSQL, Java, C, Python 주석은 별도 채널 처리)
+     */
+    public static boolean isCommentToken(Token t) {
+        if (t == null) return false;
+        String text = t.getText();
+        if (text == null) return false;
+        String trimmed = text.trim();
+        return trimmed.startsWith("/*") || trimmed.startsWith("--") || trimmed.startsWith("//");
     }
-    
+
+    /**
+     * 주석이 standalone(같은 줄에 앞선 코드 토큰이 없는)인지 판정.
+     * 인라인 trailing 주석(`x := 1; -- note`)을 걸러낼 때 사용.
+     */
+    public static boolean isStandaloneComment(Token commentToken, TokenStream tokens) {
+        if (commentToken == null || tokens == null) return true;
+        int commentLine = commentToken.getLine();
+        int tokenIdx = commentToken.getTokenIndex();
+        for (int i = tokenIdx - 1; i >= 0; i--) {
+            Token prev = tokens.get(i);
+            if (prev.getLine() != commentLine) return true;
+            if (prev.getChannel() == Token.DEFAULT_CHANNEL) return false;
+        }
+        return true;
+    }
+
+    /**
+     * 주석 토큰을 `"라인번호: 내용"` 포맷으로 StringBuilder에 append.
+     * 여러 줄 블록 주석은 각 줄마다 번호 붙음.
+     */
+    private static void appendCommentWithLineNumbers(StringBuilder sb, Token commentToken) {
+        int line = commentToken.getLine();
+        String[] lines = commentToken.getText().split("\n", -1);
+        for (int j = 0; j < lines.length; j++) {
+            if (j > 0) sb.append("\n");
+            sb.append(line + j).append(": ").append(lines[j]);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 헤더(선언부) 주석 수집
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * 함수/프로시저/트리거 선언부의 standalone 주석을 모아 헤더 문서로 반환.
+     *
+     * <p>수집 정책:
+     * <ul>
+     *   <li>블록 주석(`/{@code *…*}/`): {@code bodyStartKeyword} 이전 전 범위에서 수집.
+     *       DECLARE 구간 중간에 삽입되는 다단 문서 블록까지 포괄.</li>
+     *   <li>라인 주석(`--`, `//`): 시그니처 직후의 서문만 헤더로 인정하기 위해
+     *       {@code declStartKeywords} (예: "AS", "IS") 직후 첫 코드 토큰 라인
+     *       <em>이전</em>에 있는 것만 수집. 이 제한을 두지 않으면 DECLARE 내부
+     *       CURSOR SQL 주석까지 헤더에 섞여 들어감.</li>
+     *   <li>인라인 trailing 주석(같은 줄에 코드 토큰이 선행)은 항상 제외.</li>
+     *   <li>{@code bodyStartKeyword}가 null이거나 못 찾으면 ctx 전체 범위.</li>
+     *   <li>{@code declStartKeywords}가 비면 라인 주석에도 위치 제한 없음.</li>
+     * </ul>
+     *
+     * <p>예시: PL/SQL은 {@code collectHeaderComments(ctx, tokens, "BEGIN", "AS", "IS")}.
+     */
+    public static String collectHeaderComments(
+            ParserRuleContext ctx, CommonTokenStream tokens,
+            String bodyStartKeyword, String... declStartKeywords) {
+        if (ctx == null || tokens == null) return null;
+
+        int start = ctx.getStart().getTokenIndex();
+        int stop  = ctx.getStop().getTokenIndex();
+
+        int scanEnd = findKeywordIndex(tokens, start, stop, bodyStartKeyword);
+        if (scanEnd < 0) scanEnd = stop;
+
+        int lineCommentCutoff = findLineCommentCutoff(tokens, start, scanEnd, declStartKeywords);
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = start + 1; i < scanEnd; i++) {
+            Token t = tokens.get(i);
+            if (t.getChannel() != Token.HIDDEN_CHANNEL) continue;
+            if (!isCommentToken(t)) continue;
+            if (!isStandaloneComment(t, tokens)) continue;
+
+            // 라인 주석은 선언부 서문 영역(cutoff 이전)만 허용
+            if (isLineComment(t) && lineCommentCutoff > 0 && t.getLine() >= lineCommentCutoff) {
+                continue;
+            }
+
+            if (sb.length() > 0) sb.append("\n");
+            appendCommentWithLineNumbers(sb, t);
+        }
+        return sb.length() > 0 ? sb.toString() : null;
+    }
+
+    /** default-channel 토큰 중 주어진 키워드를 찾아 인덱스 반환 (없으면 -1). */
+    private static int findKeywordIndex(
+            TokenStream tokens, int from, int to, String keyword) {
+        if (keyword == null) return -1;
+        for (int i = from; i <= to; i++) {
+            Token t = tokens.get(i);
+            if (t.getChannel() == Token.DEFAULT_CHANNEL
+                    && keyword.equalsIgnoreCase(t.getText())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * declStart 키워드(예: AS/IS) 직후 첫 코드 토큰의 라인을 반환.
+     * 이 라인 이후의 라인 주석은 헤더가 아닌 statement 내부 주석으로 간주.
+     * declStart를 못 찾으면 -1 (제한 없음).
+     */
+    private static int findLineCommentCutoff(
+            TokenStream tokens, int start, int scanEnd, String[] declStartKeywords) {
+        if (declStartKeywords == null || declStartKeywords.length == 0) return -1;
+
+        boolean seenDeclStart = false;
+        for (int i = start + 1; i < scanEnd; i++) {
+            Token t = tokens.get(i);
+            if (t.getChannel() != Token.DEFAULT_CHANNEL) continue;
+            if (!seenDeclStart) {
+                for (String kw : declStartKeywords) {
+                    if (kw.equalsIgnoreCase(t.getText())) {
+                        seenDeclStart = true;
+                        break;
+                    }
+                }
+            } else {
+                return t.getLine();
+            }
+        }
+        return -1;
+    }
+
+    private static boolean isLineComment(Token t) {
+        String trimmed = t.getText().trim();
+        return trimmed.startsWith("--") || trimmed.startsWith("//");
+    }
+
     /**
      * 선행 주석 추출 (여러 줄, 블록 주석 모두 포함)
      * 
@@ -163,31 +231,13 @@ public class ParserUtils {
         
         if (hiddenTokens == null || hiddenTokens.isEmpty()) return null;
         
-        // 주석 토큰만 필터 (공백/줄바꿈 제외)
-        // 인라인 주석 제외: 주석과 같은 줄에 코드 토큰이 있으면 그건 그 코드의 주석이지 다음 요소의 주석이 아님
+        // 주석 토큰 필터링 + standalone 판정 (인라인 trailing 주석 제외)
         int ctxLine = ctx.getStart().getLine();
         List<Token> commentTokens = new ArrayList<>();
         for (Token t : hiddenTokens) {
-            String text = t.getText().trim();
-            if (text.startsWith("--") || text.startsWith("/*") || text.startsWith("//")) {
-                // 주석이 구문과 같은 줄이 아니고, 주석 줄에 앞쪽 코드 토큰이 있으면 인라인 주석 → 제외
-                int commentLine = t.getLine();
-                if (commentLine < ctxLine) {
-                    // 이 주석 앞에 같은 줄의 코드 토큰이 있는지 확인
-                    boolean isInlineComment = false;
-                    int tokenIdx = t.getTokenIndex();
-                    for (int i = tokenIdx - 1; i >= 0; i--) {
-                        Token prev = tokens.get(i);
-                        if (prev.getLine() != commentLine) break;
-                        if (prev.getChannel() == Token.DEFAULT_CHANNEL) {
-                            isInlineComment = true;
-                            break;
-                        }
-                    }
-                    if (isInlineComment) continue; // 인라인 주석은 건너뜀
-                }
-                commentTokens.add(t);
-            }
+            if (!isCommentToken(t)) continue;
+            if (t.getLine() < ctxLine && !isStandaloneComment(t, tokens)) continue;
+            commentTokens.add(t);
         }
         
         if (commentTokens.isEmpty()) return null;

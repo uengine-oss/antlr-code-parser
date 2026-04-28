@@ -83,30 +83,21 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
     }
 
     /**
-     * PostgreSQL 함수 파라미터 목록 추출
+     * PostgreSQL 함수 파라미터 목록을 원본 그대로 추출 (공백·콤마·주석 보존).
      */
     private String extractPostgreSQLParameters(PostgreSQLParser.Func_args_with_defaultsContext funcArgs) {
         if (funcArgs == null || funcArgs.func_args_with_defaults_list() == null) return null;
-
         java.util.List<PostgreSQLParser.Func_arg_with_defaultContext> args =
             funcArgs.func_args_with_defaults_list().func_arg_with_default();
-
         if (args == null || args.isEmpty()) return null;
-
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < args.size(); i++) {
-            if (i > 0) sb.append(", ");
-            sb.append(args.get(i).getText());
-        }
-        return sb.toString();
+        return ParserUtils.getOriginalText(args.get(0), args.get(args.size() - 1), h.getTokens());
     }
 
     /**
-     * PostgreSQL 함수 리턴 타입 추출
+     * PostgreSQL 함수 리턴 타입을 원본 그대로 추출 (SETOF/TABLE(...) 등 공백 보존).
      */
     private String extractPostgreSQLReturnType(PostgreSQLParser.Func_returnContext funcReturn) {
-        if (funcReturn == null) return null;
-        return funcReturn.getText();
+        return ParserUtils.getOriginalText(funcReturn, h.getTokens());
     }
 
     // ========================================

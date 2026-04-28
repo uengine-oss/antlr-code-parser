@@ -18,10 +18,11 @@ public interface TargetParserStrategy {
 
     /**
      * 파일 업로드 (기존 폴더 비우고 새로 저장)
-     * 
+     *
+     * @param targetFolder source/ 아래에 강제 배치할 폴더 prefix (null/빈값이면 미적용)
      * @return {files: [{fileName, fileContent}], ddlFiles: [{fileName, fileContent}]}
      */
-    Map<String, Object> upload(MultipartFile[] files);
+    Map<String, Object> upload(MultipartFile[] files, String targetFolder);
 
     /**
      * 전체 프로젝트 파싱 (스트림 방식)

@@ -216,7 +216,7 @@ public class AntlrAnalysisTest {
         // 4) upload 호출 → data/source, ddl 등에 저장
         MultipartFile[] array = multipartFiles.toArray(new MultipartFile[0]);
         System.out.println("업로드 호출 시작 (target=" + TEST_TARGET + ") ...");
-        var result = strategy.upload(array);
+        var result = strategy.upload(array, null);
 
         // 5) 결과 요약 출력 및 간단 검증
         @SuppressWarnings("unchecked")

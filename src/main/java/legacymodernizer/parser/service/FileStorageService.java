@@ -73,16 +73,26 @@ public class FileStorageService {
     // ═══════════════════════════════════════════════════════════════════
 
     /**
+     * 파일 업로드 (기존 폴더 비우고 새로 저장). targetFolder 없이 호출 시 기존 동작 유지.
+     */
+    public Map<String, Object> uploadFiles(MultipartFile[] files, Set<String> targetExtensions) {
+        return uploadFiles(files, targetExtensions, null);
+    }
+
+    /**
      * 파일 업로드 (기존 폴더 비우고 새로 저장)
      *
      * - DDL 파일 (ddl/ 접두) → ddl/ 저장
      * - 그 외 모든 파일 → source/ 저장 (타겟/비타겟 구분 없이)
+     * - targetFolder 지정 시 원본명에 폴더가 없는 단일 파일에만 prefix 적용
+     *   (폴더 picker 로 올린 파일은 상대경로 그대로 유지)
      *
      * @param files 업로드 파일들 (filename: 상대경로)
      * @param targetExtensions 타겟 언어 확장자 목록 (예: {".java"})
+     * @param targetFolder source/ 아래에 강제 배치할 폴더 prefix (null/빈값이면 미적용)
      * @return {files: [...], ddlFiles: [...], nontargetFiles: [...]}
      */
-    public Map<String, Object> uploadFiles(MultipartFile[] files, Set<String> targetExtensions) {
+    public Map<String, Object> uploadFiles(MultipartFile[] files, Set<String> targetExtensions, String targetFolder) {
         clearDirectory(sourceDir());
         clearDirectory(ddlDir());
         clearDirectory(analysisDir());
@@ -94,6 +104,8 @@ public class FileStorageService {
         Path sourceBase = sourceDir();
         Path ddlBase = ddlDir();
 
+        String normalizedTargetFolder = normalizeFolderPrefix(targetFolder);
+
         for (MultipartFile mf : files) {
             if (mf == null || mf.isEmpty()) continue;
 
@@ -102,6 +114,11 @@ public class FileStorageService {
 
             String relativePath = originalName.replace("\\", "/");
             boolean isDdl = relativePath.startsWith("ddl/");
+
+            // 원본명에 폴더가 없으면 targetFolder prefix 적용 (DDL 은 제외: 기존 규칙 유지)
+            if (!isDdl && !normalizedTargetFolder.isEmpty() && !relativePath.contains("/")) {
+                relativePath = normalizedTargetFolder + "/" + relativePath;
+            }
 
             try {
                 if (isDdl) {
@@ -144,6 +161,14 @@ public class FileStorageService {
     // ═══════════════════════════════════════════════════════════════════
     // 내부 유틸
     // ═══════════════════════════════════════════════════════════════════
+
+    private String normalizeFolderPrefix(String raw) {
+        if (raw == null) return "";
+        String normalized = raw.replace("\\", "/").trim();
+        while (normalized.startsWith("/")) normalized = normalized.substring(1);
+        while (normalized.endsWith("/")) normalized = normalized.substring(0, normalized.length() - 1);
+        return normalized;
+    }
 
     private boolean isTargetExtension(String filePath, Set<String> targetExtensions) {
         int dot = filePath.lastIndexOf('.');

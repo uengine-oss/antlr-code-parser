@@ -51,16 +51,11 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
     }
 
     /**
-     * 파라미터 목록을 문자열로 추출
+     * 파라미터 목록을 원본 그대로 추출 (공백·콤마·줄바꿈·주석 보존).
      */
     private String extractParameters(java.util.List<PlSqlParser.ParameterContext> params) {
         if (params == null || params.isEmpty()) return null;
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < params.size(); i++) {
-            if (i > 0) sb.append(", ");
-            sb.append(params.get(i).getText());
-        }
-        return sb.toString();
+        return ParserUtils.getOriginalText(params.get(0), params.get(params.size() - 1), h.getTokens());
     }
 
     private Node enterStatement(String type, int line) {
@@ -73,12 +68,12 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
         return node;
     }
 
-    private void exitStatement(String type, int line) {
-        exitStatement(type, line, null);
+    private Node exitStatement(String type, int line) {
+        return exitStatement(type, line, null);
     }
 
-    private void exitStatement(String type, int line, ParserRuleContext ctx) {
-        if (h.getNodeStack().isEmpty()) return;
+    private Node exitStatement(String type, int line, ParserRuleContext ctx) {
+        if (h.getNodeStack().isEmpty()) return null;
         Node node = h.getNodeStack().pop();
         node.endLine = line;
         // 동일 범위 중복 자식 제거
@@ -88,6 +83,7 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
         if (ctx != null) {
             node.comment = ParserUtils.getLeadingComment(ctx, h.getTokens());
         }
+        return node;
     }
 
     // ========================================
@@ -107,7 +103,8 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
 
     @Override
     public void exitCreate_procedure_body(PlSqlParser.Create_procedure_bodyContext ctx) {
-        exitStatement("PROCEDURE", ctx.getStop().getLine(), ctx);
+        Node node = exitStatement("PROCEDURE", ctx.getStop().getLine(), ctx);
+        h.attachHeaderComment(node, ctx, "BEGIN", "AS", "IS");
     }
 
     @Override
@@ -128,7 +125,8 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
 
     @Override
     public void exitCreate_function_body(PlSqlParser.Create_function_bodyContext ctx) {
-        exitStatement("FUNCTION", ctx.getStop().getLine(), ctx);
+        Node node = exitStatement("FUNCTION", ctx.getStop().getLine(), ctx);
+        h.attachHeaderComment(node, ctx, "BEGIN", "AS", "IS");
     }
 
     @Override
@@ -185,7 +183,8 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
     @Override
     public void exitPackage_obj_body(PlSqlParser.Package_obj_bodyContext ctx) {
         String memberType = ctx.function_body() != null ? "FUNCTION" : "PROCEDURE";
-        exitStatement(memberType, ctx.getStop().getLine(), ctx);
+        Node node = exitStatement(memberType, ctx.getStop().getLine(), ctx);
+        h.attachHeaderComment(node, ctx, "BEGIN", "AS", "IS");
     }
 
     @Override
@@ -199,7 +198,8 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
 
     @Override
     public void exitCreate_trigger(PlSqlParser.Create_triggerContext ctx) {
-        exitStatement("TRIGGER", ctx.getStop().getLine(), ctx);
+        Node node = exitStatement("TRIGGER", ctx.getStop().getLine(), ctx);
+        h.attachHeaderComment(node, ctx, "BEGIN", "AS", "IS");
     }
 
     @Override
@@ -227,8 +227,25 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
     }
 
     @Override
+    public void enterVariable_declaration(PlSqlParser.Variable_declarationContext ctx) {
+        // DECLARE 블록 안 변수만 VARIABLE 노드로 생성 (package_obj_spec 은 기존 PACKAGE_VARIABLE 처리 유지)
+        if (!(ctx.getParent() instanceof PlSqlParser.Declare_specContext)) return;
+
+        String varName = ctx.identifier() != null ? ctx.identifier().getText() : null;
+        Node parent = h.getNodeStack().peek();
+        Node v = new Node("VARIABLE", varName, ctx.getStart().getLine(), parent);
+        v.endLine = ctx.getStop().getLine();
+        if (ctx.type_spec() != null) {
+            v.variableType = ctx.type_spec().getText();
+        }
+    }
+
+    @Override
     public void enterAssignment_statement(PlSqlParser.Assignment_statementContext ctx) {
-        enterStatement("ASSIGNMENT", ctx.getStart().getLine());
+        Node node = enterStatement("ASSIGNMENT", ctx.getStart().getLine());
+        if (ctx.expression() != null) {
+            ParserUtils.applyInitializerFlags(node, ctx.expression().getText(), false);
+        }
     }
 
     @Override
@@ -238,7 +255,10 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
 
     @Override
     public void enterReturn_statement(PlSqlParser.Return_statementContext ctx) {
-        enterStatement("RETURN", ctx.getStart().getLine());
+        Node node = enterStatement("RETURN", ctx.getStart().getLine());
+        if (ctx.expression() != null) {
+            ParserUtils.applyInitializerFlags(node, ctx.expression().getText(), false);
+        }
     }
 
     @Override
@@ -336,7 +356,10 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
 
     @Override
     public void enterIf_statement(PlSqlParser.If_statementContext ctx) {
-        enterStatement("IF", ctx.getStart().getLine());
+        Node node = enterStatement("IF", ctx.getStart().getLine());
+        if (ctx.condition() != null) {
+            ParserUtils.applyInitializerFlags(node, ctx.condition().getText(), false);
+        }
     }
 
     @Override
@@ -346,7 +369,10 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
 
     @Override
     public void enterElsif_part(PlSqlParser.Elsif_partContext ctx) {
-        enterStatement("ELSIF", ctx.getStart().getLine());
+        Node node = enterStatement("ELSIF", ctx.getStart().getLine());
+        if (ctx.condition() != null) {
+            ParserUtils.applyInitializerFlags(node, ctx.condition().getText(), false);
+        }
     }
 
     @Override

@@ -27,8 +27,8 @@ public abstract class AbstractParserStrategy implements TargetParserStrategy {
     }
 
     @Override
-    public Map<String, Object> upload(MultipartFile[] files) {
-        return storageService.uploadFiles(files, getTargetExtensions());
+    public Map<String, Object> upload(MultipartFile[] files, String targetFolder) {
+        return storageService.uploadFiles(files, getTargetExtensions(), targetFolder);
     }
 
     @Override

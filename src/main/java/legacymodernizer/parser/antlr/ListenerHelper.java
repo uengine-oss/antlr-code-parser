@@ -87,6 +87,37 @@ public class ListenerHelper {
         }
     }
 
+    /**
+     * 함수/프로시저/트리거의 선언부 주석을 node.comment에 merge하고
+     * 같은 텍스트를 leading comment로 중복 소유한 자식의 comment는 정리.
+     *
+     * <p>수집 정책은 {@link ParserUtils#collectHeaderComments} 참고.
+     * 인라인 trailing 주석은 항상 제외되며, 라인 주석은 declStart 직후 서문 영역만 포함.
+     *
+     * @param node              pop된 함수성 노드 (FUNCTION/PROCEDURE/TRIGGER 등)
+     * @param ctx               해당 노드의 parser context
+     * @param bodyStartKeyword  body 시작 키워드 (PL/SQL: "BEGIN", Java/C: "{")
+     * @param declStartKeywords 선언부 시작 키워드 목록 (PL/SQL: "AS", "IS" / 없으면 생략)
+     */
+    public void attachHeaderComment(
+            Node node, ParserRuleContext ctx,
+            String bodyStartKeyword, String... declStartKeywords) {
+        if (node == null || ctx == null) return;
+        String header = ParserUtils.collectHeaderComments(ctx, tokens, bodyStartKeyword, declStartKeywords);
+        if (header == null) return;
+
+        node.comment = (node.comment == null || node.comment.isEmpty())
+                ? header
+                : node.comment + "\n" + header;
+
+        if (node.children == null) return;
+        for (Node child : node.children) {
+            if (child.comment != null && header.contains(child.comment)) {
+                child.comment = null;
+            }
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // 파일 정보 설정
     // ═══════════════════════════════════════════════════════════════════

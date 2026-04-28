@@ -99,6 +99,7 @@ public class FileUploadController {
         }
 
         String target = (String) meta.get("target");
+        String targetFolder = (String) meta.get("targetFolder");
         // strategy, nameCase는 필요시 사용
         // String strategy = (String) meta.get("strategy");
         // String nameCase = (String) meta.get("nameCase");
@@ -110,7 +111,7 @@ public class FileUploadController {
         // 업로드 처리
         try {
             TargetParserStrategy strategy = parserStrategyFactory.getStrategy(target);
-            Map<String, Object> result = strategy.upload(files);
+            Map<String, Object> result = strategy.upload(files, targetFolder);
 
             log.info("[업로드 완료] target={}, src={}개, ddl={}개",
                     target,

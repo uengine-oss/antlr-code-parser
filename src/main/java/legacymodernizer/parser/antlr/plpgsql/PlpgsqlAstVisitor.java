@@ -6,6 +6,7 @@ import org.antlr.v4.runtime.Token;
 import java.util.HashMap;
 import java.util.Map;
 import legacymodernizer.parser.model.Node;
+import legacymodernizer.parser.antlr.ParserUtils;
 
 /**
  * PL/pgSQL Parse Tree를 Node 트리로 변환하는 Visitor
@@ -127,7 +128,14 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
     }
 
     private void visitDeclaration(PlpgsqlParser.DeclarationContext ctx, Node parent) {
-        // 변수 선언은 별도 노드 생성 안함
+        // DECLARE 블록 안 변수마다 VARIABLE 노드 생성
+        if (ctx.Identifier() == null || ctx.Identifier().isEmpty()) return;
+        String varName = ctx.Identifier(0).getText();
+        Node v = new Node("VARIABLE", varName, getActualLineNumber(ctx.Identifier(0).getSymbol()), parent);
+        v.endLine = getActualEndLineNumber(ctx);
+        if (ctx.dataType() != null) {
+            v.variableType = ctx.dataType().getText();
+        }
     }
 
     @Override
@@ -147,7 +155,11 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
 
     @Override
     public Node visitAssignmentStmt(PlpgsqlParser.AssignmentStmtContext ctx) {
-        return createNode("ASSIGNMENT", ctx, currentBlockNode);
+        Node node = createNode("ASSIGNMENT", ctx, currentBlockNode);
+        if (ctx.expression() != null) {
+            ParserUtils.applyInitializerFlags(node, ctx.expression().getText(), false);
+        }
+        return node;
     }
 
     @Override
@@ -178,7 +190,11 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
         } else if (ctx.QUERY() != null) {
             returnType = "RETURN_QUERY";
         }
-        return createNode(returnType, ctx, currentBlockNode);
+        Node node = createNode(returnType, ctx, currentBlockNode);
+        if (ctx.expression() != null) {
+            ParserUtils.applyInitializerFlags(node, ctx.expression().getText(), false);
+        }
+        return node;
     }
 
     // ========================================
@@ -240,6 +256,10 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
     @Override
     public Node visitIfStmt(PlpgsqlParser.IfStmtContext ctx) {
         Node ifNode = createNode("IF", ctx, currentBlockNode);
+        // IF 조건 expression(0) 에서 호출 감지
+        if (ctx.expression() != null && !ctx.expression().isEmpty()) {
+            ParserUtils.applyInitializerFlags(ifNode, ctx.expression(0).getText(), false);
+        }
         Node previousBlock = currentBlockNode;
         currentBlockNode = ifNode;
 
@@ -253,12 +273,14 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
         if (elsifCount > 0 && ctx.ELSIF() != null) {
             for (int i = 0; i < elsifCount; i++) {
                 PlpgsqlParser.StatementListContext elsifStmtList = ctx.statementList(i + 1);
-                
+
                 int elsifStartLine = getActualLineNumber(ctx.ELSIF(i).getSymbol());
                 int elsifEndLine = getActualEndLineNumber(elsifStmtList);
 
                 Node elsifNode = new Node("ELSIF", elsifStartLine, ifNode);
                 elsifNode.endLine = elsifEndLine;
+                // ELSIF 조건 expression(i+1) 에서 호출 감지
+                ParserUtils.applyInitializerFlags(elsifNode, ctx.expression(i + 1).getText(), false);
 
                 currentBlockNode = elsifNode;
                 visitStatementList(elsifStmtList);
