@@ -41,6 +41,46 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
         return ParserUtils.getOriginalText(params.get(0), params.get(params.size() - 1), h.getTokens());
     }
 
+    /**
+     * PROCEDURE/FUNCTION/TRIGGER/PACKAGE_BODY 의 파라미터 목록을 자식 PARAMETER 노드로 emit.
+     *
+     * Analyzer 측 책임 분리: ANTLR 가 grammar 차원에서 이름·타입·mode·default 를 정확히 추출.
+     * 자식 노드 추가만으로 PARENT_OF / REFERENCES / INIT_BY 매칭이 자동 작동.
+     */
+    private void emitParameters(java.util.List<PlSqlParser.ParameterContext> params, Node parent) {
+        if (params == null || params.isEmpty() || parent == null) return;
+        for (PlSqlParser.ParameterContext p : params) {
+            if (p.parameter_name() == null) continue;
+            String pname = p.parameter_name().getText();
+            int sLine = p.getStart().getLine();
+            int eLine = p.getStop().getLine();
+            Node paramNode = new Node("PARAMETER", pname, sLine, parent);
+            paramNode.endLine = eLine;
+            if (p.type_spec() != null) {
+                paramNode.variableType = p.type_spec().getText();
+            }
+            // PL/SQL mode: IN / OUT / IN OUT / INOUT — modifiers 필드 재사용.
+            // PL/SQL 기본값은 IN — 키워드 명시 없으면 IN 으로 채움 (정보 손실 방지).
+            StringBuilder mode = new StringBuilder();
+            if (p.IN() != null && !p.IN().isEmpty()) mode.append("IN");
+            if (p.OUT() != null && !p.OUT().isEmpty()) {
+                if (mode.length() > 0) mode.append(" ");
+                mode.append("OUT");
+            }
+            if (p.INOUT() != null && !p.INOUT().isEmpty()) {
+                if (mode.length() > 0) mode.append(" ");
+                mode.append("INOUT");
+            }
+            paramNode.modifiers = mode.length() > 0 ? mode.toString() : "IN";
+            // default value (`name TYPE := default`)
+            if (p.default_value_part() != null) {
+                paramNode.initValue = ParserUtils.getOriginalText(
+                    p.default_value_part(), p.default_value_part(), h.getTokens()
+                );
+            }
+        }
+    }
+
     // ========================================
     // Procedure/Function/Trigger/Package
     // ========================================
@@ -54,6 +94,7 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
         node.schema = parts[0];
         node.parameters = extractParameters(ctx.parameter());
         node.signature = ParserUtils.extractSignature(ctx, h.getTokens(), "IS", "AS");
+        emitParameters(ctx.parameter(), node);
     }
 
     @Override
@@ -76,6 +117,7 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
         }
 
         node.signature = ParserUtils.extractSignature(ctx, h.getTokens(), "IS", "AS");
+        emitParameters(ctx.parameter(), node);
     }
 
     @Override
@@ -133,6 +175,12 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
         node.returnType = returnType;
         node.parameters = parameters;
         node.signature = ParserUtils.extractSignature(ctx, h.getTokens(), "IS", "AS");
+        // package body 의 function_body / procedure_body 자식의 parameter 자식 노드 추가
+        if (ctx.function_body() != null) {
+            emitParameters(ctx.function_body().parameter(), node);
+        } else if (ctx.procedure_body() != null) {
+            emitParameters(ctx.procedure_body().parameter(), node);
+        }
     }
 
     @Override

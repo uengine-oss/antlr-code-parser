@@ -34,6 +34,36 @@ public class CAstListener extends CParserBaseListener {
      */
     private String pendingTypedefName = null;
 
+    /**
+     * FUNCTION (또는 함수 프로토타입) 의 parameterTypeList 를 자식 PARAMETER 노드로 emit.
+     *
+     * C grammar:
+     *   parameterTypeList : parameterList (',' Ellipsis)?
+     *   parameterDeclaration : declarationSpecifiers declarator           # 이름 있음
+     *                        | declarationSpecifiers abstractDeclarator?  # 이름 없음 (프로토타입 가능)
+     *
+     * 이름 없는 abstractDeclarator (예: `void f(int)`) 는 PARAMETER 노드 생성 안 함.
+     */
+    private void emitParameters(CParser.ParameterTypeListContext paramList, Node parent) {
+        if (paramList == null || parent == null || paramList.parameterList() == null) return;
+        for (CParser.ParameterDeclarationContext p : paramList.parameterList().parameterDeclaration()) {
+            // declarator 있는 경우만 — abstractDeclarator (이름 없는 프로토타입 파라미터) 는 스킵
+            if (p.declarator() == null) continue;
+            String name = extractDeclaratorName(p.declarator());
+            if (name == null) continue;
+
+            String type = extractReturnType(p.declarationSpecifiers());
+            // 포인터 타입 보존: `int *p` → type="int *"
+            if (!p.declarator().pointer().isEmpty()) {
+                type = (type != null ? type.trim() : "") + " *";
+            }
+
+            Node paramNode = new Node("PARAMETER", name, p.getStart().getLine(), parent);
+            paramNode.endLine = p.getStop().getLine();
+            paramNode.variableType = type != null ? type.trim() : null;
+        }
+    }
+
     public Node getRoot() {
         return h.getRoot();
     }
@@ -107,12 +137,14 @@ public class CAstListener extends CParserBaseListener {
                 // 이름 뒤에 공백을 요구하므로 함수형 매크로 `#define FOO(x) ...`는 자동 제외됨.
                 if (text.startsWith("#define") || text.startsWith("# define")) {
                     Matcher m = Pattern
-                        .compile("^#\\s*define\\s+([A-Z_][A-Z0-9_]*)\\s+(.+)$")
+                        .compile("^#\\s*define\\s+([A-Z_][A-Z0-9_]*)\\s+(.+?)\\s*(?:/[/*].*)?$")
                         .matcher(text);
                     if (m.find()) {
                         Node node = new Node("DEFINE", m.group(1), token.getLine(), h.getRoot());
                         node.endLine = token.getLine();
-                        // DEFINE은 타입이 없음. 값(m.group(2))은 variableType에 넣지 않음.
+                        // 값(RHS) 을 initValue 에 저장 — 다른 언어 const initializer 와 동일 모델.
+                        // 트레일링 주석 (`/* */`, `//`) 은 정규식에서 제외.
+                        node.initValue = m.group(2).trim();
                     }
                 }
             }
@@ -236,6 +268,7 @@ public class CAstListener extends CParserBaseListener {
             if (dd.parameterTypeList() != null && !dd.parameterTypeList().isEmpty()) {
                 CParser.ParameterTypeListContext params = dd.parameterTypeList(0);
                 node.parameters = ParserUtils.getOriginalText(params, h.getTokens());
+                emitParameters(params, node);
             }
         }
     }

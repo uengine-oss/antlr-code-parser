@@ -60,6 +60,36 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
         return ParserUtils.getOriginalText(funcReturn, h.getTokens());
     }
 
+    /**
+     * PROCEDURE/FUNCTION 의 파라미터 목록을 자식 PARAMETER 노드로 emit.
+     *
+     * Postgres grammar:
+     *   func_args_with_defaults    : '(' func_args_with_defaults_list? ')'
+     *   func_arg_with_default      : func_arg ((DEFAULT | =) a_expr)?
+     *   func_arg                   : arg_class? param_name? func_type
+     *   arg_class                  : IN | OUT | INOUT | VARIADIC
+     */
+    private void emitParameters(PostgreSQLParser.Func_args_with_defaultsContext funcArgs, Node parent) {
+        if (funcArgs == null || parent == null || funcArgs.func_args_with_defaults_list() == null) return;
+        for (PostgreSQLParser.Func_arg_with_defaultContext awd
+                : funcArgs.func_args_with_defaults_list().func_arg_with_default()) {
+            PostgreSQLParser.Func_argContext fa = awd.func_arg();
+            if (fa == null || fa.param_name() == null) continue;   // OUT 단독 등 이름 없음 → 스킵
+            String name = fa.param_name().getText();
+            Node paramNode = new Node("PARAMETER", name, awd.getStart().getLine(), parent);
+            paramNode.endLine = awd.getStop().getLine();
+            if (fa.func_type() != null) {
+                paramNode.variableType = fa.func_type().getText();
+            }
+            if (fa.arg_class() != null) {
+                paramNode.modifiers = fa.arg_class().getText().toUpperCase();   // IN/OUT/INOUT/VARIADIC
+            }
+            if (awd.a_expr() != null) {
+                paramNode.initValue = awd.a_expr().getText();
+            }
+        }
+    }
+
     // ========================================
     // CREATE FUNCTION / DO
     // ========================================
@@ -82,6 +112,7 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
         // 파라미터 추출
         if (ctx.func_args_with_defaults() != null) {
             node.parameters = extractPostgreSQLParameters(ctx.func_args_with_defaults());
+            emitParameters(ctx.func_args_with_defaults(), node);
         }
 
         // 리턴 타입 추출

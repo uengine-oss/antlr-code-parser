@@ -47,6 +47,67 @@ public class PythonAstListener extends PythonParserBaseListener {
         h.checkProgress(ctx);
     }
 
+    /**
+     * FUNCTION/METHOD 의 typedargslist 를 자식 PARAMETER 노드로 emit.
+     *
+     * Python grammar:
+     *   typedargslist : def_parameters (',' args)? (',' kwargs)? | args (',' kwargs)? | kwargs
+     *   def_parameter : named_parameter ('=' test)?    # default 값
+     *   named_parameter : name (':' test)?             # 타입 힌트
+     *   args  : '*' named_parameter?                   # *args
+     *   kwargs: '**' named_parameter                   # **kwargs
+     */
+    private void emitTypedArgs(PythonParser.TypedargslistContext args, Node parent) {
+        if (args == null || parent == null) return;
+        // 일반 파라미터들
+        for (PythonParser.Def_parametersContext defs : args.def_parameters()) {
+            for (PythonParser.Def_parameterContext dp : defs.def_parameter()) {
+                emitNamedParameter(
+                    parent,
+                    dp.named_parameter(),
+                    dp.test(),                           // default 값 (있으면)
+                    dp.STAR() != null ? "*" : null       // STAR 표시
+                );
+            }
+        }
+        // *args
+        if (args.args() != null) {
+            emitNamedParameter(parent, args.args().named_parameter(), null, "*");
+        }
+        // **kwargs
+        if (args.kwargs() != null) {
+            emitNamedParameter(parent, args.kwargs().named_parameter(), null, "**");
+        }
+    }
+
+    /**
+     * 단일 PARAMETER Node 생성. named_parameter 가 null 이면 스킵.
+     *
+     * @param defaultValue   default 값 ctx (없으면 null)
+     * @param prefix         "*"(args), "**"(kwargs) — 이름 표시용 (variableType 에 prefix)
+     */
+    private void emitNamedParameter(
+            Node parent,
+            PythonParser.Named_parameterContext np,
+            PythonParser.TestContext defaultValue,
+            String prefix) {
+        if (np == null || np.name() == null) return;
+        String name = np.name().getText();
+        Node paramNode = new Node("PARAMETER", name, np.getStart().getLine(), parent);
+        paramNode.endLine = np.getStop().getLine();
+        if (np.test() != null) {
+            // 타입 힌트: name: type — variableType 에 저장
+            paramNode.variableType = np.test().getText();
+        }
+        if (prefix != null) {
+            // *args / **kwargs — modifiers 필드에 표시
+            paramNode.modifiers = prefix;
+        }
+        if (defaultValue != null) {
+            paramNode.initValue = defaultValue.getText();
+        }
+    }
+
     // ========================================
     // 노드 생성/종료
     // ========================================
@@ -295,6 +356,7 @@ public class PythonAstListener extends PythonParserBaseListener {
         // 파라미터
         if (ctx.typedargslist() != null) {
             node.parameters = ParserUtils.getOriginalText(ctx.typedargslist(), h.getTokens());
+            emitTypedArgs(ctx.typedargslist(), node);
         }
 
         // 리턴 타입 (-> type)

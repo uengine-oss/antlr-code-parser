@@ -29,6 +29,57 @@ public class JavaAstListener extends Java20ParserBaseListener {
 
     @Override
     public void enterEveryRule(ParserRuleContext ctx) { h.checkProgress(ctx); }
+
+    /**
+     * METHOD/CONSTRUCTOR 의 파라미터 목록을 자식 PARAMETER 노드로 emit.
+     *
+     * Analyzer 측 책임 분리: ANTLR 가 grammar 차원에서 이름·타입·annotations 를 정확히 추출.
+     * 자식 노드 추가만으로 PARENT_OF / REFERENCES / INIT_BY 매칭이 자동 작동.
+     */
+    private void emitFormalParameters(
+            Java20Parser.FormalParameterListContext paramList, Node parent) {
+        if (paramList == null || parent == null) return;
+
+        // formalParameter 는 일반 파라미터 또는 variableArityParameter (varargs `String... args`).
+        // grammar: formalParameter : variableModifier* unannType variableDeclaratorId | variableArityParameter ;
+        for (Java20Parser.FormalParameterContext p : paramList.formalParameter()) {
+            Java20Parser.VariableArityParameterContext vp = p.variableArityParameter();
+            if (vp != null) {
+                emitParameterNode(
+                    parent,
+                    vp.identifier() != null ? vp.identifier().getText() : null,
+                    vp.unannType() != null ? vp.unannType().getText() + "..." : null,
+                    vp.variableModifier(),
+                    vp.getStart().getLine(),
+                    vp.getStop().getLine()
+                );
+            } else {
+                emitParameterNode(
+                    parent,
+                    (p.variableDeclaratorId() != null && p.variableDeclaratorId().identifier() != null)
+                            ? p.variableDeclaratorId().identifier().getText() : null,
+                    p.unannType() != null ? p.unannType().getText() : null,
+                    p.variableModifier(),
+                    p.getStart().getLine(),
+                    p.getStop().getLine()
+                );
+            }
+        }
+    }
+
+    /**
+     * 단일 PARAMETER Node 생성 + annotation/타입 SET. 이름이 null 이면 스킵.
+     */
+    private void emitParameterNode(
+            Node parent, String name, String type,
+            List<Java20Parser.VariableModifierContext> modifiers,
+            int startLine, int endLine) {
+        if (name == null) return;
+        Node paramNode = new Node("PARAMETER", name, startLine, parent);
+        paramNode.endLine = endLine;
+        paramNode.variableType = type;
+        extractModifiers(paramNode, modifiers, m -> m.annotation() != null);
+    }
     
     // ========================================
     // 어노테이션/수정자 분리 추출
@@ -199,19 +250,21 @@ public class JavaAstListener extends Java20ParserBaseListener {
             node.genericType = ctx.methodHeader().typeParameters().getText();
         }
         
-        if (ctx.methodHeader() != null 
-                && ctx.methodHeader().methodDeclarator() != null 
+        if (ctx.methodHeader() != null
+                && ctx.methodHeader().methodDeclarator() != null
                 && ctx.methodHeader().methodDeclarator().formalParameterList() != null) {
-            node.parameters = ParserUtils.getOriginalText(
-                    ctx.methodHeader().methodDeclarator().formalParameterList(), h.getTokens());
+            Java20Parser.FormalParameterListContext paramList =
+                    ctx.methodHeader().methodDeclarator().formalParameterList();
+            node.parameters = ParserUtils.getOriginalText(paramList, h.getTokens());
+            emitFormalParameters(paramList, node);
         }
     }
-    
+
     @Override
     public void exitMethodDeclaration(Java20Parser.MethodDeclarationContext ctx) {
         h.exitStatement("METHOD", ctx.getStop().getLine(), ctx);
     }
-    
+
     @Override
     public void enterInterfaceMethodDeclaration(Java20Parser.InterfaceMethodDeclarationContext ctx) {
         String name = null;
@@ -232,14 +285,16 @@ public class JavaAstListener extends Java20ParserBaseListener {
             node.genericType = ctx.methodHeader().typeParameters().getText();
         }
         
-        if (ctx.methodHeader() != null 
-                && ctx.methodHeader().methodDeclarator() != null 
+        if (ctx.methodHeader() != null
+                && ctx.methodHeader().methodDeclarator() != null
                 && ctx.methodHeader().methodDeclarator().formalParameterList() != null) {
-            node.parameters = ParserUtils.getOriginalText(
-                    ctx.methodHeader().methodDeclarator().formalParameterList(), h.getTokens());
+            Java20Parser.FormalParameterListContext paramList =
+                    ctx.methodHeader().methodDeclarator().formalParameterList();
+            node.parameters = ParserUtils.getOriginalText(paramList, h.getTokens());
+            emitFormalParameters(paramList, node);
         }
     }
-    
+
     @Override
     public void exitInterfaceMethodDeclaration(Java20Parser.InterfaceMethodDeclarationContext ctx) {
         h.exitStatement("METHOD", ctx.getStop().getLine(), ctx);
