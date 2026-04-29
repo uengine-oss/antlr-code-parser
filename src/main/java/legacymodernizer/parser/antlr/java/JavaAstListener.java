@@ -326,6 +326,7 @@ public class JavaAstListener extends Java20ParserBaseListener {
             if (raw != null && raw.contains("=")) {
                 node.name = raw.split("=")[0].trim();
                 String initPart = getInitializerPart(raw);
+                node.initValue = initPart;
                 ParserUtils.applyInitializerFlags(node, initPart, false);
             } else {
                 node.name = raw;

@@ -1,7 +1,5 @@
 package legacymodernizer.parser.antlr.c;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -9,8 +7,6 @@ import java.util.regex.Pattern;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.TerminalNode;
 
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
@@ -364,19 +360,11 @@ public class CAstListener extends CParserBaseListener {
                 if (modifierStr != null) {
                     node.modifiers = modifierStr;
                 }
-                // 초기화식 플래그: = 오른쪽에 함수 호출이 있는지 판별
+                // 초기화식 텍스트 보존 + method/new 패턴 플래그 — 식별자 추출은 Analyzer 책임
                 if (!isFunctionPrototype && !isTypedef && initDecl.initializer() != null) {
                     String initText = ParserUtils.getOriginalText(initDecl.initializer(), h.getTokens());
-                    if (ParserUtils.matchesMethodCall(initText)) {
-                        node.initializerContainsMethodCall = true;
-                    }
-                }
-                // 선언부(배열크기·초기화식 등)에서 참조한 식별자 수집 — 변수 이름 자신은 제외
-                if (!isFunctionPrototype && !isTypedef) {
-                    ArrayList<String> refs = collectReferencedIdentifiers(initDecl, name);
-                    if (!refs.isEmpty()) {
-                        node.references = refs;
-                    }
+                    node.initValue = initText;
+                    ParserUtils.applyInitializerFlags(node, initText, false);
                 }
 
                 // 즉시 닫기 (declaration은 한 줄)
@@ -386,36 +374,6 @@ public class CAstListener extends CParserBaseListener {
             }
         } else if (!isTypedef && variableType != null) {
             // initDeclaratorList 없는 선언 (ex: struct 정의만)은 무시
-        }
-    }
-
-    /**
-     * 변수 선언 트리에서 참조된 식별자를 수집한다.
-     * 대상: 배열 크기 표현식, 초기화식 등 선언부 내부의 Identifier 토큰.
-     * 제외: 변수 자신의 이름, 함수 호출의 함수명(괄호 앞에 있는 Identifier).
-     *
-     * 예: static char gc_get_date_time [LEN_GET_DATE_TIME +1];
-     *   → ["LEN_GET_DATE_TIME"]
-     */
-    private ArrayList<String> collectReferencedIdentifiers(
-            CParser.InitDeclaratorContext initDecl, String ownName) {
-        LinkedHashSet<String> collected = new LinkedHashSet<>();
-        collectIdentifiers(initDecl, collected);
-        collected.remove(ownName);  // 변수 자신의 이름은 제외
-        return new ArrayList<>(collected);
-    }
-
-    private void collectIdentifiers(ParseTree tree, LinkedHashSet<String> out) {
-        if (tree == null) return;
-        if (tree instanceof TerminalNode) {
-            TerminalNode tn = (TerminalNode) tree;
-            if (tn.getSymbol().getType() == CLexer.Identifier) {
-                out.add(tn.getText());
-            }
-            return;
-        }
-        for (int i = 0; i < tree.getChildCount(); i++) {
-            collectIdentifiers(tree.getChild(i), out);
         }
     }
 

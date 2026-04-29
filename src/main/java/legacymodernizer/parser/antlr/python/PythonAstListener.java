@@ -374,6 +374,7 @@ public class PythonAstListener extends PythonParserBaseListener {
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
+            node.initValue = initializerText;
             ParserUtils.applyInitializerFlags(node, initializerText, true);
             return;
         }
@@ -386,12 +387,14 @@ public class PythonAstListener extends PythonParserBaseListener {
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
+            node.initValue = initializerText;
             ParserUtils.applyInitializerFlags(node, initializerText, true);
         } else if ("METHOD".equals(enclosing) || "FUNCTION".equals(enclosing)) {
             Node node = h.enterStatement("VARIABLE", varName, ctx.getStart().getLine());
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
+            node.initValue = initializerText;
             ParserUtils.applyInitializerFlags(node, initializerText, true);
         } else {
             // 모듈 레벨: ALL_CAPS면 CONSTANT_FIELD, 아니면 VARIABLE
@@ -400,6 +403,7 @@ public class PythonAstListener extends PythonParserBaseListener {
             if (typeAnnotation != null) {
                 node.variableType = typeAnnotation;
             }
+            node.initValue = initializerText;
             ParserUtils.applyInitializerFlags(node, initializerText, true);
         }
     }

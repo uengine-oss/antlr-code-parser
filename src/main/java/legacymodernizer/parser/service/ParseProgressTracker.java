@@ -32,74 +32,74 @@ public class ParseProgressTracker {
     
     /**
      * 현재 라인을 체크하고, 기준을 넘었으면 알림 전송
-     * 
+     *
      * @param currentLine 현재 파싱 중인 라인 번호
      */
     public void checkLine(int currentLine) {
         if (callback == null) return;
-        
+
         if (currentLine >= lastNotifiedLine + lineInterval) {
             callback.message(String.format("📍 %s - %d라인까지 파싱 중...", fileName, currentLine));
             lastNotifiedLine = currentLine;
         }
     }
-    
+
     /**
      * 파싱 시작 알림
-     * 
+     *
      * @param totalLines 파일 총 라인 수 (알 수 있는 경우)
      */
     public void start(int totalLines) {
         if (callback == null) return;
-        
+
         if (totalLines > 0) {
             callback.message(String.format("📄 %s 파싱 시작... (총 %,d라인)", fileName, totalLines));
         } else {
             callback.message(String.format("📄 %s 파싱 시작...", fileName));
         }
     }
-    
+
     /**
      * 파싱 시작 알림 (라인 수 없이)
      */
     public void start() {
         start(0);
     }
-    
+
     /**
      * 파싱 완료 알림
-     * 
+     *
      * @param totalLines 처리된 총 라인 수
      */
     public void complete(int totalLines) {
         if (callback == null) return;
-        
+
         callback.message(String.format("✅ %s 완료 (%,d라인)", fileName, totalLines));
     }
-    
+
     /**
      * 파싱 에러 알림
-     * 
+     *
      * @param errorMessage 에러 메시지
      * @param line 에러 발생 라인 (0이면 라인 정보 없음)
      */
     public void error(String errorMessage, int line) {
         if (callback == null) return;
-        
+
         if (line > 0) {
             callback.error(String.format("❌ %s 파싱 실패: %s (%d라인)", fileName, errorMessage, line));
         } else {
             callback.error(String.format("❌ %s 파싱 실패: %s", fileName, errorMessage));
         }
     }
-    
+
     /**
      * 마지막으로 알림을 보낸 라인 반환
      */
     public int getLastNotifiedLine() {
         return lastNotifiedLine;
     }
-    
+
     /**
      * 콜백 반환
      */

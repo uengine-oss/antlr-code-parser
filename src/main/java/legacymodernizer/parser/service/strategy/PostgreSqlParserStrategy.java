@@ -46,6 +46,8 @@ public class PostgreSqlParserStrategy extends AbstractParserStrategy {
             PostgreSQLParser.RootContext tree = parser.root();
 
             PostgreSqlAstListener listener = new PostgreSqlAstListener(tokens, tracker);
+            listener.setFileInfo(file.getName(), computeRelativePath(file));
+
             new ParseTreeWalker().walk(listener, tree);
 
             Files.writeString(Path.of(outputPath), listener.getRoot().toJson(), StandardCharsets.UTF_8);

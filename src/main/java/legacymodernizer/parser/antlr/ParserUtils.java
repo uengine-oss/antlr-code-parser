@@ -428,6 +428,23 @@ public class ParserUtils {
         return m.find() ? m.group(1) : null;
     }
 
+    // ═══════════════════════════════════════════════════════════════════
+    // 식별자 분리 (schema.name → schema, name)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * "schema.name" 형식을 두 조각으로 분리.
+     * 점이 없으면 schema=null, name=fullName.
+     */
+    public static String[] extractSchemaAndName(String fullName) {
+        if (fullName == null) return new String[]{null, null};
+        if (fullName.contains(".")) {
+            String[] parts = fullName.split("\\.", 2);
+            return new String[]{parts[0], parts[1]};
+        }
+        return new String[]{null, fullName};
+    }
+
     /**
      * 초기화식 플래그를 Node에 일괄 적용.
      * @param node            대상 노드

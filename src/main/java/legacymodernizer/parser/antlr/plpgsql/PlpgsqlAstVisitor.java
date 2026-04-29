@@ -136,6 +136,10 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
         if (ctx.dataType() != null) {
             v.variableType = ctx.dataType().getText();
         }
+        // 초기화 표현식 (`:= 우변` 또는 `DEFAULT 우변`) 텍스트 보존 — 식별자 추출은 Analyzer 책임
+        if (ctx.expression() != null) {
+            v.initValue = ParserUtils.getOriginalText(ctx.expression(), tokens);
+        }
     }
 
     @Override

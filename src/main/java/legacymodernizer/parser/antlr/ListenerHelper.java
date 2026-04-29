@@ -55,9 +55,23 @@ public class ListenerHelper {
     // 노드 생성 / 종료
     // ═══════════════════════════════════════════════════════════════════
 
+    public Node enterStatement(String type, int line) {
+        return enterStatement(type, null, line);
+    }
+
     public Node enterStatement(String type, String name, int line) {
         Node node = new Node(type, name, line, nodeStack.peek());
         nodeStack.push(node);
+        return node;
+    }
+
+    /**
+     * 자식 노드가 없는 단일 라인 statement (예: VARIABLE 선언) 를 부모에 직접 부착.
+     * push/pop 없이 endLine 까지 한 번에 설정하므로 atomic 노드 작성 시 사용.
+     */
+    public Node addLeafStatement(String type, String name, int startLine, int endLine) {
+        Node node = new Node(type, name, startLine, nodeStack.peek());
+        node.endLine = endLine;
         return node;
     }
 
@@ -72,6 +86,24 @@ public class ListenerHelper {
                 node.comment = ParserUtils.getLeadingComment(ctx, tokens);
             }
         }
+    }
+
+    /**
+     * 노드 종료 — leading 주석 + 자식 중 startLine/endLine 이 부모와 같은 노드 제거 (PL/SQL 등).
+     * 단일 라인 노드가 부모와 같은 범위로 중복 생성되는 경우 정리.
+     * peek().type 이 일치하지 않으면 no-op (조건부 종료 — exitBody 의 EXCEPTION pop 등).
+     */
+    public Node exitStatementWithChildDedupe(String type, int line, ParserRuleContext ctx) {
+        if (nodeStack.isEmpty() || !nodeStack.peek().type.equals(type)) return null;
+        Node node = nodeStack.pop();
+        node.endLine = line;
+        if (node.children != null && !node.children.isEmpty()) {
+            node.children.removeIf(child -> child.startLine == node.startLine && child.endLine == node.endLine);
+        }
+        if (ctx != null) {
+            node.comment = ParserUtils.getLeadingComment(ctx, tokens);
+        }
+        return node;
     }
 
     /**

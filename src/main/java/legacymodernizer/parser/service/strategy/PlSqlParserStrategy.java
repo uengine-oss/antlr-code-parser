@@ -48,6 +48,8 @@ public class PlSqlParserStrategy extends AbstractParserStrategy {
             ParserRuleContext tree = parser.sql_script();
 
             PlSqlAstListener listener = new PlSqlAstListener(tokens, tracker);
+            listener.setFileInfo(file.getName(), computeRelativePath(file));
+
             new ParseTreeWalker().walk(listener, tree);
 
             Files.writeString(Path.of(outputPath), listener.getRoot().toJson(), StandardCharsets.UTF_8);

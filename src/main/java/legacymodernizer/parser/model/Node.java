@@ -20,7 +20,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
     "type", "name",
     "signature", "modifiers", "annotations", "returnType", "parameters", "genericType",
     "extendsType", "implementsTypes",
-    "variableType", "initializerContainsMethodCall", "initializerContainsNewInstance", "references",
+    "variableType", "initValue",
+    "initializerContainsMethodCall", "initializerContainsNewInstance",
     "schema", "moduleName",
     "fileName", "filePath", "packageName",
     "comment",
@@ -61,11 +62,12 @@ public class Node {
     // 필드/변수 관련
     // ========================================
     public String variableType;
+    /** 변수 선언 시 초기화 표현식 텍스트 (예: "tagsn", "DBMS_UTILITY.GET_TIME", "'N'"). 없으면 null. */
+    public String initValue;
     /** true일 때만 set, 아니면 null (JSON에서 자동 생략) */
     public Boolean initializerContainsMethodCall;
     /** true일 때만 set, 아니면 null (JSON에서 자동 생략) */
     public Boolean initializerContainsNewInstance;
-    public ArrayList<String> references;
 
     // ========================================
     // 스키마 관련 (PL/SQL, PostgreSQL)
