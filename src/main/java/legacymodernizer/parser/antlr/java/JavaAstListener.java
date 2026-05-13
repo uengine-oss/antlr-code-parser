@@ -30,56 +30,6 @@ public class JavaAstListener extends Java20ParserBaseListener {
     @Override
     public void enterEveryRule(ParserRuleContext ctx) { h.checkProgress(ctx); }
 
-    /**
-     * METHOD/CONSTRUCTOR 의 파라미터 목록을 자식 PARAMETER 노드로 emit.
-     *
-     * Analyzer 측 책임 분리: ANTLR 가 grammar 차원에서 이름·타입·annotations 를 정확히 추출.
-     * 자식 노드 추가만으로 PARENT_OF / REFERENCES / INIT_BY 매칭이 자동 작동.
-     */
-    private void emitFormalParameters(
-            Java20Parser.FormalParameterListContext paramList, Node parent) {
-        if (paramList == null || parent == null) return;
-
-        // formalParameter 는 일반 파라미터 또는 variableArityParameter (varargs `String... args`).
-        // grammar: formalParameter : variableModifier* unannType variableDeclaratorId | variableArityParameter ;
-        for (Java20Parser.FormalParameterContext p : paramList.formalParameter()) {
-            Java20Parser.VariableArityParameterContext vp = p.variableArityParameter();
-            if (vp != null) {
-                emitParameterNode(
-                    parent,
-                    vp.identifier() != null ? vp.identifier().getText() : null,
-                    vp.unannType() != null ? vp.unannType().getText() + "..." : null,
-                    vp.variableModifier(),
-                    vp.getStart().getLine(),
-                    vp.getStop().getLine()
-                );
-            } else {
-                emitParameterNode(
-                    parent,
-                    (p.variableDeclaratorId() != null && p.variableDeclaratorId().identifier() != null)
-                            ? p.variableDeclaratorId().identifier().getText() : null,
-                    p.unannType() != null ? p.unannType().getText() : null,
-                    p.variableModifier(),
-                    p.getStart().getLine(),
-                    p.getStop().getLine()
-                );
-            }
-        }
-    }
-
-    /**
-     * 단일 PARAMETER Node 생성 + annotation/타입 SET. 이름이 null 이면 스킵.
-     */
-    private void emitParameterNode(
-            Node parent, String name, String type,
-            List<Java20Parser.VariableModifierContext> modifiers,
-            int startLine, int endLine) {
-        if (name == null) return;
-        Node paramNode = new Node("PARAMETER", name, startLine, parent);
-        paramNode.endLine = endLine;
-        paramNode.variableType = type;
-        extractModifiers(paramNode, modifiers, m -> m.annotation() != null);
-    }
     
     // ========================================
     // 어노테이션/수정자 분리 추출
@@ -256,7 +206,6 @@ public class JavaAstListener extends Java20ParserBaseListener {
             Java20Parser.FormalParameterListContext paramList =
                     ctx.methodHeader().methodDeclarator().formalParameterList();
             node.parameters = ParserUtils.getOriginalText(paramList, h.getTokens());
-            emitFormalParameters(paramList, node);
         }
     }
 
@@ -291,7 +240,6 @@ public class JavaAstListener extends Java20ParserBaseListener {
             Java20Parser.FormalParameterListContext paramList =
                     ctx.methodHeader().methodDeclarator().formalParameterList();
             node.parameters = ParserUtils.getOriginalText(paramList, h.getTokens());
-            emitFormalParameters(paramList, node);
         }
     }
 
@@ -346,54 +294,38 @@ public class JavaAstListener extends Java20ParserBaseListener {
         } else if (ctx.identifier() != null) {
             name = ctx.identifier().getText();
         }
-        h.enterStatement("METHOD_CALL", name, ctx.getStart().getLine());
+        h.enterStatement("FUNCTION_CALL", name, ctx.getStart().getLine());
     }
     
     @Override
     public void exitMethodInvocation(Java20Parser.MethodInvocationContext ctx) {
-        h.exitStatement("METHOD_CALL", ctx.getStop().getLine(), ctx);
+        h.exitStatement("FUNCTION_CALL", ctx.getStop().getLine(), ctx);
     }
     
     // ========================================
-    // 변수 (초기화식 패턴은 플래그로 표시)
+    // 지역변수 선언 — VARIABLE 노드는 생성하지 않고, 초기화식에 호출/생성이 있으면 해당 타입으로 emit
     // ========================================
-    
-    /**
-     * 선언문 문자열에서 초기화부만 잘라서 반환 (첫 번째 '=' 뒤).
-     * getText()는 공백이 빠질 수 있음 — 정규식 매칭용으로만 사용.
-     */
-    private static String getInitializerPart(String declaratorListText) {
-        if (declaratorListText == null || !declaratorListText.contains("=")) return "";
-        int eq = declaratorListText.indexOf('=');
-        return declaratorListText.substring(eq + 1).trim();
-    }
-    
+
     @Override
     public void enterLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
-        Node node = h.enterStatement("VARIABLE", null, ctx.getStart().getLine());
+        if (ctx.variableDeclaratorList() == null) return;
+        String raw = ctx.variableDeclaratorList().getText();
+        if (raw == null || !raw.contains("=")) return;
 
-        if (ctx.localVariableType() != null) {
-            node.variableType = ctx.localVariableType().getText();
-        }
-
-        if (ctx.variableDeclaratorList() != null) {
-            String raw = ctx.variableDeclaratorList().getText();
-            if (raw != null && raw.contains("=")) {
-                node.name = raw.split("=")[0].trim();
-                String initPart = getInitializerPart(raw);
-                node.initValue = initPart;
-                ParserUtils.applyInitializerFlags(node, initPart, false);
-            } else {
-                node.name = raw;
-            }
+        String initPart = raw.substring(raw.indexOf('=') + 1).trim();
+        if (ParserUtils.matchesNewInstance(initPart)) {
+            String className = ParserUtils.extractNewInstanceName(initPart);
+            Node node = h.enterStatement("NEW_INSTANCE", className, ctx.getStart().getLine());
+            node.endLine = ctx.getStop().getLine();
+            h.getNodeStack().pop();
+        } else if (ParserUtils.matchesMethodCall(initPart)) {
+            String callName = ParserUtils.extractCallName(initPart);
+            Node node = h.enterStatement("FUNCTION_CALL", callName, ctx.getStart().getLine());
+            node.endLine = ctx.getStop().getLine();
+            h.getNodeStack().pop();
         }
     }
-    
-    @Override
-    public void exitLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
-        h.exitStatement("VARIABLE", ctx.getStop().getLine(), ctx);
-    }
-    
+
     // ========================================
     // 객체 생성 (new 인스턴스 — 타입명·라인만)
     // ========================================

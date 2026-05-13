@@ -34,36 +34,6 @@ public class CAstListener extends CParserBaseListener {
      */
     private String pendingTypedefName = null;
 
-    /**
-     * FUNCTION (또는 함수 프로토타입) 의 parameterTypeList 를 자식 PARAMETER 노드로 emit.
-     *
-     * C grammar:
-     *   parameterTypeList : parameterList (',' Ellipsis)?
-     *   parameterDeclaration : declarationSpecifiers declarator           # 이름 있음
-     *                        | declarationSpecifiers abstractDeclarator?  # 이름 없음 (프로토타입 가능)
-     *
-     * 이름 없는 abstractDeclarator (예: `void f(int)`) 는 PARAMETER 노드 생성 안 함.
-     */
-    private void emitParameters(CParser.ParameterTypeListContext paramList, Node parent) {
-        if (paramList == null || parent == null || paramList.parameterList() == null) return;
-        for (CParser.ParameterDeclarationContext p : paramList.parameterList().parameterDeclaration()) {
-            // declarator 있는 경우만 — abstractDeclarator (이름 없는 프로토타입 파라미터) 는 스킵
-            if (p.declarator() == null) continue;
-            String name = extractDeclaratorName(p.declarator());
-            if (name == null) continue;
-
-            String type = extractReturnType(p.declarationSpecifiers());
-            // 포인터 타입 보존: `int *p` → type="int *"
-            if (!p.declarator().pointer().isEmpty()) {
-                type = (type != null ? type.trim() : "") + " *";
-            }
-
-            Node paramNode = new Node("PARAMETER", name, p.getStart().getLine(), parent);
-            paramNode.endLine = p.getStop().getLine();
-            paramNode.variableType = type != null ? type.trim() : null;
-        }
-    }
-
     public Node getRoot() {
         return h.getRoot();
     }
@@ -262,13 +232,12 @@ public class CAstListener extends CParserBaseListener {
             node.modifiers = modifiers;
         }
 
-        // 파라미터 추출
+        // 파라미터 텍스트 추출 (시그니처 표시용 — 별도 PARAMETER 노드는 생성하지 않음)
         if (ctx.declarator() != null && ctx.declarator().directDeclarator() != null) {
             CParser.DirectDeclaratorContext dd = ctx.declarator().directDeclarator();
             if (dd.parameterTypeList() != null && !dd.parameterTypeList().isEmpty()) {
                 CParser.ParameterTypeListContext params = dd.parameterTypeList(0);
                 node.parameters = ParserUtils.getOriginalText(params, h.getTokens());
-                emitParameters(params, node);
             }
         }
     }
@@ -374,13 +343,13 @@ public class CAstListener extends CParserBaseListener {
                 if (isTypedef) {
                     nodeType = "TYPEDEF";
                 } else if (isFunctionPrototype && isGlobal) {
-                    continue;  // 함수 프로토타입(forward declaration)은 무시 — 실제 정의만 FUNCTION으로 처리
+                    continue;
                 } else if (isConst) {
                     nodeType = "CONSTANT_FIELD";
                 } else if (isGlobal) {
                     nodeType = "GLOBAL_VARIABLE";
                 } else {
-                    nodeType = "VARIABLE";
+                    continue;
                 }
 
                 Node node = h.enterStatement(nodeType, name, ctx.getStart().getLine());

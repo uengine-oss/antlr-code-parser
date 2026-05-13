@@ -446,6 +446,30 @@ public class ParserUtils {
     }
 
     /**
+     * 초기화식에서 호출 메서드/함수명 추출.
+     * "obj.getService()" → "getService", "calculate(x)" → "calculate"
+     */
+    public static String extractCallName(String initializerText) {
+        if (initializerText == null || initializerText.isEmpty()) return null;
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("(?:.*\\.)?\\b(\\w+)\\s*\\(")
+                .matcher(initializerText);
+        return m.find() ? m.group(1) : null;
+    }
+
+    /**
+     * 초기화식에서 new 인스턴스 클래스명 추출.
+     * "new ArrayList<>()" → "ArrayList", "new SomeService(arg)" → "SomeService"
+     */
+    public static String extractNewInstanceName(String initializerText) {
+        if (initializerText == null || initializerText.isEmpty()) return null;
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("\\bnew\\s+(\\w+)")
+                .matcher(initializerText);
+        return m.find() ? m.group(1) : null;
+    }
+
+    /**
      * 초기화식 플래그를 Node에 일괄 적용.
      * @param node            대상 노드
      * @param initializerText 초기화식 텍스트
