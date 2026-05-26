@@ -362,11 +362,23 @@ public class CAstListener extends CParserBaseListener {
                 if (modifierStr != null) {
                     node.modifiers = modifierStr;
                 }
-                // 초기화식 텍스트 보존 + method/new 패턴 플래그 — 식별자 추출은 Analyzer 책임
-                if (!isFunctionPrototype && !isTypedef && initDecl.initializer() != null) {
-                    String initText = ParserUtils.getOriginalText(initDecl.initializer(), h.getTokens());
-                    node.initValue = initText;
-                    ParserUtils.applyInitializerFlags(node, initText, false);
+                // 초기화 정보(배열 size + initializer) 통합 → initValue.
+                // C 의 `static char x [LEN +1]` 처럼 = 우변 없이 size 만 있는 경우도
+                // 정의 시 외부 참조(LEN) 가 있으니 initValue 로 박아 reader 가 INIT_BY
+                // 엣지를 만들 수 있게 한다. 호출 emit 은 실제 initializer 가 있을 때만.
+                if (!isFunctionPrototype && !isTypedef) {
+                    String sizeText = extractArraySize(initDecl.declarator(), h.getTokens());
+                    String initText = (initDecl.initializer() != null)
+                            ? ParserUtils.getOriginalText(initDecl.initializer(), h.getTokens())
+                            : "";
+                    String combined = joinNonEmpty(sizeText, initText);
+                    if (!combined.isEmpty()) {
+                        node.initValue = combined;
+                    }
+                    if (!initText.isEmpty()) {
+                        ParserUtils.emitInitializerCall(
+                                node, initText, node.startLine, ctx.getStop().getLine());
+                    }
                 }
 
                 // 즉시 닫기 (declaration은 한 줄)
@@ -568,5 +580,27 @@ public class CAstListener extends CParserBaseListener {
             if (h.getNodeStack().get(i).type.equals(type)) return true;
         }
         return false;
+    }
+
+    /**
+     * declarator 원문에서 배열 dimension 표현식 ({@code [...]} 부분) 을 추출.
+     * 배열이 아니면 빈 문자열. 다차원 ({@code [A][B]}) 도 한 번에 추출.
+     * 예: {@code gc_x [LEN +1]} → {@code "[LEN +1]"}.
+     */
+    private static String extractArraySize(CParser.DeclaratorContext declarator, CommonTokenStream tokens) {
+        if (declarator == null) return "";
+        String full = ParserUtils.getOriginalText(declarator, tokens);
+        int idx = full.indexOf('[');
+        return (idx < 0) ? "" : full.substring(idx).trim();
+    }
+
+    /**
+     * 비어있지 않은 텍스트들을 공백으로 합침. 둘 다 있으면 {@code "a b"},
+     * 하나만 있으면 그것만, 둘 다 비면 빈 문자열.
+     */
+    private static String joinNonEmpty(String a, String b) {
+        if (a == null || a.isEmpty()) return b == null ? "" : b;
+        if (b == null || b.isEmpty()) return a;
+        return a + " " + b;
     }
 }

@@ -38,11 +38,11 @@ public class ParsingOrchestrator {
     /**
      * source/ 하위 모든 파일을 파싱하며 진행 상황을 스트림으로 전달
      *
-     * 파싱 결과는 analysis/target/에 저장
+     * 파싱 결과는 analysis/ 에 source 구조 그대로 미러로 저장.
      */
     public void parseAllFiles(SingleFileParser parser, StreamCallback callback) {
         Path sourceBase = storageService.sourceDir();
-        Path analysisBase = storageService.analysisTargetDir();
+        Path analysisBase = storageService.analysisDir();
 
         if (!Files.exists(sourceBase)) {
             callback.error("소스 디렉토리 없음: " + sourceBase);

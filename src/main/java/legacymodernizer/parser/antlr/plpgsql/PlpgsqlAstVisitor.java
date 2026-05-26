@@ -161,7 +161,8 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
     public Node visitAssignmentStmt(PlpgsqlParser.AssignmentStmtContext ctx) {
         Node node = createNode("ASSIGNMENT", ctx, currentBlockNode);
         if (ctx.expression() != null) {
-            ParserUtils.applyInitializerFlags(node, ctx.expression().getText(), false);
+            ParserUtils.emitInitializerCall(
+                    node, ctx.expression().getText(), node.startLine, node.endLine);
         }
         return node;
     }
@@ -196,7 +197,8 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
         }
         Node node = createNode(returnType, ctx, currentBlockNode);
         if (ctx.expression() != null) {
-            ParserUtils.applyInitializerFlags(node, ctx.expression().getText(), false);
+            ParserUtils.emitInitializerCall(
+                    node, ctx.expression().getText(), node.startLine, node.endLine);
         }
         return node;
     }
@@ -260,9 +262,10 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
     @Override
     public Node visitIfStmt(PlpgsqlParser.IfStmtContext ctx) {
         Node ifNode = createNode("IF", ctx, currentBlockNode);
-        // IF 조건 expression(0) 에서 호출 감지
+        // IF 조건 expression(0) 의 호출을 FUNCTION_CALL 노드로 emit
         if (ctx.expression() != null && !ctx.expression().isEmpty()) {
-            ParserUtils.applyInitializerFlags(ifNode, ctx.expression(0).getText(), false);
+            ParserUtils.emitInitializerCall(
+                    ifNode, ctx.expression(0).getText(), ifNode.startLine, ifNode.endLine);
         }
         Node previousBlock = currentBlockNode;
         currentBlockNode = ifNode;
@@ -283,8 +286,10 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
 
                 Node elsifNode = new Node("ELSIF", elsifStartLine, ifNode);
                 elsifNode.endLine = elsifEndLine;
-                // ELSIF 조건 expression(i+1) 에서 호출 감지
-                ParserUtils.applyInitializerFlags(elsifNode, ctx.expression(i + 1).getText(), false);
+                // ELSIF 조건 expression(i+1) 의 호출을 FUNCTION_CALL 노드로 emit
+                ParserUtils.emitInitializerCall(
+                        elsifNode, ctx.expression(i + 1).getText(),
+                        elsifNode.startLine, elsifNode.endLine);
 
                 currentBlockNode = elsifNode;
                 visitStatementList(elsifStmtList);

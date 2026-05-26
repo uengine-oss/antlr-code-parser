@@ -23,12 +23,11 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * 파일 저장/삭제/경로 관리 서비스
  *
- * 저장 구조:
+ * 저장 구조 — analysis/ 는 source/ 폴더 구조를 그대로 미러:
  *   data/
  *     ├── source/              → 소스 파일 (업로드 시)
  *     ├── ddl/                 → DDL 파일 (원본 폴더 구조 유지)
- *     └── analysis/
- *         └── target/          → 파싱 결과 JSON (파싱 시)
+ *     └── analysis/            → 파싱 결과 JSON (source 와 동일 구조)
  */
 @Slf4j
 @Service
@@ -38,7 +37,6 @@ public class FileStorageService {
     private static final String SOURCE = "source";
     private static final String DDL = "ddl";
     private static final String ANALYSIS = "analysis";
-    private static final String TARGET = "target";
 
     private static String resolveBaseDir() {
         String dockerContext = System.getenv("DOCKER_COMPOSE_CONTEXT");
@@ -62,10 +60,6 @@ public class FileStorageService {
 
     public Path analysisDir() {
         return Paths.get(BASE_DIR, ANALYSIS);
-    }
-
-    public Path analysisTargetDir() {
-        return Paths.get(BASE_DIR, ANALYSIS, TARGET);
     }
 
     // ═══════════════════════════════════════════════════════════════════

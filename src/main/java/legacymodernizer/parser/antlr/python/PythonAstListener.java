@@ -375,7 +375,7 @@ public class PythonAstListener extends PythonParserBaseListener {
                 node.variableType = typeAnnotation;
             }
             node.initValue = initializerText;
-            ParserUtils.applyInitializerFlags(node, initializerText, true);
+            inferVariableType(node, initializerText);
             return;
         }
 
@@ -388,21 +388,9 @@ public class PythonAstListener extends PythonParserBaseListener {
                 node.variableType = typeAnnotation;
             }
             node.initValue = initializerText;
-            ParserUtils.applyInitializerFlags(node, initializerText, true);
+            inferVariableType(node, initializerText);
         } else if ("METHOD".equals(enclosing) || "FUNCTION".equals(enclosing)) {
-            if (initializerText != null) {
-                if (ParserUtils.matchesPythonNewInstance(initializerText)) {
-                    String className = ParserUtils.extractPythonNewInstanceType(initializerText);
-                    Node node = h.enterStatement("NEW_INSTANCE", className, ctx.getStart().getLine());
-                    node.endLine = ctx.getStop().getLine();
-                    h.getNodeStack().pop();
-                } else if (ParserUtils.matchesMethodCall(initializerText)) {
-                    String callName = ParserUtils.extractCallName(initializerText);
-                    Node node = h.enterStatement("FUNCTION_CALL", callName, ctx.getStart().getLine());
-                    node.endLine = ctx.getStop().getLine();
-                    h.getNodeStack().pop();
-                }
-            }
+            // 함수 내 지역변수는 노드로 만들지 않음 — 초기화식의 호출/생성은 enterTrailer 가 잡는다.
             return;
         } else {
             // 모듈 레벨: ALL_CAPS면 CONSTANT_FIELD, 아니면 VARIABLE
@@ -412,7 +400,7 @@ public class PythonAstListener extends PythonParserBaseListener {
                 node.variableType = typeAnnotation;
             }
             node.initValue = initializerText;
-            ParserUtils.applyInitializerFlags(node, initializerText, true);
+            inferVariableType(node, initializerText);
         }
     }
 
@@ -451,6 +439,18 @@ public class PythonAstListener extends PythonParserBaseListener {
         return null;
     }
 
+    /**
+     * 타입 어노테이션이 없을 때 초기화식의 생성자 호출(ClassName(...))로 변수 타입을 보강한다.
+     * 예: self.svc = StatsService(db) → svc.variableType = "StatsService".
+     */
+    private void inferVariableType(Node node, String initializerText) {
+        if (node.variableType != null) return;
+        String ctorType = ParserUtils.extractPythonNewInstanceType(initializerText);
+        if (ctorType != null) {
+            node.variableType = ctorType;
+        }
+    }
+
     // ========================================
     // 함수/메서드 호출 (METHOD_CALL)
     // ========================================
@@ -483,7 +483,12 @@ public class PythonAstListener extends PythonParserBaseListener {
         }
 
         if (callName != null) {
-            h.enterStatement("FUNCTION_CALL", callName, ctx.getStart().getLine());
+            Node call = h.enterStatement("FUNCTION_CALL", callName, ctx.getStart().getLine());
+            // 대문자 시작 = 생성자 호출(ClassName(...)) — 역할 분리로 NEW_INSTANCE 도 함께 emit
+            if (!callName.isEmpty() && Character.isUpperCase(callName.charAt(0))) {
+                Node ni = new Node("NEW_INSTANCE", callName, ctx.getStart().getLine(), call.parent);
+                ni.endLine = ctx.getStop().getLine();
+            }
         }
     }
 

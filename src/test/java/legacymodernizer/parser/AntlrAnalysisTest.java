@@ -53,12 +53,12 @@ public class AntlrAnalysisTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        // 기존 analysis/target 폴더만 정리
-        Path targetDir = storageService.analysisTargetDir();
-        if (Files.exists(targetDir)) {
-            deleteRecursively(targetDir.toFile());
+        // 기존 analysis/ 폴더 정리 (source 구조 미러로 새로 생성됨)
+        Path analysisDir = storageService.analysisDir();
+        if (Files.exists(analysisDir)) {
+            deleteRecursively(analysisDir.toFile());
         }
-        System.out.println("Analysis/target 디렉토리 정리 완료");
+        System.out.println("Analysis 디렉토리 정리 완료");
     }
 
     // ========================================
@@ -130,18 +130,18 @@ public class AntlrAnalysisTest {
         System.out.println("파싱 결과:");
         System.out.println("========================================");
         
-        // analysis/target 폴더에서 생성된 JSON 파일 검증
-        Path targetDir = storageService.analysisTargetDir();
-        assertTrue(Files.exists(targetDir), "analysis/target 디렉토리가 생성되지 않았습니다");
-        
-        long jsonCount = Files.walk(targetDir)
+        // analysis/ 폴더에서 생성된 JSON 파일 검증 (source 구조 그대로 미러)
+        Path analysisDir = storageService.analysisDir();
+        assertTrue(Files.exists(analysisDir), "analysis 디렉토리가 생성되지 않았습니다");
+
+        long jsonCount = Files.walk(analysisDir)
                 .filter(Files::isRegularFile)
                 .filter(p -> p.toString().endsWith(".json"))
                 .peek(p -> {
                     try {
                         String content = Files.readString(p);
                         assertFalse(content.isEmpty(), "분석 결과 파일이 비어있습니다: " + p);
-                        Path relative = targetDir.relativize(p);
+                        Path relative = analysisDir.relativize(p);
                         System.out.println(String.format("  %s (%d bytes)", relative, content.length()));
                     } catch (Exception e) {
                         fail("파일 읽기 실패: " + p, e);

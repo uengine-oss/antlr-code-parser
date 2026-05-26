@@ -303,33 +303,11 @@ public class JavaAstListener extends Java20ParserBaseListener {
     }
     
     // ========================================
-    // 지역변수 선언 — VARIABLE 노드는 생성하지 않고, 초기화식에 호출/생성이 있으면 해당 타입으로 emit
+    // 객체 생성 (new) — NEW_INSTANCE + FUNCTION_CALL 둘 다 emit (역할 분리)
+    // 지역변수 선언은 노드로 만들지 않음 — 초기화식의 호출/생성은
+    // enterMethodInvocation / enterClassInstanceCreationExpression 이 직접 잡는다.
     // ========================================
 
-    @Override
-    public void enterLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
-        if (ctx.variableDeclaratorList() == null) return;
-        String raw = ctx.variableDeclaratorList().getText();
-        if (raw == null || !raw.contains("=")) return;
-
-        String initPart = raw.substring(raw.indexOf('=') + 1).trim();
-        if (ParserUtils.matchesNewInstance(initPart)) {
-            String className = ParserUtils.extractNewInstanceName(initPart);
-            Node node = h.enterStatement("NEW_INSTANCE", className, ctx.getStart().getLine());
-            node.endLine = ctx.getStop().getLine();
-            h.getNodeStack().pop();
-        } else if (ParserUtils.matchesMethodCall(initPart)) {
-            String callName = ParserUtils.extractCallName(initPart);
-            Node node = h.enterStatement("FUNCTION_CALL", callName, ctx.getStart().getLine());
-            node.endLine = ctx.getStop().getLine();
-            h.getNodeStack().pop();
-        }
-    }
-
-    // ========================================
-    // 객체 생성 (new 인스턴스 — 타입명·라인만)
-    // ========================================
-    
     @Override
     public void enterClassInstanceCreationExpression(Java20Parser.ClassInstanceCreationExpressionContext ctx) {
         String name = null;
@@ -337,7 +315,10 @@ public class JavaAstListener extends Java20ParserBaseListener {
                 && ctx.unqualifiedClassInstanceCreationExpression().classOrInterfaceTypeToInstantiate() != null) {
             name = ctx.unqualifiedClassInstanceCreationExpression().classOrInterfaceTypeToInstantiate().getText();
         }
-        h.enterStatement("NEW_INSTANCE", name, ctx.getStart().getLine());
+        // 구현체 추적용 NEW_INSTANCE + 생성자 호출 추적용 FUNCTION_CALL (형제 노드)
+        Node ni = h.enterStatement("NEW_INSTANCE", name, ctx.getStart().getLine());
+        Node call = new Node("FUNCTION_CALL", name, ctx.getStart().getLine(), ni.parent);
+        call.endLine = ctx.getStop().getLine();
     }
     
     @Override

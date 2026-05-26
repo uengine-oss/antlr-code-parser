@@ -398,23 +398,6 @@ public class ParserUtils {
             || initializerText.matches("(?s).*\\b\\w+\\s*\\(.*");
     }
 
-    /**
-     * 초기화식에 Java/C의 new Type 패턴이 있는지 판별.
-     */
-    public static boolean matchesNewInstance(String initializerText) {
-        if (initializerText == null) return false;
-        return initializerText.matches("(?s).*\\bnew\\s+\\w+.*");
-    }
-
-    /**
-     * 초기화식에 Python 생성자 호출 패턴(대문자 시작)이 있는지 판별.
-     * Python: ClassName(args) = Java의 new ClassName(args)
-     */
-    public static boolean matchesPythonNewInstance(String initializerText) {
-        if (initializerText == null || initializerText.isEmpty()) return false;
-        return initializerText.matches("(?s).*\\b[A-Z]\\w*\\s*\\(.*");
-    }
-
     private static final java.util.regex.Pattern PYTHON_CTOR_PATTERN =
             java.util.regex.Pattern.compile("^([A-Z]\\w*)\\s*\\(");
 
@@ -458,40 +441,28 @@ public class ParserUtils {
     }
 
     /**
-     * 초기화식에서 new 인스턴스 클래스명 추출.
-     * "new ArrayList<>()" → "ArrayList", "new SomeService(arg)" → "SomeService"
-     */
-    public static String extractNewInstanceName(String initializerText) {
-        if (initializerText == null || initializerText.isEmpty()) return null;
-        java.util.regex.Matcher m = java.util.regex.Pattern
-                .compile("\\bnew\\s+(\\w+)")
-                .matcher(initializerText);
-        return m.find() ? m.group(1) : null;
-    }
-
-    /**
-     * 초기화식 플래그를 Node에 일괄 적용.
-     * @param node            대상 노드
+     * 초기화식 텍스트에 함수/메서드 호출이 있으면 parent의 자식으로 FUNCTION_CALL 노드를 emit한다.
+     *
+     * <p>표현식 핸들러가 닿지 않는 위치 전용 — 그 외 위치의 호출은 각 언어 표현식 핸들러
+     * (Java {@code enterMethodInvocation}, C {@code enterPostfixExpression},
+     * Python {@code enterTrailer})가 직접 emit하므로 이 함수를 쓰면 중복된다. 사용처:
+     * <ul>
+     *   <li>C 전역변수 초기화식 — 파일 스코프라 함수 내부 호출 핸들러가 안 잡음.</li>
+     *   <li>PL/pgSQL 문장 표현식 — visitor가 표현식 하위트리를 순회하지 않음.</li>
+     * </ul>
+     *
+     * @param parent          emit된 FUNCTION_CALL의 부모
      * @param initializerText 초기화식 텍스트
-     * @param pythonMode      true면 Python 방식 (ClassName(args) = new instance)
+     * @param startLine       emit 노드 시작 라인
+     * @param endLine         emit 노드 끝 라인
      */
-    public static void applyInitializerFlags(
-            legacymodernizer.parser.model.Node node, String initializerText, boolean pythonMode) {
-        if (initializerText == null || initializerText.isEmpty()) return;
-
-        boolean hasCall = matchesMethodCall(initializerText);
-        node.initializerContainsMethodCall = hasCall ? true : null;
-
-        boolean hasNew = pythonMode
-                ? matchesPythonNewInstance(initializerText)
-                : matchesNewInstance(initializerText);
-        node.initializerContainsNewInstance = hasNew ? true : null;
-
-        if (pythonMode && hasNew && node.variableType == null) {
-            String className = extractPythonNewInstanceType(initializerText);
-            if (className != null) {
-                node.variableType = className;
-            }
-        }
+    public static void emitInitializerCall(
+            legacymodernizer.parser.model.Node parent, String initializerText,
+            int startLine, int endLine) {
+        if (parent == null || initializerText == null || initializerText.isEmpty()) return;
+        if (!matchesMethodCall(initializerText)) return;
+        legacymodernizer.parser.model.Node call = new legacymodernizer.parser.model.Node(
+                "FUNCTION_CALL", extractCallName(initializerText), startLine, parent);
+        call.endLine = endLine;
     }
 }
