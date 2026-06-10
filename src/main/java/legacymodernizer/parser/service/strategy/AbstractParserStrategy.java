@@ -2,43 +2,25 @@ package legacymodernizer.parser.service.strategy;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Map;
-
-import org.springframework.web.multipart.MultipartFile;
 
 import legacymodernizer.parser.service.FileStorageService;
-import legacymodernizer.parser.service.ParsingOrchestrator;
-import legacymodernizer.parser.service.StreamCallback;
 
 /**
- * 모든 언어별 파싱 전략의 공통 베이스.
+ * 언어별 파싱 전략의 공통 베이스.
  *
- * upload()와 parseWithStream()은 모든 언어에서 동일하므로 여기서 구현하고,
- * 각 언어 전략은 parseFileWithStream()만 구현하면 된다.
+ * <p>각 전략은 {@code parseFileWithStream()} (파일 1개 파싱) 과 확장자/타입만 구현하면 된다.
+ * 업로드(저장)·전체 순회는 storage·orchestrator 영역으로 분리됨.
  */
 public abstract class AbstractParserStrategy implements TargetParserStrategy {
 
     protected final FileStorageService storageService;
-    protected final ParsingOrchestrator orchestrator;
 
-    protected AbstractParserStrategy(FileStorageService storageService, ParsingOrchestrator orchestrator) {
+    protected AbstractParserStrategy(FileStorageService storageService) {
         this.storageService = storageService;
-        this.orchestrator = orchestrator;
-    }
-
-    @Override
-    public Map<String, Object> upload(MultipartFile[] files, String targetFolder) {
-        return storageService.uploadFiles(files, getTargetExtensions(), targetFolder);
-    }
-
-    @Override
-    public void parseWithStream(StreamCallback callback) {
-        orchestrator.parseAllFiles(this::parseFileWithStream, callback);
     }
 
     /**
-     * sourceDir 기준 상대 경로 계산.
-     * 모든 언어 전략의 parseFileWithStream에서 listener.setFileInfo 호출 시 사용.
+     * sourceDir 기준 상대 경로 계산 — 각 전략이 {@code listener.setFileInfo} 호출 시 사용.
      */
     protected String computeRelativePath(File file) {
         String fileName = file.getName();

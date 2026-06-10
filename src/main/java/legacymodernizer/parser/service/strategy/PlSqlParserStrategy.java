@@ -20,7 +20,6 @@ import legacymodernizer.parser.antlr.plsql.PlSqlAstListener;
 import legacymodernizer.parser.antlr.plsql.PlSqlLexer;
 import legacymodernizer.parser.antlr.plsql.PlSqlParser;
 import legacymodernizer.parser.service.FileStorageService;
-import legacymodernizer.parser.service.ParsingOrchestrator;
 import legacymodernizer.parser.service.ParseProgressTracker;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,8 +30,8 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class PlSqlParserStrategy extends AbstractParserStrategy {
 
-    public PlSqlParserStrategy(FileStorageService storageService, ParsingOrchestrator orchestrator) {
-        super(storageService, orchestrator);
+    public PlSqlParserStrategy(FileStorageService storageService) {
+        super(storageService);
     }
 
     @Override

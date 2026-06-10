@@ -19,55 +19,25 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyEmitter
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import legacymodernizer.parser.service.strategy.ParserStrategyFactory;
-import legacymodernizer.parser.service.strategy.TargetParserStrategy;
+import legacymodernizer.parser.service.FileStorageService;
+import legacymodernizer.parser.service.LanguageDetector;
+import legacymodernizer.parser.service.ParsingOrchestrator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 파일 업로드 및 파싱 API
- * 
- * ┌─────────────────────────────────────────────────────────────────┐
- * │ POST /antlr/fileUpload                                          │
- * ├─────────────────────────────────────────────────────────────────┤
- * │ Content-Type: multipart/form-data                               │
- * │ Headers:                                                        │
- * │   Accept-Language: ko (선택)                                     │
- * │   OpenAI-Api-Key: sk-... (선택)                                  │
- * │                                                                  │
- * │ Parts:                                                          │
- * │   metadata: {                                                   │
- * │     "strategy": "framework",  // "framework" | "dbms"           │
- * │     "target": "java",         // "java"|"oracle"|"postgresql"   │
- * │     "nameCase": "original"    // "original"|"uppercase"|"lowercase"│
- * │   }                                                             │
- * │   files: 파일들 (filename에 상대경로 포함)                        │
- * │                                                                  │
- * │ Response:                                                       │
- * │   { "files": [...], "ddlFiles": [...] }                         │
- * └─────────────────────────────────────────────────────────────────┘
- * 
- * ┌─────────────────────────────────────────────────────────────────┐
- * │ POST /antlr/parsing                                             │
- * ├─────────────────────────────────────────────────────────────────┤
- * │ Content-Type: application/json                                  │
- * │ Headers:                                                        │
- * │   Accept-Language: ko (선택)                                     │
- * │                                                                  │
- * │ Body: {                                                         │
- * │   "strategy": "framework",                                      │
- * │   "target": "java",                                             │
- * │   "nameCase": "original"                                        │
- * │ }                                                               │
- * │                                                                  │
- * │ Response: NDJSON 스트림                                          │
- * └─────────────────────────────────────────────────────────────────┘
- * 
- * 저장 구조:
- *   data/
- *     ├── source/   → 소스 파일 (원본 폴더 구조 유지)
- *     ├── ddl/      → DDL 파일 (원본 폴더 구조 유지)
- *     └── analysis/ → 파싱 결과 JSON (source와 동일 구조)
+ * 파일 업로드 및 파싱 API — <b>호출자가 target(언어)을 던지지 않는다.</b>
+ *
+ * <p>언어/방언은 {@link LanguageDetector} 가 자동 판별한다: 확장자로 1차 라우팅 +
+ * {@code .sql} 은 내용의 방언 마커(Oracle vs PostgreSQL)로 결정. 프로젝트에 여러 언어가
+ * 섞여 있어도 파일마다 알맞은 파서로 라우팅된다.
+ *
+ * <pre>
+ * POST /antlr/fileUpload  (multipart)  소스 저장. metadata.targetFolder 만 선택 사용.
+ * POST /antlr/parsing     (NDJSON)     source/ 자동 감지·파싱 스트림.
+ *
+ * 저장 구조: data/{ source/ , ddl/ , analysis/ }
+ * </pre>
  */
 @Slf4j
 @RestController
@@ -75,53 +45,40 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class FileUploadController {
 
-    private final ParserStrategyFactory parserStrategyFactory;
+    private final ParsingOrchestrator orchestrator;
+    private final FileStorageService storageService;
+    private final LanguageDetector languageDetector;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
-    /** NDJSON Content-Type */
     private static final String APPLICATION_NDJSON = "application/x-ndjson";
 
     /**
-     * 파일 업로드 (기존 폴더 비우고 새로 저장)
+     * 파일 업로드 (기존 폴더 비우고 새로 저장). 모든 지원 확장자 소스를 저장하며,
+     * 어떤 언어인지는 파싱 시 자동 감지한다. metadata 의 {@code targetFolder} 만 선택 사용.
      */
     @PostMapping(value = "/fileUpload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> upload(
-            @RequestPart("metadata") String metadata,
+            @RequestPart(value = "metadata", required = false) String metadata,
             @RequestPart("files") MultipartFile[] files) {
 
-        // 메타데이터 파싱
-        Map<String, Object> meta;
-        try {
-            meta = objectMapper.readValue(metadata, new TypeReference<>() {});
-        } catch (Exception e) {
-            return badRequest("metadata JSON 파싱 실패");
-        }
-
-        String target = (String) meta.get("target");
-        String targetFolder = (String) meta.get("targetFolder");
-        // strategy, nameCase는 필요시 사용
-        // String strategy = (String) meta.get("strategy");
-        // String nameCase = (String) meta.get("nameCase");
-
-        // 필수값 검증
-        if (isBlank(target)) return badRequest("target 필수");
         if (files == null || files.length == 0) return badRequest("files 필수");
 
-        // 업로드 처리
+        String targetFolder = null;
+        if (metadata != null && !metadata.isBlank()) {
+            try {
+                Map<String, Object> meta = objectMapper.readValue(metadata, new TypeReference<>() {});
+                targetFolder = (String) meta.get("targetFolder");
+            } catch (Exception e) {
+                return badRequest("metadata JSON 파싱 실패");
+            }
+        }
+
         try {
-            TargetParserStrategy strategy = parserStrategyFactory.getStrategy(target);
-            Map<String, Object> result = strategy.upload(files, targetFolder);
-
-            log.info("[업로드 완료] target={}, src={}개, ddl={}개",
-                    target,
-                    size(result.get("files")),
-                    size(result.get("ddlFiles")));
-
+            Map<String, Object> result =
+                    storageService.uploadFiles(files, languageDetector.supportedExtensions(), targetFolder);
+            log.info("[업로드 완료] src={}개, ddl={}개", size(result.get("files")), size(result.get("ddlFiles")));
             return ResponseEntity.ok(result);
-
-        } catch (IllegalArgumentException e) {
-            return badRequest("지원하지 않는 target: " + target);
         } catch (Exception e) {
             log.error("[업로드 실패] {}", e.getMessage(), e);
             return badRequest(e.getMessage());
@@ -129,60 +86,34 @@ public class FileUploadController {
     }
 
     /**
-     * 파싱 (ANTLR 분석) - NDJSON 스트림 방식
-     * 
-     * 진행 상황을 실시간으로 스트림으로 전달합니다.
-     * 
-     * 응답 형식 (NDJSON):
-     *   {"type": "message", "content": "📄 UserService.java 파싱 시작..."}\n
-     *   {"type": "message", "content": "📍 UserService.java - 523라인까지 파싱 중..."}\n
-     *   {"type": "complete"}\n
+     * 파싱 (자동 감지) — NDJSON 스트림. 언어/target 은 자동 감지(body 무시).
+     * 단 {@code project_root} 가 오면 그 로컬 폴더를 직접 파싱(Electron 경로 모드),
+     * 없으면 업로드된 {@code data/source} 를 파싱(브라우저 업로드 모드).
      */
     @PostMapping(value = "/parsing", produces = APPLICATION_NDJSON)
-    public ResponseBodyEmitter parse(@RequestBody Map<String, Object> body) {
-
-        // 타임아웃 30분 (대용량 파일 대비)
+    public ResponseBodyEmitter parse(@RequestBody(required = false) Map<String, Object> body) {
+        // 타임아웃 30분 (대용량 대비)
         ResponseBodyEmitter emitter = new ResponseBodyEmitter(30 * 60 * 1000L);
 
-        String target = (String) body.get("target");
-        // strategy, nameCase는 필요시 사용
-        // String strategy = (String) body.get("strategy");
-        // String nameCase = (String) body.get("nameCase");
+        // 경로 모드: body.project_root = 분석할 로컬 폴더(robo 와 동일 키). 없으면 업로드 모드.
+        String sourcePath = body != null ? (String) body.get("project_root") : null;
 
-        // 필수값 검증
-        if (isBlank(target)) {
-            sendErrorAndComplete(emitter, "target 필수");
-            return emitter;
-        }
-
-        // 비동기로 파싱 실행
         executor.execute(() -> {
             try {
-                TargetParserStrategy strategy = parserStrategyFactory.getStrategy(target);
-                
-                // 스트림 콜백으로 진행 상황 전달
-                strategy.parseWithStream((type, content) -> {
+                orchestrator.parse(sourcePath, (type, content) -> {
                     try {
-                        if (content != null) {
-                            emitter.send(Map.of("type", type, "content", content));
-                        } else {
-                            emitter.send(Map.of("type", type));
-                        }
+                        emitter.send(content != null
+                                ? Map.of("type", type, "content", content)
+                                : Map.of("type", type));
                         emitter.send("\n");
                     } catch (IOException e) {
                         log.warn("[스트림 전송 실패] {}", e.getMessage());
                     }
                 });
-                
-                // 완료 신호
                 emitter.send(Map.of("type", "complete"));
                 emitter.send("\n");
                 emitter.complete();
-                
-                log.info("[파싱 완료] target={}", target);
-
-            } catch (IllegalArgumentException e) {
-                sendErrorAndComplete(emitter, "지원하지 않는 target: " + target);
+                log.info("[파싱 완료]");
             } catch (Exception e) {
                 log.error("[파싱 실패] {}", e.getMessage(), e);
                 sendErrorAndComplete(emitter, e.getMessage());
@@ -191,10 +122,11 @@ public class FileUploadController {
 
         return emitter;
     }
-    
-    /**
-     * 에러 메시지를 보내고 스트림 완료
-     */
+
+    // ─────────────────────────────────────────────────────────────────
+    // Helper
+    // ─────────────────────────────────────────────────────────────────
+
     private void sendErrorAndComplete(ResponseBodyEmitter emitter, String message) {
         try {
             emitter.send(Map.of("type", "error", "content", message));
@@ -206,20 +138,11 @@ public class FileUploadController {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // Helper
-    // ─────────────────────────────────────────────────────────────────
-
-    private boolean isBlank(String s) {
-        return s == null || s.isBlank();
-    }
-
     private int size(Object list) {
         return list instanceof java.util.List<?> l ? l.size() : 0;
     }
 
     private ResponseEntity<Map<String, Object>> badRequest(String message) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("error", message));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", message));
     }
 }

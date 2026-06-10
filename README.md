@@ -252,11 +252,17 @@ src/main/java/legacymodernizer/parser/
 │   ├── FileUploadController.java   ← REST API (/antlr/fileUpload, /antlr/parsing)
 │   └── HealthCheckController.java  ← 헬스체크 API (GET /)
 ├── service/
-│   ├── FileParserService.java      ← 파일 저장/파싱 공통 로직
-│   └── parsing/
+│   ├── FileStorageService.java     ← 파일 저장/경로 관리
+│   ├── LanguageDetector.java       ← 언어/방언 자동 감지 (확장자 + .sql 방언 점수)
+│   ├── ParsingOrchestrator.java    ← 파일별 자동 라우팅·파싱·스트림
+│   ├── ParseProgressTracker.java   ← 진행 상황 추적
+│   ├── StreamCallback.java         ← 스트림 콜백 인터페이스
+│   └── strategy/
 │       ├── TargetParserStrategy.java     ← 전략 인터페이스
-│       ├── ParserStrategyFactory.java    ← 전략 팩토리
+│       ├── AbstractParserStrategy.java   ← 공통 베이스
+│       ├── CParserStrategy.java          ← C 파싱
 │       ├── JavaParserStrategy.java       ← Java 파싱
+│       ├── PythonParserStrategy.java     ← Python 파싱
 │       ├── PlSqlParserStrategy.java      ← Oracle PL/SQL 파싱
 │       └── PostgreSqlParserStrategy.java ← PostgreSQL 파싱
 ├── antlr/

@@ -18,7 +18,6 @@ import legacymodernizer.parser.antlr.python.PythonAstListener;
 import legacymodernizer.parser.antlr.python.PythonLexer;
 import legacymodernizer.parser.antlr.python.PythonParser;
 import legacymodernizer.parser.service.FileStorageService;
-import legacymodernizer.parser.service.ParsingOrchestrator;
 import legacymodernizer.parser.service.ParseProgressTracker;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,8 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class PythonParserStrategy extends AbstractParserStrategy {
 
-    public PythonParserStrategy(FileStorageService storageService, ParsingOrchestrator orchestrator) {
-        super(storageService, orchestrator);
+    public PythonParserStrategy(FileStorageService storageService) {
+        super(storageService);
     }
 
     @Override

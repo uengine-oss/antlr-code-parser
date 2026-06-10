@@ -62,16 +62,14 @@ public class FileStorageService {
         return Paths.get(BASE_DIR, ANALYSIS);
     }
 
+    /** analysis/ 비우기 — 파싱이 매 run 자기 출력 디렉토리를 새로 만든다(경로 모드의 stale AST 방지). */
+    public void clearAnalysisDir() {
+        clearDirectory(analysisDir());
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // 파일 업로드
     // ═══════════════════════════════════════════════════════════════════
-
-    /**
-     * 파일 업로드 (기존 폴더 비우고 새로 저장). targetFolder 없이 호출 시 기존 동작 유지.
-     */
-    public Map<String, Object> uploadFiles(MultipartFile[] files, Set<String> targetExtensions) {
-        return uploadFiles(files, targetExtensions, null);
-    }
 
     /**
      * 파일 업로드 (기존 폴더 비우고 새로 저장)

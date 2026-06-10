@@ -21,9 +21,7 @@ import legacymodernizer.parser.antlr.c.CLexer;
 import legacymodernizer.parser.antlr.c.CParser;
 import legacymodernizer.parser.antlr.c.CAstListener;
 import legacymodernizer.parser.service.FileStorageService;
-import legacymodernizer.parser.service.ParsingOrchestrator;
 import legacymodernizer.parser.service.ParseProgressTracker;
-import legacymodernizer.parser.service.StreamCallback;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -36,15 +34,15 @@ public class CParserStrategy extends AbstractParserStrategy {
     /** 소스 파일들에서 수집한 사용자 정의 타입 이름 */
     private Set<String> collectedTypeNames = new HashSet<>();
 
-    public CParserStrategy(FileStorageService storageService, ParsingOrchestrator orchestrator) {
-        super(storageService, orchestrator);
+    public CParserStrategy(FileStorageService storageService) {
+        super(storageService);
     }
 
+    /** C 는 파일별 파싱 전, .c/.h 전체에서 매크로 상수 + typedef/struct 타입을 먼저 수집해야 정확하다. */
     @Override
-    public void parseWithStream(StreamCallback callback) {
+    public void prepare() {
         collectMacroConstants();
         collectTypeNamesFromSource();
-        super.parseWithStream(callback);
     }
 
     @Override

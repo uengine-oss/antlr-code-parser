@@ -1,24 +1,28 @@
 package legacymodernizer.parser.service;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import legacymodernizer.parser.service.LanguageDetector.DetectionResult;
+import legacymodernizer.parser.service.strategy.TargetParserStrategy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * 소스 파일 파싱 오케스트레이션 서비스
+ * 소스 파싱 오케스트레이션.
  *
- * source/ 하위 파일을 순회하며 파싱 함수를 실행하고,
- * 진행 상황을 StreamCallback으로 실시간 전달한다.
+ * <p>호출자가 target 을 던지지 않는다 — {@link LanguageDetector} 가 파일별로 파서 전략을
+ * 자동 결정(확장자 + .sql 방언 마커)하고, 여기서 파일마다 알맞은 전략으로 파싱한다.
+ * 결과는 analysis/ 에 source 구조 그대로 미러로 저장.
  */
 @Slf4j
 @Service
@@ -26,22 +30,18 @@ import lombok.extern.slf4j.Slf4j;
 public class ParsingOrchestrator {
 
     private final FileStorageService storageService;
+    private final LanguageDetector languageDetector;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * 파싱 함수 인터페이스
-     */
-    @FunctionalInterface
-    public interface SingleFileParser {
-        void parse(File file, String outputPath, ParseProgressTracker tracker) throws Exception;
-    }
-
-    /**
-     * source/ 하위 모든 파일을 파싱하며 진행 상황을 스트림으로 전달
+     * 소스를 자동 감지·라우팅해 파싱하며 진행 상황을 스트림으로 전달.
      *
-     * 파싱 결과는 analysis/ 에 source 구조 그대로 미러로 저장.
+     * @param sourcePath 분석할 로컬 폴더 경로(Electron 경로 모드). null/빈값이면 업로드된
+     *                   {@code data/source} 를 파싱(브라우저 업로드 모드).
      */
-    public void parseAllFiles(SingleFileParser parser, StreamCallback callback) {
-        Path sourceBase = storageService.sourceDir();
+    public void parse(String sourcePath, StreamCallback callback) {
+        boolean pathMode = sourcePath != null && !sourcePath.isBlank();
+        Path sourceBase = pathMode ? Path.of(sourcePath.trim()) : storageService.sourceDir();
         Path analysisBase = storageService.analysisDir();
 
         if (!Files.exists(sourceBase)) {
@@ -49,40 +49,55 @@ public class ParsingOrchestrator {
             throw new RuntimeException("소스 디렉토리 없음: " + sourceBase);
         }
 
-        try {
-            List<Path> files = Files.walk(sourceBase)
-                    .filter(Files::isRegularFile)
-                    .toList();
+        // 파싱은 자기 출력(analysis/)을 매 run 새로 만든다 — 경로 모드는 업로드 clear 가 없으므로 필수.
+        storageService.clearAnalysisDir();
+        if (pathMode) {
+            callback.message("📁 로컬 경로 분석: " + sourceBase);
+        }
 
-            int totalFiles = files.size();
-            AtomicInteger successCount = new AtomicInteger(0);
-            AtomicInteger errorCount = new AtomicInteger(0);
-            AtomicInteger totalLines = new AtomicInteger(0);
+        DetectionResult detection = languageDetector.detect(sourceBase);
+        Map<Path, TargetParserStrategy> fileStrategies = detection.fileStrategies();
 
-            callback.message(String.format("🚀 파싱을 시작합니다. (총 %d개 파일)", totalFiles));
+        callback.message(String.format("🔎 언어 자동 감지: %s%s — 파싱 대상 %d개 파일",
+                detection.detectedTargets(),
+                detection.sqlDialect() != null ? " (SQL 방언: " + detection.sqlDialect() + ")" : "",
+                fileStrategies.size()));
 
-            for (int i = 0; i < files.size(); i++) {
-                Path file = files.get(i);
-                parseSingleFile(file, sourceBase, analysisBase, parser, callback,
-                        i + 1, totalFiles, successCount, errorCount, totalLines);
-            }
+        // 프론트가 sourceType·strategy 를 자동 설정하도록 구조화된 감지 결과를 함께 전달.
+        emitDetected(callback, detection);
 
-            if (errorCount.get() > 0) {
-                callback.message(String.format("⚠️ 파싱 완료 (일부 에러). 성공: %d개, 실패: %d개, 총 %,d라인",
-                        successCount.get(), errorCount.get(), totalLines.get()));
-            } else {
-                callback.message(String.format("🎉 파싱 완료! 총 %d개 파일, %,d라인 처리됨",
-                        successCount.get(), totalLines.get()));
-            }
+        if (fileStrategies.isEmpty()) {
+            callback.message("⚠️ 지원하는 확장자의 파싱 대상 파일이 없습니다.");
+            return;
+        }
 
-        } catch (IOException e) {
-            callback.error("디렉토리 탐색 실패: " + sourceBase);
-            throw new RuntimeException("디렉토리 탐색 실패: " + sourceBase, e);
+        int total = fileStrategies.size();
+        AtomicInteger index = new AtomicInteger(0);
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger errorCount = new AtomicInteger(0);
+        AtomicInteger totalLines = new AtomicInteger(0);
+
+        callback.message(String.format("🚀 파싱을 시작합니다. (총 %d개 파일)", total));
+
+        // 전역 컨텍스트가 필요한 전략(예: C 매크로/타입 사전수집)을 전략별 1회 준비.
+        fileStrategies.values().stream().distinct().forEach(TargetParserStrategy::prepare);
+
+        for (Map.Entry<Path, TargetParserStrategy> entry : fileStrategies.entrySet()) {
+            parseSingleFile(entry.getKey(), entry.getValue(), sourceBase, analysisBase, callback,
+                    index.incrementAndGet(), total, successCount, errorCount, totalLines);
+        }
+
+        if (errorCount.get() > 0) {
+            callback.message(String.format("⚠️ 파싱 완료 (일부 에러). 성공: %d개, 실패: %d개, 총 %,d라인",
+                    successCount.get(), errorCount.get(), totalLines.get()));
+        } else {
+            callback.message(String.format("🎉 파싱 완료! 총 %d개 파일, %,d라인 처리됨",
+                    successCount.get(), totalLines.get()));
         }
     }
 
-    private void parseSingleFile(Path file, Path sourceBase, Path analysisBase,
-                                  SingleFileParser parser, StreamCallback callback,
+    private void parseSingleFile(Path file, TargetParserStrategy strategy,
+                                  Path sourceBase, Path analysisBase, StreamCallback callback,
                                   int fileIndex, int totalFiles,
                                   AtomicInteger successCount, AtomicInteger errorCount,
                                   AtomicInteger totalLines) {
@@ -100,23 +115,37 @@ public class ParsingOrchestrator {
 
             ParseProgressTracker tracker = new ParseProgressTracker(callback, fileName);
 
-            callback.message(String.format("📄 [%d/%d] %s 파싱 시작... (%,d라인)",
-                    fileIndex, totalFiles, fileName, lineCount));
+            callback.message(String.format("📄 [%d/%d] %s 파싱 시작... (%s, %,d라인)",
+                    fileIndex, totalFiles, fileName, strategy.getSupportedTargetType(), lineCount));
 
-            parser.parse(file.toFile(), output.toString(), tracker);
+            strategy.parseFileWithStream(file.toFile(), output.toString(), tracker);
 
             callback.message(String.format("✅ [%d/%d] %s 완료 (%,d라인)",
                     fileIndex, totalFiles, fileName, lineCount));
 
             successCount.incrementAndGet();
             totalLines.addAndGet(lineCount);
-            log.info("  [PARSED] {}", relative);
+            log.info("  [PARSED] {} ({})", relative, strategy.getSupportedTargetType());
 
         } catch (Throwable e) {
             errorCount.incrementAndGet();
             callback.error(String.format("❌ [%d/%d] %s 파싱 실패: %s",
                     fileIndex, totalFiles, fileName, e.getMessage()));
             log.error("  [PARSE ERROR] {} - {}", relative, e.getMessage(), e);
+        }
+    }
+
+    /** 구조화된 감지 결과({target, strategy, sqlDialect, targets})를 'detected' 이벤트로 스트림에 전달. */
+    private void emitDetected(StreamCallback callback, DetectionResult detection) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("target", detection.primaryTarget());
+        payload.put("strategy", detection.strategy());
+        payload.put("sqlDialect", detection.sqlDialect());
+        payload.put("targets", detection.detectedTargets());
+        try {
+            callback.send("detected", objectMapper.writeValueAsString(payload));
+        } catch (Exception e) {
+            log.warn("detected 이벤트 직렬화 실패: {}", e.getMessage());
         }
     }
 

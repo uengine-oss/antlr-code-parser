@@ -18,7 +18,6 @@ import legacymodernizer.parser.antlr.java.JavaAstListener;
 import legacymodernizer.parser.antlr.java.Java20Lexer;
 import legacymodernizer.parser.antlr.java.Java20Parser;
 import legacymodernizer.parser.service.FileStorageService;
-import legacymodernizer.parser.service.ParsingOrchestrator;
 import legacymodernizer.parser.service.ParseProgressTracker;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,8 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class JavaParserStrategy extends AbstractParserStrategy {
 
-    public JavaParserStrategy(FileStorageService storageService, ParsingOrchestrator orchestrator) {
-        super(storageService, orchestrator);
+    public JavaParserStrategy(FileStorageService storageService) {
+        super(storageService);
     }
 
     @Override

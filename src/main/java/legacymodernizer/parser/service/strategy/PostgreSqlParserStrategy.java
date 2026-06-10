@@ -18,7 +18,6 @@ import legacymodernizer.parser.antlr.postgresql.PostgreSqlAstListener;
 import legacymodernizer.parser.antlr.postgresql.PostgreSQLLexer;
 import legacymodernizer.parser.antlr.postgresql.PostgreSQLParser;
 import legacymodernizer.parser.service.FileStorageService;
-import legacymodernizer.parser.service.ParsingOrchestrator;
 import legacymodernizer.parser.service.ParseProgressTracker;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,8 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class PostgreSqlParserStrategy extends AbstractParserStrategy {
 
-    public PostgreSqlParserStrategy(FileStorageService storageService, ParsingOrchestrator orchestrator) {
-        super(storageService, orchestrator);
+    public PostgreSqlParserStrategy(FileStorageService storageService) {
+        super(storageService);
     }
 
     @Override

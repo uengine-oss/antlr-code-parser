@@ -439,24 +439,24 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
 
     @Override
     public void enterSeq_of_statements(PlSqlParser.Seq_of_statementsContext ctx) {
-        String text = ctx.getText();
-        if (!text.contains("BEGIN") &&
-            ctx.getParent() instanceof PlSqlParser.BodyContext &&
-            ctx.getParent().getParent() instanceof PlSqlParser.StatementContext) {
-            PlSqlParser.BodyContext bodyCtx = (PlSqlParser.BodyContext) ctx.getParent();
-            int beginLine = bodyCtx.BEGIN().getSymbol().getLine();
+        if (isImplicitTryBlock(ctx)) {
+            int beginLine = ((PlSqlParser.BodyContext) ctx.getParent()).BEGIN().getSymbol().getLine();
             h.enterStatement("TRY", beginLine);
         }
     }
 
     @Override
     public void exitSeq_of_statements(PlSqlParser.Seq_of_statementsContext ctx) {
-        String text = ctx.getText();
-        if (!text.contains("BEGIN") &&
-            ctx.getParent() instanceof PlSqlParser.BodyContext &&
-            ctx.getParent().getParent() instanceof PlSqlParser.StatementContext) {
+        if (isImplicitTryBlock(ctx)) {
             h.exitStatementWithChildDedupe("TRY", ctx.getStop().getLine(), ctx);
         }
+    }
+
+    /** BEGIN..END 예외처리 블록(자체 BEGIN 텍스트 없이 Body→Statement 로 감싸인 문장열) = TRY 로 마킹. */
+    private static boolean isImplicitTryBlock(PlSqlParser.Seq_of_statementsContext ctx) {
+        return !ctx.getText().contains("BEGIN")
+                && ctx.getParent() instanceof PlSqlParser.BodyContext
+                && ctx.getParent().getParent() instanceof PlSqlParser.StatementContext;
     }
 
     // ========================================

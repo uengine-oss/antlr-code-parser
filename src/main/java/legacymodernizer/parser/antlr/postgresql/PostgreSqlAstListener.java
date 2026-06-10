@@ -10,12 +10,14 @@ import legacymodernizer.parser.antlr.plpgsql.PlpgsqlAstVisitor;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlLexer;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlParser;
 import legacymodernizer.parser.service.ParseProgressTracker;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * PostgreSQL 파일 분석을 위한 커스텀 리스너
  * - DDL/DML/DCL 구조 추출
  * - 통일된 속성명 사용 (Node 클래스 참조)
  */
+@Slf4j
 public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
     private final ListenerHelper h;
     private boolean insideInsert = false;
@@ -153,7 +155,8 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
         return sb.toString().trim();
     }
 
-    private int findDollarStringLine(PostgreSQLParser.CreatefunctionstmtContext ctx) {
+    /** $…$ dollar-quote 토큰이 시작되는 줄 번호 ( CREATE FUNCTION · DO 블록 공용 ). */
+    private int findDollarStringLine(ParserRuleContext ctx) {
         int startIndex = ctx.getStart().getTokenIndex();
         int stopIndex = ctx.getStop().getTokenIndex();
 
@@ -175,7 +178,7 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
     public void enterDostmt(PostgreSQLParser.DostmtContext ctx) {
         h.enterStatement("DO", ctx.getStart().getLine());
 
-        int dollarLineNumber = findDollarStringLineForDo(ctx);
+        int dollarLineNumber = findDollarStringLine(ctx);
 
         if (dollarLineNumber > 0) {
             String plpgsqlCode = extractDollarQuotedStringForDo(ctx);
@@ -190,19 +193,6 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
     @Override
     public void exitDostmt(PostgreSQLParser.DostmtContext ctx) {
         h.exitStatement("DO", ctx.getStop().getLine(), ctx);
-    }
-
-    private int findDollarStringLineForDo(PostgreSQLParser.DostmtContext ctx) {
-        int startIndex = ctx.getStart().getTokenIndex();
-        int stopIndex = ctx.getStop().getTokenIndex();
-
-        for (int i = startIndex; i <= stopIndex; i++) {
-            Token token = h.getTokens().get(i);
-            if (token.getText().startsWith("$") && token.getText().endsWith("$")) {
-                return token.getLine();
-            }
-        }
-        return -1;
     }
 
     private String extractDollarQuotedStringForDo(PostgreSQLParser.DostmtContext ctx) {
@@ -273,23 +263,22 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
             CommonTokenStream plTokens = new CommonTokenStream(lexer);
             PlpgsqlParser parser = new PlpgsqlParser(plTokens);
 
-            int adjustedBaseLineNumber = baseLineNumber;
-
-            // PL/pgSQL 파싱 오류는 silently skip — outer PostgreSQL 파싱은 계속.
+            // ANTLR 기본 에러 리스너 제거 — 복구 파싱 중 stderr 스팸 방지(부분 트리는 그대로 처리).
             parser.removeErrorListeners();
 
             ParseTree tree = parser.plpgsqlBlock();
 
             PlpgsqlAstVisitor visitor = new PlpgsqlAstVisitor(
                 h.getNodeStack().peek(),
-                adjustedBaseLineNumber,
+                baseLineNumber,
                 plTokens
             );
             visitor.visit(tree);
 
         } catch (Exception e) {
-            System.err.println("Error parsing PL/pgSQL: " + e.getMessage());
-            e.printStackTrace();
+            // PL/pgSQL 블록 파싱 실패 — 해당 서브트리만 누락하고 outer 파싱은 계속(파일 단위 안전).
+            log.warn("PL/pgSQL 블록 파싱 실패 (line {} 부근) — 해당 서브트리 누락: {}",
+                    baseLineNumber, e.getMessage());
         }
     }
 
@@ -559,34 +548,22 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
 
     @Override
     public void enterDefinestmt(PostgreSQLParser.DefinestmtContext ctx) {
-        String defineType = "DEFINE";
-        String secondToken = ctx.getChild(1).getText().toUpperCase();
-
-        if (secondToken.equals("AGGREGATE")) {
-            defineType = "CREATE_AGGREGATE";
-        } else if (secondToken.equals("OPERATOR")) {
-            defineType = "CREATE_OPERATOR";
-        } else if (secondToken.equals("TYPE")) {
-            defineType = "CREATE_TYPE";
-        }
-
-        h.enterStatement(defineType, ctx.getStart().getLine());
+        h.enterStatement(defineType(ctx), ctx.getStart().getLine());
     }
 
     @Override
     public void exitDefinestmt(PostgreSQLParser.DefinestmtContext ctx) {
-        String defineType = "DEFINE";
-        String secondToken = ctx.getChild(1).getText().toUpperCase();
+        h.exitStatement(defineType(ctx), ctx.getStop().getLine(), ctx);
+    }
 
-        if (secondToken.equals("AGGREGATE")) {
-            defineType = "CREATE_AGGREGATE";
-        } else if (secondToken.equals("OPERATOR")) {
-            defineType = "CREATE_OPERATOR";
-        } else if (secondToken.equals("TYPE")) {
-            defineType = "CREATE_TYPE";
-        }
-
-        h.exitStatement(defineType, ctx.getStop().getLine(), ctx);
+    /** DEFINE 문의 2번째 토큰으로 종류 판별 (AGGREGATE/OPERATOR/TYPE). */
+    private static String defineType(PostgreSQLParser.DefinestmtContext ctx) {
+        return switch (ctx.getChild(1).getText().toUpperCase()) {
+            case "AGGREGATE" -> "CREATE_AGGREGATE";
+            case "OPERATOR" -> "CREATE_OPERATOR";
+            case "TYPE" -> "CREATE_TYPE";
+            default -> "DEFINE";
+        };
     }
 
     @Override
@@ -737,46 +714,25 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
 
     @Override
     public void enterTransactionstmt(PostgreSQLParser.TransactionstmtContext ctx) {
-        String transactionType = "TRANSACTION";
-        String firstToken = ctx.getStart().getText().toUpperCase();
-
-        if (firstToken.equals("BEGIN") || firstToken.equals("START")) {
-            transactionType = "BEGIN";
-        } else if (firstToken.equals("COMMIT") || firstToken.equals("END")) {
-            transactionType = "COMMIT";
-        } else if (firstToken.equals("ROLLBACK") || firstToken.equals("ABORT")) {
-            transactionType = "ROLLBACK";
-        } else if (firstToken.equals("SAVEPOINT")) {
-            transactionType = "SAVEPOINT";
-        } else if (firstToken.equals("RELEASE")) {
-            transactionType = "RELEASE";
-        } else if (firstToken.equals("PREPARE")) {
-            transactionType = "PREPARE_TRANSACTION";
-        }
-
-        h.enterStatement(transactionType, ctx.getStart().getLine());
+        h.enterStatement(transactionType(ctx), ctx.getStart().getLine());
     }
 
     @Override
     public void exitTransactionstmt(PostgreSQLParser.TransactionstmtContext ctx) {
-        String firstToken = ctx.getStart().getText().toUpperCase();
-        String transactionType = "TRANSACTION";
+        h.exitStatement(transactionType(ctx), ctx.getStop().getLine(), ctx);
+    }
 
-        if (firstToken.equals("BEGIN") || firstToken.equals("START")) {
-            transactionType = "BEGIN";
-        } else if (firstToken.equals("COMMIT") || firstToken.equals("END")) {
-            transactionType = "COMMIT";
-        } else if (firstToken.equals("ROLLBACK") || firstToken.equals("ABORT")) {
-            transactionType = "ROLLBACK";
-        } else if (firstToken.equals("SAVEPOINT")) {
-            transactionType = "SAVEPOINT";
-        } else if (firstToken.equals("RELEASE")) {
-            transactionType = "RELEASE";
-        } else if (firstToken.equals("PREPARE")) {
-            transactionType = "PREPARE_TRANSACTION";
-        }
-
-        h.exitStatement(transactionType, ctx.getStop().getLine(), ctx);
+    /** TCL 문의 첫 토큰으로 트랜잭션 종류 판별. */
+    private static String transactionType(PostgreSQLParser.TransactionstmtContext ctx) {
+        return switch (ctx.getStart().getText().toUpperCase()) {
+            case "BEGIN", "START" -> "BEGIN";
+            case "COMMIT", "END" -> "COMMIT";
+            case "ROLLBACK", "ABORT" -> "ROLLBACK";
+            case "SAVEPOINT" -> "SAVEPOINT";
+            case "RELEASE" -> "RELEASE";
+            case "PREPARE" -> "PREPARE_TRANSACTION";
+            default -> "TRANSACTION";
+        };
     }
 
     // ========================================

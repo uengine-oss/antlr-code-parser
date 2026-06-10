@@ -543,11 +543,11 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
         
         String stmtText = ctx.getText().toUpperCase();
         
-        if (stmtText.startsWith("CREATEINDEX") || stmtText.contains("CREATEINDEX")) {
+        if (stmtText.contains("CREATEINDEX")) {
             return createNode("CREATE_INDEX", ctx, currentBlockNode);
         }
-        
-        if (stmtText.startsWith("DROPTABLE") || stmtText.contains("DROPTABLE")) {
+
+        if (stmtText.contains("DROPTABLE")) {
             return createNode("DROP_TABLE", ctx, currentBlockNode);
         }
         
