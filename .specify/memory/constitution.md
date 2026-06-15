@@ -28,13 +28,21 @@ client-declared language.
 **Rationale**: callers mislabel files; the bytes are the source of truth. (Vestigial metadata
 fields exist in the contract but are inert — see specs 002/003.)
 
-### III. Path-Based Classification & Structure Preservation (경로=분류)
+### III. Content-Based Classification & Structure Preservation (내용=분류)
 
-A file is DDL iff its path begins with `ddl/`; everything else is source. The uploaded folder
-structure is preserved 1:1 across `source/`, `ddl/`, and `analysis/`. Classification MUST stay
-path-derived, not a separate flag.
+A file's kind — table-definition (DDL) vs. source — is determined by its **content**, i.e. what it
+declares: `CREATE TABLE/VIEW/INDEX/SEQUENCE` → DDL; `CREATE FUNCTION/PROCEDURE/PACKAGE/TRIGGER` and
+all other code → source. A `ddl/` path prefix MAY remain as a backward-compatible hint, but
+**content is the source of truth**, not the file name or folder. Original files are preserved across
+`source/`, `ddl/`, and `analysis/`; when a single file mixes table definitions and procedural code,
+its table-definition content is additionally made available to the DDL set while the original is
+preserved in source.
 
-**Rationale**: one rule (the path) means no ambiguity and no per-file metadata to drift.
+**Rationale**: aligns with Principle II (the bytes are the source of truth; callers and paths
+mislabel). Path-prefix classification was fragile across projects and routed procedural code into
+the DDL set, which aborted downstream analysis (the procedure-reached-the-DDL-parser incident).
+Content classification removes that failure at its root. *(Amended 2026-06-15 → v1.1.0; see spec 006
+"Unified Intake & Content-Based Classification".)*
 
 ### IV. Replace-All, Stateless Uploads (전량 교체)
 
@@ -77,4 +85,6 @@ New features go through `/speckit-specify → /speckit-plan`; each `plan.md` MUS
 Constitution Check verifying the principles above. A principle is amended only by editing this
 file and bumping the version, with the rationale recorded.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-15 | **Last Amended**: 2026-06-15
+**Version**: 1.1.0 | **Ratified**: 2026-06-15 | **Last Amended**: 2026-06-15
+(v1.1.0 — Principle III changed from path-based to content-based classification; rationale recorded
+in III. MINOR bump: redefinition of an existing principle, no principle removed.)

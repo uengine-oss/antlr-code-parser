@@ -40,20 +40,34 @@ public class ParsingOrchestrator {
      *                   {@code data/source} 를 파싱(브라우저 업로드 모드).
      */
     public void parse(String sourcePath, StreamCallback callback) {
-        boolean pathMode = sourcePath != null && !sourcePath.isBlank();
-        Path sourceBase = pathMode ? Path.of(sourcePath.trim()) : storageService.sourceDir();
-        Path analysisBase = storageService.analysisDir();
+        // 경로 모드(Electron): 로컬 폴더를 내용 분류해 data/{source, ddl} 로 반입(spec 006 입구 통일).
+        // 업로드 모드: 이미 /fileUpload 가 data/ 를 채웠다. 두 모드 모두 이후 data/source 만 파싱.
+        if (sourcePath != null && !sourcePath.isBlank()) {
+            Path localRoot = Path.of(sourcePath.trim());
+            if (!Files.exists(localRoot)) {
+                callback.error("로컬 경로 없음: " + localRoot);
+                throw new RuntimeException("로컬 경로 없음: " + localRoot);
+            }
+            callback.message("📁 로컬 경로 반입: " + localRoot);
+            FileStorageService.IntakeResult intake = storageService.intakeFromPath(localRoot);
+            callback.message(String.format("📦 반입 완료 — DDL %d개 · 소스 %d개%s",
+                    intake.ddlCount(), intake.sourceCount(),
+                    intake.skipped().isEmpty() ? "" : " · 건너뜀 " + intake.skipped().size() + "개"));
+            for (String skipped : intake.skipped()) {
+                callback.send("skipped", skipped);
+            }
+        }
 
+        // 입구 통일: 입력 모드와 무관하게 항상 data/source 를 파싱한다.
+        Path sourceBase = storageService.sourceDir();
+        Path analysisBase = storageService.analysisDir();
         if (!Files.exists(sourceBase)) {
             callback.error("소스 디렉토리 없음: " + sourceBase);
             throw new RuntimeException("소스 디렉토리 없음: " + sourceBase);
         }
 
-        // 파싱은 자기 출력(analysis/)을 매 run 새로 만든다 — 경로 모드는 업로드 clear 가 없으므로 필수.
+        // 파싱은 매 run 자기 출력(analysis/)을 새로 만든다(재파싱 시 stale AST 방지).
         storageService.clearAnalysisDir();
-        if (pathMode) {
-            callback.message("📁 로컬 경로 분석: " + sourceBase);
-        }
 
         DetectionResult detection = languageDetector.detect(sourceBase);
         Map<Path, TargetParserStrategy> fileStrategies = detection.fileStrategies();
