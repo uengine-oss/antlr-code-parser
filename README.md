@@ -1,6 +1,6 @@
-# Robo Analter ANTLR Code Parser
+# Robo Analyzer — ANTLR Code Parser
 
-> **robo_analter를 위한 ANTLR 코드 파서 - 다양한 언어(Java, Oracle PL/SQL, PostgreSQL 등)의 소스 파일을 수집하고 ANTLR로 파싱하여 AST JSON을 제공하는 Spring Boot 기반 백엔드**
+> **다양한 언어(Java, C, Python, Oracle PL/SQL, PostgreSQL)의 소스를 수집하고 ANTLR로 파싱해 AST JSON을 생성하는 Spring Boot 백엔드.** 언어는 호출자가 지정하지 않고 **자동 감지**한다(확장자 + `.sql` 방언 마커 점수).
 
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.0-6DB33F?style=flat&logo=spring-boot)](https://spring.io/projects/spring-boot)
 [![Java](https://img.shields.io/badge/Java-17-007396?style=flat&logo=openjdk&logoColor=white)](https://www.oracle.com/java/)
@@ -12,233 +12,124 @@
 
 ### 1. 파일 업로드 (`POST /antlr/fileUpload`)
 
-파일을 서버에 업로드하고 저장합니다. **기존 파일은 모두 삭제되고 새로 업로드된 파일로 대체됩니다.**
+파일을 서버에 업로드·저장합니다. **기존 파일은 모두 삭제되고 새로 업로드된 파일로 대체됩니다.**
 
 #### 요청
-
 | 항목 | 값 |
 |------|-----|
-| **Content-Type** | `multipart/form-data` |
-
-| Header | 설명 |
-|--------|------|
-| `Accept-Language` | 언어 설정 (선택, 예: `ko`) |
-| `OpenAI-Api-Key` | OpenAI API 키 (선택) |
+| Content-Type | `multipart/form-data` |
 
 | Part | 타입 | 설명 |
 |------|------|------|
-| `metadata` | JSON string | 파싱 설정 |
-| `files` | File[] | 업로드할 파일들 (파일명에 상대경로 포함) |
+| `metadata` | JSON string | 선택. **`targetFolder`** 만 사용 |
+| `files` | File[] | 업로드 파일들(파일명에 상대경로 포함) |
 
-**metadata 형식:**
-```json
-{
-  "strategy": "framework",    // "framework" | "dbms"
-  "target": "java",           // "java" | "oracle" | "postgresql"
-  "nameCase": "original"      // "original" | "uppercase" | "lowercase"
-}
-```
-
-**파일명 형식:**
-```
-{상대경로}/{파일명}
-
-예시:
-user/UserService.java        ← 소스 파일 → source/user/UserService.java
-order/OrderController.java   ← 소스 파일 → source/order/OrderController.java
-ddl/schema.sql               ← DDL 파일  → ddl/schema.sql
-ddl/tables/user.sql          ← DDL 파일  → ddl/tables/user.sql
-```
-
-> **DDL 구분**: 경로가 `ddl/...`로 시작하면 DDL 파일로 자동 분류
+> metadata는 `targetFolder`(선택)만 읽습니다. **언어/전략은 보내지 않습니다 — 자동 감지**합니다.
 
 #### 응답
-
 ```json
 {
-  "files": [
-    {"fileName": "user/UserService.java", "fileContent": "package user;..."},
-    {"fileName": "order/OrderController.java", "fileContent": "package order;..."}
-  ],
-  "ddlFiles": [
-    {"fileName": "ddl/schema.sql", "fileContent": "CREATE TABLE..."},
-    {"fileName": "ddl/tables/user.sql", "fileContent": "CREATE TABLE users..."}
-  ]
+  "files":         [ {"fileName": "user/UserService.java", "fileContent": "..."} ],
+  "ddlFiles":      [ {"fileName": "schema.sql", "fileContent": "CREATE TABLE..."} ],
+  "nontargetFiles":[ {"fileName": "README.md", "fileContent": "..."} ]
 }
 ```
+- `files`: 파싱 대상 소스, `ddlFiles`: 표 정의 SQL, `nontargetFiles`: 대상 외 파일.
 
 ---
 
 ### 2. 파싱 요청 (`POST /antlr/parsing`)
 
-업로드된 파일들을 ANTLR로 파싱하여 AST JSON을 생성합니다. 진행 상황을 실시간으로 NDJSON 스트림으로 전달합니다.
+업로드된(또는 경로 모드의) 파일을 ANTLR로 파싱해 AST JSON을 생성하고, 진행 상황을 NDJSON 스트림으로 전달합니다.
 
 #### 요청
-
 | 항목 | 값 |
 |------|-----|
-| **Content-Type** | `application/json` |
-
-| Header | 설명 |
-|--------|------|
-| `Accept-Language` | 언어 설정 (선택, 예: `ko`) |
+| Content-Type | `application/json` |
 
 ```json
-{
-  "strategy": "framework",
-  "target": "java",
-  "nameCase": "original"
-}
+{ "project_root": "C:/path/to/source" }   // 선택
 ```
+- **`project_root` 가 있으면**: 로컬 폴더를 직접 반입·파싱(Electron **경로 모드**).
+- **없으면**: 업로드된 `data/source` 를 파싱(브라우저 업로드 모드).
+- 그 외 필드는 무시됩니다(**언어 자동 감지**).
 
 #### 응답
+- Content-Type: `application/x-ndjson` (NDJSON 스트림), 타임아웃 30분.
 
-- **Content-Type**: `application/x-ndjson` (NDJSON 스트림)
-- **타임아웃**: 30분 (대용량 파일 대비)
-
-**응답 형식 (NDJSON - 줄바꿈으로 구분)**
 ```
-{"type": "message", "content": "🚀 파싱을 시작합니다. (총 5개 파일)"}
-{"type": "message", "content": "📄 [1/5] user/UserService.java 파싱 시작... (523라인)"}
-{"type": "message", "content": "📍 user/UserService.java - 523라인까지 파싱 중..."}
-{"type": "message", "content": "✅ [1/5] user/UserService.java 완료 (523라인)"}
-{"type": "message", "content": "🎉 파싱 완료! 총 5개 파일, 2,450라인 처리됨"}
-{"type": "complete"}
+{"type":"message","content":"🔎 언어 자동 감지..."}
+{"type":"detected","target":"java","strategy":"framework","sqlDialect":null,"targets":[...]}
+{"type":"message","content":"📄 [1/5] user/UserService.java 파싱 시작..."}
+{"type":"skipped","content":"..."}
+{"type":"message","content":"🎉 파싱 완료! ..."}
+{"type":"complete"}
 ```
+**이벤트 타입**: `message`(진행) · `detected`(감지 결과 `{target,strategy,sqlDialect,targets}`) · `skipped`(대상 외) · `error` · `complete`.
 
-**타입**
-- `message`: 진행 상황 메시지
-- `complete`: 파싱 완료
-- `error`: 에러 발생 시
+> ⚠️ AST JSON 내용은 응답에 포함되지 않습니다 — `analysis/` 폴더에 저장됩니다.
 
-> ⚠️ **파싱 결과(AST JSON 내용)는 응답에 포함되지 않습니다.** 파싱 결과는 서버의 `analysis/` 폴더에 저장됩니다.
+---
+
+## 🧭 DDL 구분 (경로가 아니라 내용 기반)
+
+`IntakeClassifier` 가 **파일 내용**으로 분류합니다:
+- `.sql` 안에 표 정의(CREATE TABLE/VIEW/INDEX/SEQUENCE)만 있고 프로시저(FUNCTION/PROCEDURE/PACKAGE/TRIGGER/TYPE)가 없으면 → **DDL**.
+- 그 외 `.sql` 및 `.sql` 아닌 소스 → **SOURCE**.
+- `ddl/` 접두 경로는 역호환 힌트로만 쓰고 분류 전 제거됩니다(경로로 판단하지 않음).
 
 ---
 
 ## 📁 저장 구조
 
+저장 베이스는 프로세스 작업 디렉토리의 상위 폴더 밑 `data/` (또는 env `DOCKER_COMPOSE_CONTEXT`).
+
 ```
 data/
-  ├── source/                 ← 소스 파일 (원본 폴더 구조 유지)
-  │   ├── user/
-  │   │   └── UserService.java
-  │   └── order/
-  │       └── OrderController.java
-  ├── ddl/                    ← DDL 파일 (원본 폴더 구조 유지)
-  │   ├── schema.sql
-  │   └── tables/
-  │       └── user.sql
-  └── analysis/               ← 파싱 결과 JSON (source와 동일 구조)
-      ├── user/
-      │   └── UserService.json
-      └── order/
-          └── OrderController.json
+  ├── source/     ← 소스 파일 (원본 폴더 구조 유지)
+  ├── ddl/        ← DDL 파일
+  └── analysis/   ← 파싱 결과 AST JSON (source 와 동일 구조)
 ```
 
-> **주의**: 파일 업로드 시 기존 `source/`, `ddl/`, `analysis/` 폴더 내용은 모두 삭제되고 새로 업로드된 파일로 대체됩니다.
+> 업로드 시 기존 `source/`·`ddl/`·`analysis/` 내용은 모두 삭제되고 대체됩니다.
 
 ---
 
-## 📊 전체 흐름
+## 🔧 지원 Target (자동 감지)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        프론트엔드                                │
-├─────────────────────────────────────────────────────────────────┤
-│  1. 사용자가 파일/폴더 선택                                       │
-│  2. 파일 경로를 상대경로로 설정                                   │
-│     - 소스 파일: {상대경로}/{파일명}                              │
-│     - DDL 파일:  ddl/{상대경로}/{파일명}                         │
-│  3. FormData 구성                                                │
-│     - metadata: JSON 문자열                                       │
-│     - files: 모든 파일 (filename에 경로 포함)                      │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              POST /antlr/fileUpload (multipart/form-data)        │
-├─────────────────────────────────────────────────────────────────┤
-│  ⚠️ 기존 파일 모두 삭제 후 새로 저장                              │
-│  서버가 filename 경로로 소스/DDL 파일 자동 구분                    │
-│  (ddl/로 시작하면 DDL → ddl/ 폴더에 저장)                         │
-│  (그 외 → source/ 폴더에 저장)                                    │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      응답 (JSON)                                 │
-├─────────────────────────────────────────────────────────────────┤
-│  {                                                               │
-│    "files": [...],      // 소스 파일 (fileName, fileContent)     │
-│    "ddlFiles": [...]    // DDL 파일 (fileName, fileContent)      │
-│  }                                                               │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              POST /antlr/parsing (application/json)              │
-├─────────────────────────────────────────────────────────────────┤
-│  { "strategy": "framework", "target": "java", "nameCase": "original" }│
-│  (파일 없이 메타데이터만 전송)                                      │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              응답 (NDJSON 스트림 - 실시간 진행 상황)              │
-├─────────────────────────────────────────────────────────────────┤
-│  {"type": "message", "content": "🚀 파싱을 시작합니다..."}        │
-│  {"type": "message", "content": "📄 UserService.java 파싱..."}    │
-│  {"type": "complete"}                                           │
-│  (파싱 결과는 analysis/ 폴더에 저장됨)                            │
-└─────────────────────────────────────────────────────────────────┘
-```
+| Target | 전략 클래스 | target 값 | 확장자 |
+|--------|------------|-----------|--------|
+| Java | JavaParserStrategy | `java` | `.java` |
+| C | CParserStrategy | `c` | `.c .h` |
+| Python | PythonParserStrategy | `python` | `.py` |
+| Oracle PL/SQL | PlSqlParserStrategy | `oracle` | `.sql .pks .pkb .prc .fnc` |
+| PostgreSQL | PostgreSqlParserStrategy | `postgresql` | `.sql` |
 
----
-
-## 🔧 지원 Target
-
-| Target | 전략 클래스 | target 값 | 파서 |
-|--------|------------|-----------|------|
-| **Java** | JavaParserStrategy | `java` | Java20Lexer/Parser |
-| **Oracle** | PlSqlParserStrategy | `oracle`, `plsql` | PlSqlLexer/Parser |
-| **PostgreSQL** | PostgreSqlParserStrategy | `postgresql`, `postgres` | PostgreSQLLexer/Parser |
+> `.sql` 은 Oracle/PostgreSQL 둘 다 주장하므로, 프로젝트 단위 방언 마커 점수로 1회 결정합니다(동점/0이면 oracle 기본 — `LanguageDetector`).
 
 ---
 
 ## 🚀 빠른 시작
 
 ### 요구사항
-
 - JDK 17+
 - Maven 3.8+
 
 ### 빌드 & 실행
-
 ```bash
-# 빌드
 mvn clean install -Dmaven.test.skip=true
-
-# 실행
 mvn spring-boot:run
 ```
+> 코드에 `server.port` 설정이 없어 **기본 포트 8080**으로 뜹니다. 컨테이너 배포(`docker-compose.yml`/`Dockerfile`)는 **8081**로 매핑·노출합니다. 헬스체크는 `GET /` → 본문 `OK`.
 
-서버: `http://localhost:8081`
-
-### API 테스트
-
+### API 테스트 (로컬 8080 기준)
 ```bash
-# 헬스체크
-curl http://localhost:8081/
-
-# 파일 업로드
-curl -X POST http://localhost:8081/antlr/fileUpload \
-  -F 'metadata={"strategy":"framework","target":"java","nameCase":"original"}' \
+curl http://localhost:8080/                                  # 헬스체크 → OK
+curl -X POST http://localhost:8080/antlr/fileUpload \
+  -F 'metadata={"targetFolder":"myproj"}' \
   -F "files=@Main.java;filename=Main.java"
-
-# 파싱 (NDJSON 스트림 응답)
-curl -X POST http://localhost:8081/antlr/parsing \
-  -H "Content-Type: application/json" \
-  -d '{"strategy":"framework","target":"java","nameCase":"original"}'
+curl -X POST http://localhost:8080/antlr/parsing \
+  -H "Content-Type: application/json" -d '{}'                # 업로드 모드(자동 감지)
 ```
 
 ---
@@ -249,46 +140,41 @@ curl -X POST http://localhost:8081/antlr/parsing \
 src/main/java/legacymodernizer/parser/
 ├── ParserApplication.java          ← Spring Boot 진입점
 ├── controller/
-│   ├── FileUploadController.java   ← REST API (/antlr/fileUpload, /antlr/parsing)
-│   └── HealthCheckController.java  ← 헬스체크 API (GET /)
+│   ├── FileUploadController.java   ← /antlr/fileUpload, /antlr/parsing
+│   └── HealthCheckController.java  ← GET / → "OK"
 ├── service/
-│   ├── FileStorageService.java     ← 파일 저장/경로 관리
-│   ├── LanguageDetector.java       ← 언어/방언 자동 감지 (확장자 + .sql 방언 점수)
+│   ├── FileStorageService.java     ← 파일 저장/반입(업로드·경로 모드)
+│   ├── IntakeClassifier.java       ← DDL/SOURCE 내용 기반 분류
+│   ├── LanguageDetector.java       ← 언어/방언 자동 감지
 │   ├── ParsingOrchestrator.java    ← 파일별 자동 라우팅·파싱·스트림
-│   ├── ParseProgressTracker.java   ← 진행 상황 추적
-│   ├── StreamCallback.java         ← 스트림 콜백 인터페이스
+│   ├── ParseProgressTracker.java
+│   ├── StreamCallback.java
 │   └── strategy/
-│       ├── TargetParserStrategy.java     ← 전략 인터페이스
-│       ├── AbstractParserStrategy.java   ← 공통 베이스
-│       ├── CParserStrategy.java          ← C 파싱
-│       ├── JavaParserStrategy.java       ← Java 파싱
-│       ├── PythonParserStrategy.java     ← Python 파싱
-│       ├── PlSqlParserStrategy.java      ← Oracle PL/SQL 파싱
-│       └── PostgreSqlParserStrategy.java ← PostgreSQL 파싱
-├── antlr/
-│   ├── Node.java                   ← AST 노드 (toJson 직렬화)
-│   ├── java/                       ← Java ANTLR 파일
-│   ├── plsql/                      ← Oracle PL/SQL ANTLR 파일
-│   └── postgresql/                 ← PostgreSQL ANTLR 파일
+│       ├── TargetParserStrategy.java · AbstractParserStrategy.java
+│       ├── JavaParserStrategy · CParserStrategy · PythonParserStrategy
+│       └── PlSqlParserStrategy · PostgreSqlParserStrategy
+├── model/
+│   └── Node.java                   ← AST 노드 (toJson 직렬화)
+├── antlr/                          ← 생성된 파서(커밋됨): java/ c/ python/ plsql/ postgresql/ plpgsql/
 └── config/
     └── WebConfig.java              ← CORS, 예외 처리
 ```
+> 문법 원본(`.g4`)은 repo 루트 `antlr-grammars/`, 생성 파서는 `src/.../antlr/**` 에 사전 생성·커밋되어 있습니다.
 
 ---
 
 ## 🔑 핵심 포인트
 
-1. **DDL 구분**: 별도 필드가 아닌 파일 경로로 자동 구분 (`ddl/`로 시작하면 DDL)
-2. **폴더 구조 유지**: 업로드된 폴더 구조가 그대로 유지됨
-3. **2단계 처리**: 업로드 → 파싱이 분리 (파싱은 메타데이터만 전송)
-4. **파싱 결과**: 응답에 포함되지 않고 `analysis/` 폴더에 저장
-5. **파일 대체**: 업로드 시 기존 파일 모두 삭제 후 새로 저장
-6. **파싱 스트림**: 파싱 API는 NDJSON 스트림으로 진행 상황을 실시간 전달 (타임아웃 30분)
-7. **파일 크기 제한**: 최대 파일 크기 100MB, 최대 요청 크기 500MB
+1. **언어 자동 감지**: 호출자가 언어를 지정하지 않음(확장자 + `.sql` 방언 점수).
+2. **DDL 구분 = 내용 기반**(`IntakeClassifier`), 경로 아님.
+3. **2단계 처리**: 업로드 → 파싱 분리. 경로 모드는 업로드 생략(`project_root`).
+4. **파싱 결과**: 응답에 없고 `analysis/` 폴더에 저장.
+5. **파일 대체**: 업로드 시 기존 파일 모두 삭제 후 새로 저장.
+6. **파싱 스트림**: NDJSON 실시간 진행(타임아웃 30분).
+7. **파일 크기 제한**: 코드에 multipart 한도 설정이 **없어 Spring 기본**(파일 1MB / 요청 10MB)이 적용됩니다. 큰 파일을 받으려면 `application.yml` 에 `spring.servlet.multipart.max-file-size/max-request-size` 를 추가해야 합니다.
 
 ---
 
 ## 📚 참고
-
-- [ANTLR 4 공식 문서](https://github.com/antlr/antlr4)
-- [Spring Boot 레퍼런스](https://docs.spring.io/spring-boot/docs/3.3.0/reference/html/)
+- [ANTLR 4](https://github.com/antlr/antlr4)
+- [Spring Boot 3.3.0](https://docs.spring.io/spring-boot/docs/3.3.0/reference/html/)
