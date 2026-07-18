@@ -7,7 +7,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,10 +37,9 @@ public class CParserStrategy extends AbstractParserStrategy {
         super(storageService);
     }
 
-    /** C 는 파일별 파싱 전, .c/.h 전체에서 매크로 상수 + typedef/struct 타입을 먼저 수집해야 정확하다. */
+    /** C 는 파일별 파싱 전, .c/.h 전체에서 typedef/struct 타입을 먼저 수집해야 정확하다. */
     @Override
     public void prepare() {
-        collectMacroConstants();
         collectTypeNamesFromSource();
     }
 
@@ -236,52 +234,14 @@ public class CParserStrategy extends AbstractParserStrategy {
         extractWithPattern(USAGE_T_SUFFIX, cleaned);
     }
 
-    /** #define NAME 숫자값 패턴 (매크로 상수) */
-    private static final Pattern DEFINE_CONST = Pattern.compile(
-            "^#\\s*define\\s+(\\w+)\\s+(\\d+)");
-
-    /** 소스 파일 전체에서 수집된 #define 매크로 상수 */
-    private Map<String, String> collectedMacroConstants = new java.util.HashMap<>();
-
-    /**
-     * 소스 디렉토리의 모든 파일에서 #define 매크로 상수를 수집
-     */
-    private void collectMacroConstants() {
-        collectedMacroConstants.clear();
-        Path sourceDir = storageService.sourceDir();
-        if (!Files.exists(sourceDir)) return;
-
-        try {
-            Files.walk(sourceDir)
-                    .filter(Files::isRegularFile)
-                    .filter(p -> p.toString().toLowerCase().endsWith(".h"))
-                    .forEach(p -> {
-                        try {
-                            String content = readFileContent(p);
-                            for (String line : content.split("\n")) {
-                                Matcher m = DEFINE_CONST.matcher(line.trim());
-                                if (m.find()) {
-                                    collectedMacroConstants.put(m.group(1), m.group(2));
-                                }
-                            }
-                        } catch (Exception e) {
-                            log.warn("매크로 상수 수집 중 파일 읽기 실패: {}", p, e);
-                        }
-                    });
-
-            if (!collectedMacroConstants.isEmpty()) {
-                log.info("소스에서 수집한 매크로 상수: {}개", collectedMacroConstants.size());
-            }
-        } catch (Exception e) {
-            log.warn("매크로 상수 수집 실패", e);
-        }
-    }
-
     /**
      * C 전처리기 처리:
-     * 1. #ifdef / #ifndef / #else / #endif 조건부 컴파일 → 첫 번째 분기 유지
-     * 2. #define NAME 숫자 → 소스 내 매크로 상수 치환
+     * #ifdef / #ifndef / #else / #endif 조건부 컴파일 → 첫 번째 분기 유지.
      * 라인 번호는 빈 줄로 대체하여 유지.
+     *
+     * 매크로 상수의 숫자 치환은 하지 않는다(spec 008) — ANTLR C 문법은 `x[LEN_SQL + 1]` 의
+     * 식별자 상수식을 정상 파싱하며, 치환은 initValue 의 심볼을 소실시켜 analyzer 의
+     * INIT_BY(정의 시 참조) 링킹을 깨뜨렸다(헤더 매크로만 치환되는 비대칭 포함).
      */
     private String preprocessSource(String source) {
         // 1단계: 조건부 컴파일 처리
@@ -328,24 +288,7 @@ public class CParserStrategy extends AbstractParserStrategy {
             }
         }
 
-        // 2단계: 매크로 상수 치환 (배열 크기 등에서 사용되는 #define 값)
-        // #define 라인 자체는 치환에서 제외 (HIDDEN 채널에서 원본 추출을 위해)
-        String processed = result.toString();
-        String[] processedLines = processed.split("\n", -1);
-        for (int li = 0; li < processedLines.length; li++) {
-            String trimmedLine = processedLines[li].trim();
-            if (trimmedLine.startsWith("#define") || trimmedLine.startsWith("# define")) {
-                continue; // #define 라인은 치환하지 않음
-            }
-            String replaced = processedLines[li];
-            for (Map.Entry<String, String> entry : collectedMacroConstants.entrySet()) {
-                replaced = replaced.replaceAll("\\b" + Pattern.quote(entry.getKey()) + "\\b", entry.getValue());
-            }
-            processedLines[li] = replaced;
-        }
-        processed = String.join("\n", processedLines);
-
-        return processed;
+        return result.toString();
     }
 
     private String readFileContent(Path path) throws Exception {

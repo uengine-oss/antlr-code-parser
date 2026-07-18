@@ -97,9 +97,9 @@ Java, C, Python, PL/SQL, PostgreSQL, PL/pgSQL 6개 언어 리스너/비지터가
   - 직렬화 제외: `parent`(`@JsonIgnore`).
 - **노드 타입 어휘 (`type` 값)** — 언어별 리스너/비지터가 emit 하는 실제 문자열:
   - 공통: `FILE`(루트), `FUNCTION_CALL`, `NEW_INSTANCE`.
-  - Java(`JavaAstListener`): `IMPORT`, `CLASS`, `INTERFACE`, `METHOD`, `FIELD`, `CONSTANT_FIELD`(final 필드), `FUNCTION_CALL`, `NEW_INSTANCE`.
-  - C(`CAstListener`): `INCLUDE`, `DEFINE`, `ENUM`, `ENUM_CONSTANT`, `FUNCTION`, `MEMBER`, `FUNCTION_CALL`.
-  - Python(`PythonAstListener`): `IMPORT`, `CLASS`, `FUNCTION_CALL`, `NEW_INSTANCE` (등).
+  - Java(`JavaAstListener`): `IMPORT`, `CLASS`, `INTERFACE`, `METHOD`, `FIELD`, `CONSTANT_FIELD`(final 필드), `FUNCTION_CALL`, `NEW_INSTANCE`, `IF`, `ELSE`, `LOOP`, `SWITCH`, `CASE`, `TRY`, `CATCH`(spec 007 추가, 순수 additive).
+  - C(`CAstListener`): `INCLUDE`, `DEFINE`, `ENUM`, `ENUM_CONSTANT`, `FUNCTION`, `MEMBER`, `FUNCTION_CALL`, `IF`, `ELSE`, `LOOP`, `SWITCH`, `CASE`(spec 007 추가; C는 `TRY`/`CATCH` 없음).
+  - Python(`PythonAstListener`): `IMPORT`, `CLASS`, `FUNCTION_CALL`, `NEW_INSTANCE`, `IF`, `ELSE`, `LOOP`, `TRY`, `CATCH`(등, spec 007 추가; Python은 `SWITCH`/`CASE` 없음 — 언어에 해당 구문 없음).
   - PL/SQL(`PlSqlAstListener`): `PARAMETER`, `PROCEDURE`, `FUNCTION`, `TRIGGER`, `TRIGGER_BLOCK`, `DECLARE`, `VARIABLE`, `ASSIGNMENT`, `RETURN`, `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `MERGE`, `IF`, `ELSIF`, `ELSE`, `LOOP`, `EXCEPTION`, `TRY`, `CALL`, `CURSOR_VARIABLE`, `OPEN_CURSOR`, `FETCH`, `CLOSE_CURSOR`, `EXIT`, `CTE`, `JOIN`, `EXECUTE_IMMEDIATE`, `COMMIT` 등.
   - PostgreSQL(`PostgreSqlAstListener`): `PARAMETER`, `PROCEDURE`, `DO`, DDL/DML 다수 (`CREATE_TABLE`, `ALTER_TABLE`, `CREATE_INDEX`, `CREATE_TRIGGER`, `CREATE_VIEW`, `CREATE_SCHEMA`, `CREATE_SEQUENCE`, `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `MERGE`/`MERGE_INSERT`/`MERGE_UPDATE`/`MERGE_DELETE`, `GRANT`, `REVOKE`, `SET`, `RESET`, `DROP`, `TRUNCATE`, `COPY`, `COMMENT` 등 다수).
   - PL/pgSQL(`PlpgsqlAstVisitor`): `BEGIN`, `DECLARE`, `VARIABLE`, `ELSIF`, `ELSE`, `WHEN` 등.

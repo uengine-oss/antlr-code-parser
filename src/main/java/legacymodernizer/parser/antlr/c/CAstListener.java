@@ -445,6 +445,84 @@ public class CAstListener extends CParserBaseListener {
     }
 
     // ========================================
+    // 제어 흐름 의미 AST (spec 007): IF / ELSE / LOOP / SWITCH / CASE
+    //
+    // 목적: rules/examples 폴백 분할용 "뼈대". Analyzer 는 이 노드들을 그래프에
+    // 보존하되 analysis_targets 에서 제외한다(분석 불참). C 에는 try/catch 가 없다.
+    // 기존 FUNCTION_CALL emit 은 변경하지 않으며, 그 노드들이 이 제어문 아래로
+    // 자연 중첩된다(부모만 바뀌고 소실 없음).
+    // ========================================
+
+    @Override
+    public void enterSelectionStatement(CParser.SelectionStatementContext ctx) {
+        if (!isInsideFunction()) return;
+        // selectionStatement: If '(' expr ')' stmt (Else stmt)?  |  Switch '(' expr ')' stmt
+        h.enterStatement(ctx.If() != null ? "IF" : "SWITCH", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitSelectionStatement(CParser.SelectionStatementContext ctx) {
+        if (!isInsideFunction()) return;
+        h.exitStatementWithFullComment(ctx.If() != null ? "IF" : "SWITCH",
+                ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterIterationStatement(CParser.IterationStatementContext ctx) {
+        if (!isInsideFunction()) return;
+        // for / while / do-while → 종류 구분 없이 LOOP (PL/SQL 선례와 동일)
+        h.enterStatement("LOOP", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitIterationStatement(CParser.IterationStatementContext ctx) {
+        if (!isInsideFunction()) return;
+        h.exitStatementWithFullComment("LOOP", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterLabeledStatement(CParser.LabeledStatementContext ctx) {
+        if (!isInsideFunction()) return;
+        // case X: / default: → CASE. goto 레이블(Identifier ':')은 제어분기가 아니므로 제외.
+        if (ctx.Case() == null && ctx.Default() == null) return;
+        h.enterStatement("CASE", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitLabeledStatement(CParser.LabeledStatementContext ctx) {
+        if (!isInsideFunction()) return;
+        if (ctx.Case() == null && ctx.Default() == null) return;
+        h.exitStatementWithFullComment("CASE", ctx.getStop().getLine(), ctx);
+    }
+
+    // if 의 else 분기만 ELSE 노드로 감싼다. else-if 는 문법상 else 안에 중첩된
+    // selectionStatement 이므로 ELSE 아래 IF 로 자연 표현된다(인위적 평탄화 없음).
+    @Override
+    public void enterStatement(CParser.StatementContext ctx) {
+        if (!isInsideFunction()) return;
+        if (isElseBranch(ctx)) {
+            h.enterStatement("ELSE", ctx.getStart().getLine());
+        }
+    }
+
+    @Override
+    public void exitStatement(CParser.StatementContext ctx) {
+        if (!isInsideFunction()) return;
+        if (isElseBranch(ctx)) {
+            h.exitStatementWithFullComment("ELSE", ctx.getStop().getLine(), ctx);
+        }
+    }
+
+    /** ctx 가 부모 selectionStatement 의 else 분기(statement(1))인지. */
+    private static boolean isElseBranch(CParser.StatementContext ctx) {
+        if (!(ctx.getParent() instanceof CParser.SelectionStatementContext)) return false;
+        CParser.SelectionStatementContext sel =
+                (CParser.SelectionStatementContext) ctx.getParent();
+        return sel.If() != null && sel.Else() != null
+                && sel.statement().size() >= 2 && sel.statement(1) == ctx;
+    }
+
+    // ========================================
     // struct 멤버 필드
     // ========================================
 
