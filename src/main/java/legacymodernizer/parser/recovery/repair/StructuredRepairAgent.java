@@ -38,6 +38,8 @@ public final class StructuredRepairAgent implements RepairAgent {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final String systemPrompt;
+    /** FR-025: prompt token count of the most recent proposal, when the provider reports it. */
+    private volatile Integer lastPromptTokens;
 
     public StructuredRepairAgent() {
         this.enabled = booleanSetting("parser.repair.agent.enabled",
@@ -61,6 +63,7 @@ public final class StructuredRepairAgent implements RepairAgent {
                 "PARSER_REPAIR_AGENT_THINKING_ENABLED");
         this.topK = optionalPositiveIntSetting(
                 "parser.repair.agent.top.k", "PARSER_REPAIR_AGENT_TOP_K");
+        requireExclusiveProviderOptions(reasoningEffort, thinkingEnabled, topK);
         if (enabled && apiBase.isBlank()) {
             throw new RepairAgentException("REPAIR_AGENT_API_BASE_REQUIRED");
         }
@@ -103,6 +106,7 @@ public final class StructuredRepairAgent implements RepairAgent {
         this.model = model;
         this.timeout = timeout;
         this.maxOutputTokens = maxOutputTokens;
+        requireExclusiveProviderOptions(reasoningEffort, thinkingEnabled, topK);
         this.reasoningEffort = reasoningEffort;
         this.thinkingEnabled = thinkingEnabled;
         this.topK = topK;
@@ -115,6 +119,11 @@ public final class StructuredRepairAgent implements RepairAgent {
     @Override
     public boolean enabled() {
         return enabled;
+    }
+
+    @Override
+    public Integer lastPromptTokens() {
+        return lastPromptTokens;
     }
 
     @Override
@@ -205,7 +214,9 @@ public final class StructuredRepairAgent implements RepairAgent {
         properties.putObject("failureEnvelopeHash").put("type", "string");
         ObjectNode edits = properties.putObject("edits");
         edits.put("type", "array");
-        edits.put("minItems", 1);
+        // minItems 0: the prompt instructs "no edits + ambiguity" for honest abstention,
+        // so an empty edit list must be schema-legal (2nd adversarial audit, 2026-07-22).
+        edits.put("minItems", 0);
         edits.put("maxItems", 64);
         ObjectNode edit = edits.putObject("items");
         edit.put("type", "object");
@@ -233,6 +244,8 @@ public final class StructuredRepairAgent implements RepairAgent {
 
     private PatchProposal parseProposal(byte[] responseBody) throws IOException {
         JsonNode root = objectMapper.readTree(responseBody);
+        JsonNode promptTokens = root.path("usage").path("prompt_tokens");
+        lastPromptTokens = promptTokens.isIntegralNumber() ? promptTokens.asInt() : null;
         JsonNode choices = root.path("choices");
         if (!choices.isArray() || choices.size() != 1) {
             throw new RepairAgentException("REPAIR_AGENT_INVALID_CHOICE_COUNT");
@@ -251,6 +264,14 @@ public final class StructuredRepairAgent implements RepairAgent {
         }
         JsonNode proposal = objectMapper.readTree(rawArguments.asText());
         return objectMapper.treeToValue(proposal, PatchProposal.class);
+    }
+
+    /** FR-063: OpenAI-style and SGLang-style options are mutually exclusive per provider. */
+    private static void requireExclusiveProviderOptions(String reasoningEffort,
+            Boolean thinkingEnabled, Integer topK) {
+        if (reasoningEffort != null && (thinkingEnabled != null || topK != null)) {
+            throw new RepairAgentException("REPAIR_AGENT_PROVIDER_OPTIONS_CONFLICT");
+        }
     }
 
     private static URI chatCompletionsEndpoint(String apiBase) {

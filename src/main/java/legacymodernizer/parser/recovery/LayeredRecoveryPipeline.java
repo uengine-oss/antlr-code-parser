@@ -114,6 +114,12 @@ public final class LayeredRecoveryPipeline {
 
         ObjectNode firstRoot = (ObjectNode) objectMapper.readTree(firstPass.astJson());
         List<JsonNode> firstChildren = elements(firstRoot.path("children"));
+        // A column-0 defect can fool a text locator into ending a unit early; the severed
+        // body then parses as top-level orphans just past the boundary and the truncated
+        // unit alone reparses "clean" (mutation grading, 2026-07-22). Signature: a diagnostic
+        // in the gap after a unit PLUS first-pass children inside that gap. Expand such units
+        // to the next unit so the damage stays inside and fails or repairs honestly.
+        units = expandUnitsCutByGapDamage(units, firstPass, firstChildren, source);
         List<JsonNode> acceptedChildren = new ArrayList<>();
         List<UnitRecoveryEvidence> evidence = new ArrayList<>();
         int reused = 0;
@@ -121,6 +127,7 @@ public final class LayeredRecoveryPipeline {
         int unresolved = 0;
         boolean usedSafeRule = false;
         boolean hasReviewRequired = false;
+        java.util.Set<String> failedUnitIds = new java.util.HashSet<>();
 
         for (SourceUnit unit : units) {
             List<JsonNode> reusable = childrenWithin(firstChildren, unit);
@@ -309,6 +316,7 @@ public final class LayeredRecoveryPipeline {
             if (!acceptedByRule && !acceptedByContext && !acceptedByEngine && !acceptedByAgent) {
                 unresolved++;
                 hasReviewRequired |= unitReviewRequired;
+                failedUnitIds.add(unit.unitId());
                 evidence.add(new UnitRecoveryEvidence(unit,
                         unitReviewRequired ? QualityStatus.REVIEW_REQUIRED : QualityStatus.UNRESOLVED,
                         false, 0, List.copyOf(attempts)));
@@ -318,6 +326,21 @@ public final class LayeredRecoveryPipeline {
             }
         }
 
+        // Shadow of every failed unit: from its start to the next unit's start. A defect at
+        // column 0 can shrink the locator's unit boundary AND make ANTLR error recovery
+        // scatter the unit's real body as top-level orphans just past that boundary — those
+        // orphans masquerade as valid non-unit content (mutation grading caught a Python def
+        // body hoisted to file scope, 2026-07-22). Nothing inside a failed unit's shadow is
+        // trustworthy.
+        List<int[]> failedShadows = new ArrayList<>();
+        for (int index = 0; index < units.size(); index++) {
+            if (!failedUnitIds.contains(units.get(index).unitId())) continue;
+            int shadowStart = units.get(index).startLine();
+            int shadowEnd = index + 1 < units.size()
+                    ? units.get(index + 1).startLine() - 1 : Integer.MAX_VALUE;
+            failedShadows.add(new int[]{shadowStart, Math.max(shadowStart, shadowEnd)});
+        }
+
         int droppedOutsideUnits = 0;
         for (JsonNode child : firstChildren) {
             int start = child.path("startLine").asInt(-1);
@@ -325,7 +348,9 @@ public final class LayeredRecoveryPipeline {
             boolean overlapsUnit = units.stream().anyMatch(unit -> start <= unit.endLine()
                     && end >= unit.startLine());
             boolean intersectsError = firstPass.diagnostics().stream().anyMatch(diagnostic ->
-                    diagnostic.line() >= start && diagnostic.line() <= end);
+                    diagnostic.line() >= start && diagnostic.line() <= end)
+                    || failedShadows.stream().anyMatch(shadow ->
+                            start <= shadow[1] && end >= shadow[0]);
             if (!overlapsUnit && start > 0) {
                 if (!intersectsError) {
                     acceptedChildren.add(child);
@@ -354,7 +379,15 @@ public final class LayeredRecoveryPipeline {
         java.util.BitSet coveredAfter = lineCoverage(acceptedChildren);
         coveredBefore.andNot(coveredAfter);
         int lostLines = coveredBefore.cardinality();
-        boolean fullyRecovered = unresolved == 0 && droppedOutsideUnits == 0 && lostLines == 0;
+        // A first pass with zero diagnostics was rejected for non-syntax reasons (e.g.
+        // coverage); reusing every unit untouched reproduces the identical content, and
+        // relabelling it as a validated recovery would launder that rejection (adversarial
+        // audit, 2026-07-22). Files whose diagnostics all lay outside units keep the
+        // established salvage semantics.
+        boolean launderedReuse = recovered == 0 && !usedSafeRule
+                && firstPass.diagnostics().isEmpty();
+        boolean fullyRecovered = unresolved == 0 && droppedOutsideUnits == 0 && lostLines == 0
+                && !launderedReuse;
         QualityStatus status = fullyRecovered && hasAst
                 ? usedSafeRule ? QualityStatus.RECOVERED_SAFE : QualityStatus.RECOVERED_VALIDATED
                 : hasAst ? QualityStatus.PARTIAL
@@ -368,6 +401,10 @@ public final class LayeredRecoveryPipeline {
             reasons.add("DROPPED_NON_UNIT_REGIONS=" + droppedOutsideUnits);
         }
         if (lostLines > 0) reasons.add("COVERAGE_SHRUNK_LINES=" + lostLines);
+        if (launderedReuse) {
+            reasons.add("CONTENT_UNCHANGED_FROM_REJECTED_FIRST_PASS");
+            reasons.addAll(firstDecision.reasons());
+        }
         QualityDecision finalDecision = new QualityDecision(status, hasAst,
                 List.of(0, unresolved, 0, 0, 0, 0, 0), reasons);
         return new RecoveryOutcome(hasAst ? objectMapper.writeValueAsString(firstRoot) : null,
@@ -409,6 +446,8 @@ public final class LayeredRecoveryPipeline {
         // source. Catches "repairs" that merge or swallow declarations yet reparse cleanly
         // (found by mutation benchmarking, 2026-07-22).
         if (!containsEveryLocatedUnit(module, source, children)) {
+            tracker.repairProgress("repair_whole_file_rejected",
+                    "⚠️ 파일 전체 복구안이 구조 보존 확인을 통과하지 못해 폐기하고 구간 복구로 전환해요");
             return null;
         }
         ObjectNode root = (ObjectNode) objectMapper.readTree(firstPass.astJson());
@@ -440,9 +479,11 @@ public final class LayeredRecoveryPipeline {
             int indent = leadingWhitespace(after[index]);
             Integer previous = adjacentIndent(after, index, -1);
             Integer next = adjacentIndent(after, index, +1);
-            boolean matches = indent == 0
-                    || (previous != null && indent == previous)
-                    || (next != null && indent == next);
+            // No blanket indent==0 pass: dedenting to column 0 moves code out of its scope
+            // (mutation grading caught the engine hoisting an if out of a def, 2026-07-22).
+            boolean matches = (previous != null && indent == previous)
+                    || (next != null && indent == next)
+                    || (previous == null && next == null);
             if (!matches) return false;
         }
         return true;
@@ -469,6 +510,35 @@ public final class LayeredRecoveryPipeline {
         return unit.startLine() + "~" + unit.endLine() + "행";
     }
 
+    private static List<SourceUnit> expandUnitsCutByGapDamage(List<SourceUnit> units,
+            RawParseResult firstPass, List<JsonNode> firstChildren, String source) {
+        List<SourceUnit> adjusted = new ArrayList<>(units.size());
+        int sourceLines = (int) source.lines().count();
+        for (int index = 0; index < units.size(); index++) {
+            SourceUnit unit = units.get(index);
+            int gapStart = unit.endLine() + 1;
+            int gapEnd = index + 1 < units.size()
+                    ? units.get(index + 1).startLine() - 1 : sourceLines;
+            boolean damagedGap = gapEnd >= gapStart && firstPass.diagnostics().stream()
+                    .anyMatch(d -> d.line() >= gapStart && d.line() <= gapEnd);
+            boolean orphanedContent = damagedGap && firstChildren.stream().anyMatch(child -> {
+                int start = child.path("startLine").asInt(-1);
+                int end = child.path("endLine").asInt(start);
+                return start >= gapStart && end <= gapEnd;
+            });
+            if (orphanedContent) {
+                int newEndOffset = index + 1 < units.size()
+                        ? units.get(index + 1).startOffset() : source.length();
+                adjusted.add(new SourceUnit(unit.unitId(), unit.kind(), unit.name(),
+                        unit.parentUnitId(), unit.startOffset(), newEndOffset,
+                        unit.startLine(), gapEnd, unit.ordinal(), "GAP_DAMAGE_EXPANDED"));
+            } else {
+                adjusted.add(unit);
+            }
+        }
+        return List.copyOf(adjusted);
+    }
+
     /** Union of start..end line ranges claimed by top-level children. */
     private static java.util.BitSet lineCoverage(List<JsonNode> children) {
         java.util.BitSet covered = new java.util.BitSet();
@@ -486,18 +556,34 @@ public final class LayeredRecoveryPipeline {
         java.util.Set<String> emittedNames = new java.util.HashSet<>();
         collectNames(children, emittedNames);
         for (SourceUnit unit : module.locateUnits(source)) {
-            if (unit.name() != null && !unit.name().isBlank()
-                    && !emittedNames.contains(unit.name())) {
+            if (unit.name() == null || unit.name().isBlank()) continue;
+            // Container boundaries (package/file/fragment) are located for slicing but many
+            // listeners intentionally emit only their members, never a node named after the
+            // container — requiring them here silently killed whole-file repair for the most
+            // common Oracle shapes (adversarial audit, 2026-07-22).
+            if (unit.kind() == UnitKind.PACKAGE || unit.kind() == UnitKind.FILE
+                    || unit.kind() == UnitKind.FRAGMENT) {
+                continue;
+            }
+            String located = normalizeUnitName(unit.name());
+            // Listeners store schema-qualified names without the schema, so the last dot
+            // segment must count as a match ("SCH"."PROC" ↔ PROC).
+            String lastSegment = located.substring(located.lastIndexOf('.') + 1);
+            if (!emittedNames.contains(located) && !emittedNames.contains(lastSegment)) {
                 return false;
             }
         }
         return true;
     }
 
+    private static String normalizeUnitName(String name) {
+        return name.replace("\"", "").trim().toUpperCase(java.util.Locale.ROOT);
+    }
+
     private static void collectNames(List<JsonNode> nodes, java.util.Set<String> names) {
         for (JsonNode node : nodes) {
             String name = node.path("name").asText(null);
-            if (name != null) names.add(name);
+            if (name != null) names.add(normalizeUnitName(name));
             List<JsonNode> nested = elements(node.path("children"));
             if (!nested.isEmpty()) collectNames(nested, names);
         }
@@ -524,21 +610,30 @@ public final class LayeredRecoveryPipeline {
                 : spanLocator.anchorOffset(unitText, unit.startLine(),
                         attempt.diagnostics().get(0).line(),
                         attempt.diagnostics().get(0).column());
-        SliceLevel[] ladder = {SliceLevel.L1, SliceLevel.L2, SliceLevel.L3};
         boolean reviewRequired = false;
-        for (int agentCall = 1; agentCall <= 3; agentCall++) {
+        // 사다리 순회의 단일 진실은 SliceLevel.next()다(별도 배열 선언 금지).
+        SliceLevel level = SliceLevel.L1;
+        for (int agentCall = 1; agentCall <= 3 && level != null;
+                agentCall++, level = level.next()) {
             PatchProposal agentProposal = null;
-            ContextSlice slice = spanLocator.slice(
-                    unitText, sliceSyntax, anchor, ladder[agentCall - 1]);
-            AgentRequestEvidence requestEvidence = AgentRequestEvidence.of(
-                    slice.level().name(), slice.length(), unitText.length(), null);
+            ContextSlice slice = spanLocator.slice(unitText, sliceSyntax, anchor, level);
             try {
                 FailureEnvelope envelope = envelopeFactory.create(
                         module.languageId(), fileSha256, unit, unitText, slice,
                         attempt, attempts, 4 - agentCall);
                 agentProposal = proposeWithinBudget(envelope);
+                // FR-040 applies to Agent edits too: every token the edit removes or inserts
+                // must be structurally neutral. A reparse-clean paren fix that swallows
+                // "(name" deletes a call — mutation grading caught exactly that (2026-07-22).
+                requireSemanticallyNeutralEdits(agentProposal, module.repairProfile());
+                AgentRequestEvidence requestEvidence = AgentRequestEvidence.of(
+                        slice.level().name(), slice.length(), unitText.length(),
+                        repairAgent.lastPromptTokens());
+                List<TextEdit> validatedEdits =
+                        proposalValidator.validate(envelope, agentProposal);
+                requireNoTokenMerge(unitText, validatedEdits);
                 WorkingCopy workingCopy = WorkingCopy.exact(unitText)
-                        .applyOriginalEdits(proposalValidator.validate(envelope, agentProposal));
+                        .applyOriginalEdits(validatedEdits);
                 if (!workingCopy.sourceMap().preservesLineCount()) {
                     throw new IllegalArgumentException("AGENT_LINE_COUNT_CHANGED");
                 }
@@ -686,6 +781,66 @@ public final class LayeredRecoveryPipeline {
         List<JsonNode> children = elements(
                 objectMapper.readTree(workingParse.astJson()).path("children"));
         return new EngineWaveResult(children.isEmpty() ? null : children, false, attemptNumber);
+    }
+
+    private static final java.util.regex.Pattern EDIT_TOKEN = SourceTokens.PATTERN;
+
+    /** FR-040 for the Agent path: reject edits whose removed/inserted tokens are not
+     * structurally neutral (identifiers, literals, operators, risk keywords). */
+    private static void requireSemanticallyNeutralEdits(
+            PatchProposal proposal,
+            legacymodernizer.parser.recovery.candidates.RepairProfile profile) {
+        for (legacymodernizer.parser.recovery.repair.AgentTextEdit edit : proposal.edits()) {
+            requireNeutralTokens(edit.expectedText(), profile, true);
+            requireNeutralTokens(edit.replacement(), profile, false);
+            // Pure-punctuation substitutions can still flip meaning ("(" → "." turns a call
+            // into an attribute access, mutation grading 2026-07-22). Only insertions,
+            // deletions and whitespace-blanking are auto-adoptable; substitutions are a
+            // human call.
+            boolean removesText = edit.expectedText() != null && !edit.expectedText().isBlank();
+            boolean insertsText = edit.replacement() != null && !edit.replacement().isBlank();
+            if (removesText && insertsText) {
+                throw new IllegalArgumentException("AGENT_SUBSTITUTION_REQUIRES_REVIEW");
+            }
+        }
+    }
+
+    /** Deleting a span that sat between two word characters merges them into a brand-new
+     * identifier ("getLogger(" minus "(" → "getLoggername"); such edits need a human. */
+    private static void requireNoTokenMerge(String unitText, List<TextEdit> edits) {
+        for (TextEdit edit : edits) {
+            if (!edit.replacement().isBlank()) continue;
+            if (edit.replacement().isEmpty()
+                    && edit.startOffset() > 0 && edit.endOffset() < unitText.length()
+                    && isWordCharacter(unitText.charAt(edit.startOffset() - 1))
+                    && isWordCharacter(unitText.charAt(edit.endOffset()))) {
+                throw new IllegalArgumentException("AGENT_TOKEN_MERGE_REQUIRES_REVIEW");
+            }
+        }
+    }
+
+    private static boolean isWordCharacter(char character) {
+        return Character.isLetterOrDigit(character) || character == '_' || character == '$'
+                || character == '#';
+    }
+
+    private static void requireNeutralTokens(String text,
+            legacymodernizer.parser.recovery.candidates.RepairProfile profile,
+            boolean deletion) {
+        if (text == null || text.isBlank()) return;
+        java.util.regex.Matcher matcher = EDIT_TOKEN.matcher(text);
+        while (matcher.find()) {
+            String token = matcher.group();
+            boolean neutral = deletion
+                    ? legacymodernizer.parser.recovery.candidates.EditClassification
+                            .forDeletion(token, profile.deletableStructuralKeywords())
+                            .autoAdoptable()
+                    : legacymodernizer.parser.recovery.candidates.EditClassification
+                            .forInsertion(token).autoAdoptable();
+            if (!neutral) {
+                throw new IllegalArgumentException("AGENT_SEMANTIC_TOKEN_EDIT:" + token);
+            }
+        }
     }
 
     /** Gates one Agent HTTP request by prompt-character weight; timeout becomes a normal

@@ -28,7 +28,6 @@ import legacymodernizer.parser.recovery.boundaries.UnitParseRequest;
 import legacymodernizer.parser.recovery.quality.DeclarationCoverageCounter;
 import legacymodernizer.parser.parsing.AstCoordinates;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
-import legacymodernizer.parser.parsing.languages.python.PythonSourceUnitLocator;
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.service.ParseProgressTracker;
 import lombok.extern.slf4j.Slf4j;

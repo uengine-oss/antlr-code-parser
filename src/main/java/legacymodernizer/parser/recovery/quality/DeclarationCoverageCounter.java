@@ -14,7 +14,6 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import legacymodernizer.parser.recovery.quality.DeclarationCoverage;
 
 public final class DeclarationCoverageCounter {
 

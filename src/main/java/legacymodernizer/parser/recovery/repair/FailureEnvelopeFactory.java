@@ -32,8 +32,18 @@ public final class FailureEnvelopeFactory {
     public static final String SCHEMA_VERSION = "2.0.0";
     private static final List<String> FORBIDDEN = List.of(
             "AST", "PARSE_TREE", "NODE_JSON", "FULL_FILE_REWRITE", "FULL_UNIT_REWRITE");
-    private static final Pattern SOURCE_TOKEN = Pattern.compile(
-            "[\\p{L}_$#][\\p{L}\\p{N}_$#]*|\\p{N}+(?:\\.\\p{N}+)?|\\S");
+    private static final Pattern SOURCE_TOKEN =
+            legacymodernizer.parser.recovery.SourceTokens.PATTERN;
+    // 수정 상한 = excerpt의 1/4: 수리는 국소 편집이라는 계약을 수치로 강제하되(전면 재작성
+    // 차단), 짧은 슬라이스에서도 토큰 몇 개는 고칠 수 있게 하한을 둔다.
+    private static final int MAX_CHANGED_CHARACTERS_CAP = 16_384;
+    private static final int MIN_CHANGED_CHARACTERS = 64;
+    private static final int MAX_CHANGED_LINES_CAP = 256;
+    private static final int MIN_CHANGED_LINES = 8;
+    // 진단 주변 ±96자·토큰 256개 창: 모델이 offset을 세지 않고 좌표를 베끼게 하는 근거
+    // 자료의 상한 — 프롬프트 크기와 유용성의 절충값(spec 012 실측 기반).
+    private static final int DIAGNOSTIC_WINDOW_RADIUS = 96;
+    private static final int DIAGNOSTIC_WINDOW_TOKEN_CAP = 256;
 
     private final ObjectMapper canonicalMapper = new ObjectMapper()
             .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
@@ -55,7 +65,7 @@ public final class FailureEnvelopeFactory {
         DeclarationCoverage coverage = parse.coverage();
         if (diagnostics.isEmpty()) {
             diagnostics = new ArrayList<>();
-            diagnostics.add(new DiagnosticEvidence("COVERAGE", "INCOMPLETE_DECLARATION_COVERAGE",
+            diagnostics.add(new DiagnosticEvidence(legacymodernizer.parser.recovery.diagnostics.DiagnosticPhase.COVERAGE.name(), "INCOMPLETE_DECLARATION_COVERAGE",
                     "Declaration coverage did not pass the Parser quality gate", 0, 0,
                     0, 0, null, null, List.of(), ""));
         }
@@ -76,8 +86,10 @@ public final class FailureEnvelopeFactory {
                 .toList();
         String excerpt = slice.text();
         RepairConstraints constraints = new RepairConstraints(0, excerpt.length(),
-                Math.max(1, Math.min(16_384, Math.max(64, excerpt.length() / 4))),
-                Math.max(1, Math.min(256, Math.max(8, countLines(excerpt) / 4))),
+                Math.max(1, Math.min(MAX_CHANGED_CHARACTERS_CAP,
+                        Math.max(MIN_CHANGED_CHARACTERS, excerpt.length() / 4))),
+                Math.max(1, Math.min(MAX_CHANGED_LINES_CAP,
+                        Math.max(MIN_CHANGED_LINES, countLines(excerpt) / 4))),
                 Math.max(1, Math.min(3, remainingAttempts)), FORBIDDEN);
         FailureEnvelope unhashed = new FailureEnvelope(SCHEMA_VERSION, "", language,
                 parse.grammarRevision(), fileSha256,
@@ -133,10 +145,11 @@ public final class FailureEnvelopeFactory {
         Map<Integer, SourceTokenEvidence> tokens = new LinkedHashMap<>();
         Matcher matcher = SOURCE_TOKEN.matcher(text);
         for (DiagnosticEvidence diagnostic : diagnostics) {
-            int start = Math.max(0, diagnostic.excerptStartOffset() - 96);
-            int end = Math.min(text.length(), diagnostic.excerptEndOffset() + 96);
+            int start = Math.max(0, diagnostic.excerptStartOffset() - DIAGNOSTIC_WINDOW_RADIUS);
+            int end = Math.min(text.length(),
+                    diagnostic.excerptEndOffset() + DIAGNOSTIC_WINDOW_RADIUS);
             matcher.region(start, end);
-            while (matcher.find() && tokens.size() < 256) {
+            while (matcher.find() && tokens.size() < DIAGNOSTIC_WINDOW_TOKEN_CAP) {
                 tokens.putIfAbsent(matcher.start(), new SourceTokenEvidence(
                         matcher.start(), matcher.end(), matcher.group()));
             }

@@ -33,7 +33,6 @@ import legacymodernizer.parser.recovery.boundaries.UnitParseRequest;
 import legacymodernizer.parser.recovery.boundaries.UnitParseContext;
 import legacymodernizer.parser.recovery.quality.DeclarationCoverageCounter;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
-import legacymodernizer.parser.parsing.languages.oracle.OracleSourceUnitLocator;
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.service.ParseProgressTracker;
 import lombok.extern.slf4j.Slf4j;

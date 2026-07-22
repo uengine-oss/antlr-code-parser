@@ -176,8 +176,12 @@ class MutationRepairBenchmarkTest {
                         if (outcome.astJson() == null) {
                             grade = status;
                         } else if (!fullyAdopted) {
-                            // Honest partial salvage: broken unit stays flagged, rest emitted.
-                            grade = "PARTIAL_SALVAGE";
+                            // Partial salvage is graded too (2nd audit): every emitted unit
+                            // must structurally equal its counterpart in the untouched
+                            // original — a partially-emitted wrong unit is a false accept.
+                            grade = partialChildrenMatchOriginal(
+                                    cleanParse.astJson(), outcome.astJson())
+                                    ? "PARTIAL_SALVAGE" : "PARTIAL_CORRUPTED";
                         } else {
                             grade = switch (compareAst(cleanParse.astJson(), outcome.astJson())) {
                                 case IDENTICAL -> "FIXED_EXACT";
@@ -217,6 +221,35 @@ class MutationRepairBenchmarkTest {
         System.out.println("MUTATION totals=" + totals + " -> " + output);
         assertTrue(totals.getOrDefault("FIXED_DIFFERENT", 0) == 0,
                 "false accept detected: a repair was adopted that differs from the original AST");
+        assertTrue(totals.getOrDefault("PARTIAL_CORRUPTED", 0) == 0,
+                "false accept detected inside a partial salvage: an emitted unit differs from"
+                        + " the original");
+    }
+
+    /**
+     * Subset check for partial outputs: each emitted top-level child must structurally match
+     * (comments/coordinates normalized) some child of the untouched original. Catches wrong
+     * content smuggled inside an honest-looking partial result.
+     */
+    private boolean partialChildrenMatchOriginal(String cleanAstJson, String partialAstJson)
+            throws Exception {
+        java.util.Set<String> cleanChildren = new java.util.HashSet<>();
+        for (com.fasterxml.jackson.databind.JsonNode child
+                : mapper.readTree(cleanAstJson).path("children")) {
+            cleanChildren.add(normalizedChild(child));
+        }
+        for (com.fasterxml.jackson.databind.JsonNode child
+                : mapper.readTree(partialAstJson).path("children")) {
+            if (!cleanChildren.contains(normalizedChild(child))) return false;
+        }
+        return true;
+    }
+
+    private String normalizedChild(com.fasterxml.jackson.databind.JsonNode child) {
+        com.fasterxml.jackson.databind.JsonNode copy = child.deepCopy();
+        stripComments(copy);
+        stripCoordinates(copy);
+        return copy.toString();
     }
 
     private enum AstMatch { IDENTICAL, COMMENT_ONLY, COORD_ONLY, DIFFERENT }

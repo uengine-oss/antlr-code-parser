@@ -13,7 +13,6 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-import legacymodernizer.parser.recovery.diagnostics.DiagnosticPhase;
 import legacymodernizer.parser.recovery.quality.QualityDecision;
 import legacymodernizer.parser.parsing.RawParseResult;
 import legacymodernizer.parser.recovery.evidence.RecoveryOutcome;

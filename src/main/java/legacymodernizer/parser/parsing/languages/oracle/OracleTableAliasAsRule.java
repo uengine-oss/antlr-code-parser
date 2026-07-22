@@ -14,7 +14,6 @@ import legacymodernizer.parser.recovery.boundaries.SourceUnit;
 import legacymodernizer.parser.recovery.rules.RecoveryRule;
 import legacymodernizer.parser.recovery.rules.RecoveryRuleProposal;
 import legacymodernizer.parser.recovery.workingcopy.TextEdit;
-import legacymodernizer.parser.parsing.languages.oracle.OracleSourceUnitLocator;
 
 @Component
 public final class OracleTableAliasAsRule implements RecoveryRule {

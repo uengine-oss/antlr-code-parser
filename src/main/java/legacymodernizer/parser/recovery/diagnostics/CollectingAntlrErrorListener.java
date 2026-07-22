@@ -10,8 +10,6 @@ import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
 
-import legacymodernizer.parser.recovery.diagnostics.DiagnosticPhase;
-import legacymodernizer.parser.recovery.diagnostics.ParseDiagnostic;
 
 public final class CollectingAntlrErrorListener extends BaseErrorListener {
 

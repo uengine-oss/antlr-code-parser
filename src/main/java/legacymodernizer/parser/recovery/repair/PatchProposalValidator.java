@@ -24,8 +24,9 @@ public final class PatchProposalValidator {
                 || !proposal.failureEnvelopeHash().equals(envelope.failureEnvelopeHash())) {
             throw new IllegalArgumentException("AGENT_ENVELOPE_HASH_MISMATCH");
         }
-        if (proposal.ambiguities() == null || proposal.ambiguities().size() > 32
-                || !proposal.ambiguities().isEmpty()) {
+        // Any declared ambiguity is an honest abstention (the schema allows empty edits for
+        // it); it is never adopted, only recorded with its own reason.
+        if (proposal.ambiguities() == null || !proposal.ambiguities().isEmpty()) {
             throw new IllegalArgumentException("AGENT_AMBIGUOUS_PROPOSAL");
         }
         if (proposal.edits() == null || proposal.edits().isEmpty() || proposal.edits().size() > 64) {
@@ -47,8 +48,12 @@ public final class PatchProposalValidator {
                     || edit.reason().length() > 512) {
                 throw new IllegalArgumentException("AGENT_EDIT_CONTENT_INVALID");
             }
-            if (edit.startOffset() == envelope.constraints().allowedStartOffset()
-                    && edit.endOffset() == envelope.constraints().allowedEndOffset()) {
+            int allowedSpan = envelope.constraints().allowedEndOffset()
+                    - envelope.constraints().allowedStartOffset();
+            int editSpan = edit.endOffset() - edit.startOffset();
+            // A span covering (almost) the whole excerpt is a rewrite, not a repair —
+            // [0, len-1] must not slip past an exact-bounds check (audit, 2026-07-22).
+            if (allowedSpan > 0 && editSpan * 10 >= allowedSpan * 9) {
                 throw new IllegalArgumentException("AGENT_FULL_EXCERPT_REWRITE_FORBIDDEN");
             }
             if (looksLikeAstPayload(edit.replacement())) {

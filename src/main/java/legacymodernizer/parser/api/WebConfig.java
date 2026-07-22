@@ -51,6 +51,8 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, String>> handleGenericException(Exception ex) {
+        // 500으로 변환되며 스택이 사라지면 원인 추적이 불가능하다 — 서버 로그가 유일한 흔적.
+        org.slf4j.LoggerFactory.getLogger(getClass()).error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("detail", "Unexpected error: " + (ex.getMessage() != null ? ex.getMessage() : "")));
     }

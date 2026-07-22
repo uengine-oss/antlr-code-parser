@@ -49,12 +49,11 @@ class RepairAgentRecoveryTest {
         AtomicInteger calls = new AtomicInteger();
         RepairAgent agent = fake(envelope -> {
             calls.incrementAndGet();
-            int alias = envelope.sourceExcerpt().lastIndexOf("AS A");
+            int garbage = envelope.sourceExcerpt().indexOf("@@@@@@ ");
             assertTrue(envelope.diagnosticWindowTokens().stream().anyMatch(token ->
-                    token.startOffset() == alias && token.endOffset() == alias + 2
-                            && "AS".equals(token.text())));
-            return proposal(envelope, List.of(new AgentTextEdit(alias, alias + 2, "AS", "  ",
-                    "Oracle table aliases do not accept AS")), List.of());
+                    "@".equals(token.text())));
+            return proposal(envelope, List.of(new AgentTextEdit(garbage, garbage + 7,
+                    "@@@@@@ ", "       ", "Remove stray punctuation noise")), List.of());
         });
 
         Result result = recover(agent, "valid");
@@ -133,9 +132,9 @@ class RepairAgentRecoveryTest {
             assertTrue(envelope.priorAttempts().stream()
                     .flatMap(prior -> prior.validationReasons().stream())
                     .anyMatch("AGENT_AMBIGUOUS_PROPOSAL"::equals));
-            int alias = envelope.sourceExcerpt().lastIndexOf("AS A");
-            return proposal(envelope, List.of(new AgentTextEdit(alias, alias + 2, "AS", "  ",
-                    "Oracle table aliases do not accept AS")), List.of());
+            int garbage = envelope.sourceExcerpt().indexOf("@@@@@@ ");
+            return proposal(envelope, List.of(new AgentTextEdit(garbage, garbage + 7,
+                    "@@@@@@ ", "       ", "Remove stray punctuation noise")), List.of());
         }), "retry-feedback");
 
         assertEquals(3, calls.get());
@@ -210,9 +209,11 @@ class RepairAgentRecoveryTest {
     }
 
     private static Result recover(RepairAgent agent, String name) throws Exception {
+        // Garbage punctuation the deterministic engine cannot claim (lexer-level noise, no
+        // profile keyword) and whose removal is neutral under the FR-040 token gate.
         String source = "CREATE OR REPLACE PROCEDURE alias_proc AS\n"
                 + "  v_id NUMBER;\nBEGIN\n"
-                + "  SELECT A.ID INTO v_id FROM APP_TABLE AS A;\n"
+                + "  @@@@@@ SELECT A.ID INTO v_id FROM APP_TABLE A;\n"
                 + "END;\n/\n";
         ParserWorkspace storage = new ParserWorkspace(new SourceIntakeClassifier());
         Path file = storage.sourceDir().resolve("agent/" + name + ".prc");

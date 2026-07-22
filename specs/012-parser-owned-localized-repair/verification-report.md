@@ -80,6 +80,58 @@ Every claim below is reproducible from the listed command or artifact. Categorie
     wire 계약(type=message/warning + 한국어 content)으로 방출 — **프론트 무변경으로 표시
     가능**. 테스트로 방출 검증(`recoveryEmitsUserFriendlyStreamEventsOnTheExistingWireContract`).
 
+## 14. 적대적 감사 2회 반영 (2026-07-22 저녁)
+
+사용자 지시로 독립 적대 감사 2회를 실행, **모든 발견을 반영**:
+
+**감사가 잡아 수정한 결함**: (a) unit 이름 게이트가 스키마 수식·PACKAGE 표기 차이로 정상
+whole-file 복구를 조용히 폐기 → 정규화(따옴표·대소문자·스키마 세그먼트) + 컨테이너 kind 제외
++ 거부 시 스트림 기록. (b) coverage-단독 거부 파일이 무수리 재사용 후 RECOVERED_VALIDATED로
+세탁 → 진단 0 + 무수리 시 원 사유를 승계한 PARTIAL 강등. (c) 모델의 "정직한 기권"이
+스키마(minItems 1)상 불가능 → minItems 0 + 기권은 AGENT_AMBIGUOUS_PROPOSAL로 기록.
+(d) FR-025 prompt tokens 기록 미구현 → provider usage 파싱해 AgentRequestEvidence에 기록.
+(e) [0,len-1] 준-전면 재작성 통과 → 허용 span의 90% 이상 편집 거부. (f) FR-063 provider 옵션
+상호배타 미강제 → 생성자에서 REPAIR_AGENT_PROVIDER_OPTIONS_CONFLICT. (g) **변이 벤치마크의
+PARTIAL 무채점** → 부분 출력의 모든 방출 unit을 원본 subtree와 대조(PARTIAL_CORRUPTED=빌드
+실패). 이 채점기가 즉시 실전 결함 1건을 추가 검출: 0열 손상이 locator 경계를 절단해 잘린
+함수가 "clean"으로 채택되고 본문이 고아로 유출 → **gap-손상 unit 확장**(공백 구간에 진단+
+고아 콘텐츠 동시 존재 시 다음 unit까지 확장) + 실패 unit 그림자 구간 드롭으로 수정.
+수정 후: 결정론 변이 PARTIAL_CORRUPTED 0, 전체 suite 107 green, corpus 상태 회귀 0.
+
+**감사에 따라 정직하게 강등한 주장**: FR-042(token/AST 지문 델타)와 FR-050(진단 독립
+그룹핑·병렬 실행)은 **미구현 — 유보**로 재분류(채택 안전성은 재파싱+게이트가 담당, 병렬은
+Agent 계층 세마포어만 실증). 온보딩 리허설의 범위는 "등록·감지·SPI 기본값 상속"이며 **복구
+동작은 parseUnit 구현이 있어야**(없으면 fail-closed 미복구) — "recovery defaults all work"
+표현 정정. wave 진동·지문 가드는 코드 존재하나 **전용 테스트 부재**. 변이 채점의 ground
+truth는 AST가 표현하는 범위까지만 유효(AST 미방출 영역의 변이는 채점 불가). 벤치마크
+"바이트 대조"는 정확히는 파일명 필드 제외 후 트리 동등 비교.
+
+## 15. 3차(FR-040 확장)·최종 변이 수치와 원칙 전수 감사 (2026-07-22 밤)
+
+**Agent 편집 의미 게이트 3종 추가** — GPU 재실행이 잡은 false-accept 2건(호출 소실:
+`(name` 삭제 / `(`→`.` 치환으로 호출→속성 변환)을 근본 차단: ① 편집이 제거·삽입하는 모든
+토큰의 의미 분류(FR-040를 Agent 경로에 확장), ② 비공백↔비공백 치환 금지(삽입·삭제·공백화만
+자동 채택), ③ 단어 병합 삭제 금지. **최종 변이 수치**: 결정론 5 완전복원/25 정직 부분구제,
+GPU 8 완전복원/22 정직 부분구제, **FIXED_DIFFERENT·PARTIAL_CORRUPTED 모두 0**(두 등급 모두
+빌드 실패 단언으로 상시 감시). 완전복원 감소(18→8)는 fail-closed 비용이며, 회복 수단은
+RepairProfile 선언 확장(안전·언어별 데이터)으로 명시.
+
+**원칙 원문 전수 감사(위반 29건) 처리 결과**:
+- 즉시 수정(15): 미사용 enum 상수(VALIDATION/AGENT) 삭제 + COVERAGE 문자열 우회 교정,
+  ParserUtils 죽은 정규식 대안, HealthCheck System.out 제거, 전역 예외 핸들러 log.error,
+  토큰 정규식 이중 선언 → SourceTokens 단일화, SliceLevel.next() 사다리 일원화(이중 진실
+  제거), 매직 넘버 6종 상수화+근거 주석(수정 상한 1/4, 진단 창 ±96/256), 무의미
+  same-package import 14건 제거.
+- 감사 오판 반박(1): registry.require/candidates "소비자 0" 주장 → 온보딩 리허설·카탈로그
+  검증 테스트가 사용 중(SPI 표면) — 유지.
+- 기록 유보(§11 대이동 원칙 — 다음 슬라이스): 인코딩 폴백 5중 분열 → SourceTextCodec 통합
+  (+모듈 parseFile UTF-8 고정 해소, 감사1 결함②와 동일 건), ANTLR 배선 5중 복제 →
+  AntlrParseHarness, locator lineOf/fileUnit·affinity 스캔 공용화, registry/selection 이중
+  구축 단방향화, recover()/enterDeclaration/parseSingleFile 분해, 규칙·엔진 후보 탈락 무기록
+  2곳 evidence화, C_KEYWORDS 오명명 분리, listener '무엇' 주석 정리, writer 오버로드 제거.
+  (전부 행위 변경 또는 광범위 이동이라 기준선 잡고 별도 슬라이스로.)
+- 처리 후 재검증: suite 107 green, corpus 상태·AST 수 회귀 0, 원본 불변.
+
 ## REVIEW_REQUIRED (설계상 올바른 미해결)
 
 - **AMS 10 unresolved units** — 원인 실물 확인: 덤프의 줄바꿈 손상(주석이 줄 중간에서

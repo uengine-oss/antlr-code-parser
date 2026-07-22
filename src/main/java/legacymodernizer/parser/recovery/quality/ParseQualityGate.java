@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import legacymodernizer.parser.recovery.diagnostics.DiagnosticPhase;
-import legacymodernizer.parser.recovery.quality.QualityDecision;
-import legacymodernizer.parser.recovery.quality.QualityStatus;
 import legacymodernizer.parser.parsing.RawParseResult;
 import org.springframework.stereotype.Component;
 

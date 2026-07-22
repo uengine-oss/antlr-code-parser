@@ -394,8 +394,7 @@ public class ParserUtils {
      */
     public static boolean matchesMethodCall(String initializerText) {
         if (initializerText == null || initializerText.isEmpty()) return false;
-        return initializerText.matches("(?s).*\\.\\w+\\s*\\(.*")
-            || initializerText.matches("(?s).*\\b\\w+\\s*\\(.*");
+        return initializerText.matches("(?s).*\\b\\w+\\s*\\(.*");
     }
 
     private static final java.util.regex.Pattern PYTHON_CTOR_PATTERN =

@@ -3,7 +3,6 @@ package legacymodernizer.parser.recovery.diagnostics;
 import java.util.List;
 
 import legacymodernizer.parser.recovery.quality.DeclarationCoverage;
-import legacymodernizer.parser.recovery.diagnostics.ParseDiagnostic;
 import legacymodernizer.parser.recovery.quality.QualityStatus;
 import legacymodernizer.parser.recovery.evidence.UnitRecoveryEvidence;
 

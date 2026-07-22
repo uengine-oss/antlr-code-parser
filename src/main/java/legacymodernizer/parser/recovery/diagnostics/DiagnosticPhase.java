@@ -4,7 +4,5 @@ public enum DiagnosticPhase {
     LEXER,
     PARSER,
     COVERAGE,
-    VALIDATION,
-    AGENT,
     SYSTEM
 }
