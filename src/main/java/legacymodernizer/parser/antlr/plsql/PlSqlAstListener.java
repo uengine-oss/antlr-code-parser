@@ -3,6 +3,7 @@ package legacymodernizer.parser.antlr.plsql;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 
+import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -13,7 +14,8 @@ import legacymodernizer.parser.service.ParseProgressTracker;
  * - 프로시저/함수/트리거/패키지 구조 추출
  * - 통일된 속성명 사용 (Node 클래스 참조)
  */
-public class PlSqlAstListener extends PlSqlParserBaseListener {
+public class PlSqlAstListener extends PlSqlParserBaseListener
+        implements AntlrParseHarness.AstListener {
     private final ListenerHelper h;
 
     public Node getRoot() {
@@ -128,22 +130,23 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
 
     @Override
     public void enterPackage_obj_spec(PlSqlParser.Package_obj_specContext ctx) {
-        String text = ctx.getText().toUpperCase().trim();
-        if (text.startsWith("FUNCTION") || text.startsWith("PROCEDURE")) {
-            return;
-        }
-        String nodeType = text.contains("CONSTANT") ? "CONSTANT_FIELD" : "PACKAGE_VARIABLE";
+        String nodeType = packageObjSpecNodeType(ctx);
+        if (nodeType == null) return;
         h.enterStatement(nodeType, ctx.getStart().getLine());
     }
 
     @Override
     public void exitPackage_obj_spec(PlSqlParser.Package_obj_specContext ctx) {
-        String text = ctx.getText().toUpperCase().trim();
-        if (text.startsWith("FUNCTION") || text.startsWith("PROCEDURE")) {
-            return;
-        }
-        String nodeType = text.contains("CONSTANT") ? "CONSTANT_FIELD" : "PACKAGE_VARIABLE";
+        String nodeType = packageObjSpecNodeType(ctx);
+        if (nodeType == null) return;
         h.exitStatementWithChildDedupe(nodeType, ctx.getStop().getLine(), ctx);
+    }
+
+    /** enter/exit 쌍이 같은 판정을 재계산해야 하므로 한 곳에 둔다 — null 은 FUNCTION/PROCEDURE 스킵. */
+    private static String packageObjSpecNodeType(PlSqlParser.Package_obj_specContext ctx) {
+        String text = ctx.getText().toUpperCase().trim();
+        if (text.startsWith("FUNCTION") || text.startsWith("PROCEDURE")) return null;
+        return text.contains("CONSTANT") ? "CONSTANT_FIELD" : "PACKAGE_VARIABLE";
     }
 
     @Override
@@ -465,26 +468,21 @@ public class PlSqlAstListener extends PlSqlParserBaseListener {
 
     @Override
     public void enterCall_statement(PlSqlParser.Call_statementContext ctx) {
-        String name = null;
-        if (!ctx.routine_name().isEmpty()) {
-            PlSqlParser.Routine_nameContext routineName = ctx.routine_name(0);
-            if (routineName.getText().toUpperCase().contains("RAISE")) {
-                return;
-            }
-            name = routineName.getText();
-        }
+        if (isRaiseCall(ctx)) return;
+        String name = ctx.routine_name().isEmpty() ? null : ctx.routine_name(0).getText();
         h.enterStatement("CALL", name, ctx.getStart().getLine());
     }
 
     @Override
     public void exitCall_statement(PlSqlParser.Call_statementContext ctx) {
-        if (!ctx.routine_name().isEmpty()) {
-            PlSqlParser.Routine_nameContext routineName = ctx.routine_name(0);
-            if (routineName.getText().toUpperCase().contains("RAISE")) {
-                return;
-            }
-        }
+        if (isRaiseCall(ctx)) return;
         h.exitStatementWithChildDedupe("CALL", ctx.getStop().getLine(), ctx);
+    }
+
+    /** enter/exit 쌍이 같은 판정을 재계산해야 하므로 RAISE 감지를 한 곳에 둔다. */
+    private static boolean isRaiseCall(PlSqlParser.Call_statementContext ctx) {
+        return !ctx.routine_name().isEmpty()
+                && ctx.routine_name(0).getText().toUpperCase().contains("RAISE");
     }
 
     // ========================================

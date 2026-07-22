@@ -8,6 +8,7 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 
+import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -23,7 +24,8 @@ import legacymodernizer.parser.service.ParseProgressTracker;
  * - 지역 declaration (블록 내) → VARIABLE 노드
  * - 함수 호출 → FUNCTION_CALL 노드 (postfixExpression 기반)
  */
-public class CAstListener extends CParserBaseListener {
+public class CAstListener extends CParserBaseListener
+        implements AntlrParseHarness.AstListener {
 
     private final ListenerHelper h;
 
@@ -257,12 +259,33 @@ public class CAstListener extends CParserBaseListener {
 
         // 블록 내부의 declaration은 VARIABLE, 전역은 GLOBAL_VARIABLE 또는 TYPEDEF
         boolean isGlobal = isGlobalScope();
+        TypedefShape shape = classifyTypedef(ctx.declarationSpecifiers());
+        String variableType = extractReturnType(ctx.declarationSpecifiers());
+        // typedef는 modifiers에서 제외 (별도 처리)
+        String modifierStr = withoutTypedefModifier(extractModifiers(ctx.declarationSpecifiers()));
 
-        // typedef 여부 확인
+        // typedef struct { ... } Name; / typedef enum { ... } Name; 패턴:
+        // TYPEDEF 노드를 만들지 않고, 이름만 저장하여 struct/enum 핸들러에서 사용
+        if (shape.isTypedef() && shape.hasStructOrEnumBody()) {
+            pendingTypedefName = locateTypedefName(ctx);
+            if (pendingTypedefName != null) {
+                return; // TYPEDEF 노드 생성 안 함 → struct/enum 핸들러가 처리
+            }
+        }
+
+        if (ctx.initDeclaratorList() == null) return;
+        for (CParser.InitDeclaratorContext initDecl : ctx.initDeclaratorList().initDeclarator()) {
+            emitDeclarator(ctx, initDecl, shape.isTypedef(), isGlobal, variableType, modifierStr);
+        }
+    }
+
+    /** typedef 여부와 struct/enum 본문 동반 여부 — typedef struct {…} Name; 분기 판별용. */
+    private record TypedefShape(boolean isTypedef, boolean hasStructOrEnumBody) { }
+
+    private static TypedefShape classifyTypedef(CParser.DeclarationSpecifiersContext specifiers) {
         boolean isTypedef = false;
-        boolean hasStructOrEnumWithBody = false;
-
-        for (CParser.DeclarationSpecifierContext ds : ctx.declarationSpecifiers().declarationSpecifier()) {
+        boolean hasStructOrEnumBody = false;
+        for (CParser.DeclarationSpecifierContext ds : specifiers.declarationSpecifier()) {
             if (ds.storageClassSpecifier() != null && ds.storageClassSpecifier().getText().equals("typedef")) {
                 isTypedef = true;
             }
@@ -270,125 +293,114 @@ public class CAstListener extends CParserBaseListener {
                 CParser.TypeSpecifierContext ts = ds.typeSpecifier();
                 if (ts.structOrUnionSpecifier() != null
                         && ts.structOrUnionSpecifier().memberDeclarationList() != null) {
-                    hasStructOrEnumWithBody = true;
+                    hasStructOrEnumBody = true;
                 }
                 if (ts.enumSpecifier() != null
                         && ts.enumSpecifier().enumeratorList() != null) {
-                    hasStructOrEnumWithBody = true;
+                    hasStructOrEnumBody = true;
                 }
             }
         }
+        return new TypedefShape(isTypedef, hasStructOrEnumBody);
+    }
 
-        // returnType/modifiers를 공통 메서드로 추출
-        String variableType = extractReturnType(ctx.declarationSpecifiers());
-        String modifierStr = extractModifiers(ctx.declarationSpecifiers());
-        // typedef는 modifiers에서 제외 (별도 처리)
-        if (modifierStr != null) {
-            modifierStr = modifierStr.replace("typedef", "").trim();
-            if (modifierStr.isEmpty()) modifierStr = null;
-        }
+    private static String withoutTypedefModifier(String modifiers) {
+        if (modifiers == null) return null;
+        String cleaned = modifiers.replace("typedef", "").trim();
+        return cleaned.isEmpty() ? null : cleaned;
+    }
 
-        // typedef struct { ... } Name; / typedef enum { ... } Name; 패턴:
-        // TYPEDEF 노드를 만들지 않고, 이름만 저장하여 struct/enum 핸들러에서 사용
-        if (isTypedef && hasStructOrEnumWithBody) {
-            if (ctx.initDeclaratorList() != null) {
-                // typedef struct { ... } Name; → initDeclaratorList에서 이름 추출
-                for (CParser.InitDeclaratorContext initDecl : ctx.initDeclaratorList().initDeclarator()) {
-                    pendingTypedefName = extractDeclaratorName(initDecl.declarator());
-                    break;
-                }
-            } else {
-                // ANTLR이 typedef 이름을 typeSpecifier(typedefName)로 파싱한 경우
-                // declarationSpecifiers의 마지막 typedefName에서 이름 추출
-                List<CParser.DeclarationSpecifierContext> specs = ctx.declarationSpecifiers().declarationSpecifier();
-                for (int i = specs.size() - 1; i >= 0; i--) {
-                    CParser.DeclarationSpecifierContext ds = specs.get(i);
-                    if (ds.typeSpecifier() != null && ds.typeSpecifier().typedefName() != null) {
-                        pendingTypedefName = ds.typeSpecifier().typedefName().getText();
-                        break;
-                    }
-                }
-            }
-            if (pendingTypedefName != null) {
-                return; // TYPEDEF 노드 생성 안 함 → struct/enum 핸들러가 처리
-            }
-        }
-
-        // initDeclaratorList에서 이름 추출
+    /** typedef struct/enum 의 별칭 이름 — 선언자 우선, 없으면 마지막 typedefName 스펙에서. */
+    private String locateTypedefName(CParser.DeclarationContext ctx) {
         if (ctx.initDeclaratorList() != null) {
             for (CParser.InitDeclaratorContext initDecl : ctx.initDeclaratorList().initDeclarator()) {
-                String name = extractDeclaratorName(initDecl.declarator());
-                if (name == null) continue;
-
-                // 함수 프로토타입 감지: declarator에 parameterTypeList가 있으면 함수 선언
-                boolean isFunctionPrototype = false;
-                String parameters = null;
-                if (initDecl.declarator() != null && initDecl.declarator().directDeclarator() != null) {
-                    CParser.DirectDeclaratorContext dd = initDecl.declarator().directDeclarator();
-                    if (dd.parameterTypeList() != null && !dd.parameterTypeList().isEmpty()) {
-                        isFunctionPrototype = true;
-                        parameters = ParserUtils.getOriginalText(dd.parameterTypeList(0), h.getTokens());
-                    }
-                }
-
-                // 포인터 확인
-                String actualVariableType = variableType;
-                if (initDecl.declarator() != null && !initDecl.declarator().pointer().isEmpty()) {
-                    actualVariableType = (actualVariableType != null ? actualVariableType : "") + " *";
-                    actualVariableType = actualVariableType.trim();
-                }
-
-                boolean isConst = actualVariableType != null && actualVariableType.contains("const");
-                String nodeType;
-                if (isTypedef) {
-                    nodeType = "TYPEDEF";
-                } else if (isFunctionPrototype && isGlobal) {
-                    continue;
-                } else if (isConst) {
-                    nodeType = "CONSTANT_FIELD";
-                } else if (isGlobal) {
-                    nodeType = "GLOBAL_VARIABLE";
-                } else {
-                    continue;
-                }
-
-                Node node = h.enterStatement(nodeType, name, ctx.getStart().getLine());
-                node.variableType = actualVariableType;
-                if (isFunctionPrototype) {
-                    node.returnType = actualVariableType;
-                    node.parameters = parameters;
-                    node.variableType = null;
-                }
-                if (modifierStr != null) {
-                    node.modifiers = modifierStr;
-                }
-                // 초기화 정보(배열 size + initializer) 통합 → initValue.
-                // C 의 `static char x [LEN +1]` 처럼 = 우변 없이 size 만 있는 경우도
-                // 정의 시 외부 참조(LEN) 가 있으니 initValue 로 박아 reader 가 INIT_BY
-                // 엣지를 만들 수 있게 한다. 호출 emit 은 실제 initializer 가 있을 때만.
-                if (!isFunctionPrototype && !isTypedef) {
-                    String sizeText = extractArraySize(initDecl.declarator(), h.getTokens());
-                    String initText = (initDecl.initializer() != null)
-                            ? ParserUtils.getOriginalText(initDecl.initializer(), h.getTokens())
-                            : "";
-                    String combined = joinNonEmpty(sizeText, initText);
-                    if (!combined.isEmpty()) {
-                        node.initValue = combined;
-                    }
-                    if (!initText.isEmpty()) {
-                        ParserUtils.emitInitializerCall(
-                                node, initText, node.startLine, ctx.getStop().getLine());
-                    }
-                }
-
-                // 즉시 닫기 (declaration은 한 줄)
-                node.endLine = ctx.getStop().getLine();
-                node.comment = ParserUtils.getComment(ctx, h.getTokens());
-                h.getNodeStack().pop();
+                return extractDeclaratorName(initDecl.declarator());
             }
-        } else if (!isTypedef && variableType != null) {
-            // initDeclaratorList 없는 선언 (ex: struct 정의만)은 무시
+            return null;
         }
+        // ANTLR이 typedef 이름을 typeSpecifier(typedefName)로 파싱한 경우
+        List<CParser.DeclarationSpecifierContext> specs = ctx.declarationSpecifiers().declarationSpecifier();
+        for (int i = specs.size() - 1; i >= 0; i--) {
+            CParser.DeclarationSpecifierContext ds = specs.get(i);
+            if (ds.typeSpecifier() != null && ds.typeSpecifier().typedefName() != null) {
+                return ds.typeSpecifier().typedefName().getText();
+            }
+        }
+        return null;
+    }
+
+    /** 선언자 1개를 TYPEDEF/CONSTANT_FIELD/GLOBAL_VARIABLE 노드로 emit (해당 없으면 무시). */
+    private void emitDeclarator(CParser.DeclarationContext ctx, CParser.InitDeclaratorContext initDecl,
+                                boolean isTypedef, boolean isGlobal,
+                                String variableType, String modifierStr) {
+        String name = extractDeclaratorName(initDecl.declarator());
+        if (name == null) return;
+
+        // 함수 프로토타입 감지: declarator에 parameterTypeList가 있으면 함수 선언
+        boolean isFunctionPrototype = false;
+        String parameters = null;
+        if (initDecl.declarator() != null && initDecl.declarator().directDeclarator() != null) {
+            CParser.DirectDeclaratorContext dd = initDecl.declarator().directDeclarator();
+            if (dd.parameterTypeList() != null && !dd.parameterTypeList().isEmpty()) {
+                isFunctionPrototype = true;
+                parameters = ParserUtils.getOriginalText(dd.parameterTypeList(0), h.getTokens());
+            }
+        }
+
+        // 포인터 확인
+        String actualVariableType = variableType;
+        if (initDecl.declarator() != null && !initDecl.declarator().pointer().isEmpty()) {
+            actualVariableType = (actualVariableType != null ? actualVariableType : "") + " *";
+            actualVariableType = actualVariableType.trim();
+        }
+
+        boolean isConst = actualVariableType != null && actualVariableType.contains("const");
+        String nodeType;
+        if (isTypedef) {
+            nodeType = "TYPEDEF";
+        } else if (isFunctionPrototype && isGlobal) {
+            return;
+        } else if (isConst) {
+            nodeType = "CONSTANT_FIELD";
+        } else if (isGlobal) {
+            nodeType = "GLOBAL_VARIABLE";
+        } else {
+            return;
+        }
+
+        Node node = h.enterStatement(nodeType, name, ctx.getStart().getLine());
+        node.variableType = actualVariableType;
+        if (isFunctionPrototype) {
+            node.returnType = actualVariableType;
+            node.parameters = parameters;
+            node.variableType = null;
+        }
+        if (modifierStr != null) {
+            node.modifiers = modifierStr;
+        }
+        // 초기화 정보(배열 size + initializer) 통합 → initValue.
+        // C 의 `static char x [LEN +1]` 처럼 = 우변 없이 size 만 있는 경우도
+        // 정의 시 외부 참조(LEN) 가 있으니 initValue 로 박아 reader 가 INIT_BY
+        // 엣지를 만들 수 있게 한다. 호출 emit 은 실제 initializer 가 있을 때만.
+        if (!isFunctionPrototype && !isTypedef) {
+            String sizeText = extractArraySize(initDecl.declarator(), h.getTokens());
+            String initText = (initDecl.initializer() != null)
+                    ? ParserUtils.getOriginalText(initDecl.initializer(), h.getTokens())
+                    : "";
+            String combined = joinNonEmpty(sizeText, initText);
+            if (!combined.isEmpty()) {
+                node.initValue = combined;
+            }
+            if (!initText.isEmpty()) {
+                ParserUtils.emitInitializerCall(
+                        node, initText, node.startLine, ctx.getStop().getLine());
+            }
+        }
+
+        // 즉시 닫기 (declaration은 한 줄)
+        node.endLine = ctx.getStop().getLine();
+        node.comment = ParserUtils.getComment(ctx, h.getTokens());
+        h.getNodeStack().pop();
     }
 
     // ========================================

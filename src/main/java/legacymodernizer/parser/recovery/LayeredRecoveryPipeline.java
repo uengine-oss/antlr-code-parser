@@ -1,7 +1,5 @@
 package legacymodernizer.parser.recovery;
 
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -27,6 +25,7 @@ import legacymodernizer.parser.recovery.repair.RepairAgentException;
 import legacymodernizer.parser.recovery.quality.QualityDecision;
 import legacymodernizer.parser.recovery.quality.QualityStatus;
 import legacymodernizer.parser.parsing.RawParseResult;
+import legacymodernizer.parser.parsing.SourceTextCodec;
 import legacymodernizer.parser.recovery.diagnostics.ParseDiagnostic;
 import legacymodernizer.parser.recovery.candidates.GrammarGuidedEditEngine;
 import legacymodernizer.parser.recovery.candidates.TokenEditCandidate;
@@ -130,202 +129,216 @@ public final class LayeredRecoveryPipeline {
         java.util.Set<String> failedUnitIds = new java.util.HashSet<>();
 
         for (SourceUnit unit : units) {
-            List<JsonNode> reusable = childrenWithin(firstChildren, unit);
-            boolean intersectsError = firstPass.diagnostics().stream()
-                    .anyMatch(diagnostic -> diagnostic.line() >= unit.startLine()
-                            && diagnostic.line() <= unit.endLine());
-            if (!intersectsError && reusableIsStructurallyPlausible(reusable, unit)) {
-                acceptedChildren.addAll(reusable);
-                reused++;
-                evidence.add(new UnitRecoveryEvidence(unit, QualityStatus.EXACT, true,
-                        reusable.size(), List.of()));
-                continue;
-            }
-
-            String unitText = source.substring(unit.startOffset(), unit.endOffset());
-            RawParseResult attempt = module.parseUnit(
-                    new UnitParseRequest(unitText, sourceFile.getFileName().toString(), relativePath, unit),
-                    tracker);
-            QualityDecision decision = qualityGate.evaluateFirstPass(attempt);
-            List<JsonNode> unitChildren = elements(objectMapper.readTree(attempt.astJson()).path("children"));
-            List<RecoveryAttemptEvidence> attempts = new ArrayList<>();
-            RecoveryAttemptEvidence attemptEvidence = new RecoveryAttemptEvidence(
-                    "MINIMAL_UNIT_EXACT", 1, attempt.sourceSha256(), attempt.diagnostics(),
-                    attempt.antlrRecoveries(), attempt.coverage(), attempt.elapsedMillis(), decision.reasons(),
-                    decision.qualityTuple(), attempt.sourceSha256(), null, null);
-            attempts.add(attemptEvidence);
-            if (decision.accepted() && !unitChildren.isEmpty()) {
-                acceptedChildren.addAll(unitChildren);
-                recovered++;
-                evidence.add(new UnitRecoveryEvidence(unit, QualityStatus.RECOVERED_VALIDATED,
-                        true, unitChildren.size(), List.copyOf(attempts)));
-                continue;
-            }
-
-            boolean acceptedByRule = false;
-            int attemptNumber = 1;
-            List<ContextSourceCandidate> contextSources = new ArrayList<>();
-            contextSources.add(new ContextSourceCandidate(unitText, null, null));
-            for (RecoveryRule rule : ruleRegistry.forModule(module)) {
-                RecoveryRuleProposal proposal = rule.propose(unitText, unit, attempt);
-                if (!proposal.safe() || proposal.ambiguous() || proposal.edits().isEmpty()) continue;
-
-                WorkingCopy workingCopy;
-                try {
-                    workingCopy = WorkingCopy.exact(unitText).applyOriginalEdits(proposal.edits());
-                } catch (IllegalArgumentException invalidRuleEdit) {
-                    continue;
-                }
-                if (!workingCopy.sourceMap().preservesLineCount()) continue;
-
-                RawParseResult candidate = module.parseUnit(
-                        new UnitParseRequest(workingCopy.workingText(), sourceFile.getFileName().toString(),
-                                relativePath, unit), tracker);
-                QualityDecision candidateDecision = qualityGate.evaluateFirstPass(candidate);
-                List<JsonNode> candidateChildren = elements(
-                        objectMapper.readTree(candidate.astJson()).path("children"));
-                attempts.add(new RecoveryAttemptEvidence(
-                        "SAFE_RULE", ++attemptNumber, attempt.sourceSha256(), candidate.diagnostics(),
-                        candidate.antlrRecoveries(), candidate.coverage(), candidate.elapsedMillis(),
-                        candidateDecision.reasons(), candidateDecision.qualityTuple(),
-                        workingCopy.workingSha256(), proposal.ruleId(),
-                        workingCopy.unifiedDiff(relativePath + "#" + unit.unitId()),
-                        workingCopy.edits(), workingCopy.sourceMap().summary()));
-
-                contextSources.add(new ContextSourceCandidate(
-                        workingCopy.workingText(), proposal.ruleId(), workingCopy));
-
-                if (candidateDecision.accepted()
-                        && isStrictlyBetter(candidateDecision, decision)
-                        && !candidateChildren.isEmpty()) {
-                    acceptedChildren.addAll(candidateChildren);
-                    recovered++;
-                    usedSafeRule = true;
-                    evidence.add(new UnitRecoveryEvidence(unit, QualityStatus.RECOVERED_SAFE,
-                            true, candidateChildren.size(), List.copyOf(attempts)));
-                    acceptedByRule = true;
-                    break;
-                }
-            }
-
-            boolean acceptedByContext = false;
-            if (!acceptedByRule) {
-                for (ContextSourceCandidate contextSource : contextSources) {
-                    try {
-                        for (UnitParseContext context : module.reconstructUnitContexts(
-                                source, unit, contextSource.sourceText())) {
-                            RawParseResult candidate = module.parseUnit(
-                                    new UnitParseRequest(context.sourceText(),
-                                            sourceFile.getFileName().toString(), relativePath, unit,
-                                            context.leadingContextLines()), tracker);
-                            QualityDecision candidateDecision = qualityGate.evaluateFirstPass(candidate);
-                            List<JsonNode> candidateChildren = childrenWithin(elements(
-                                    objectMapper.readTree(candidate.astJson()).path("children")), unit);
-                            attempts.add(new RecoveryAttemptEvidence(
-                                    "CONTEXT_RECONSTRUCTION", ++attemptNumber, attempt.sourceSha256(),
-                                    candidate.diagnostics(), candidate.antlrRecoveries(),
-                                    candidate.coverage(), candidate.elapsedMillis(),
-                                    candidateDecision.reasons(), candidateDecision.qualityTuple(),
-                                    candidate.sourceSha256(), contextRuleId(context, contextSource),
-                                    contextSource.workingCopy() == null ? null
-                                            : contextSource.workingCopy().unifiedDiff(
-                                                    relativePath + "#" + unit.unitId()),
-                                    contextSource.workingCopy() == null ? List.of()
-                                            : contextSource.workingCopy().edits(),
-                                    contextSource.workingCopy() == null ? null
-                                            : contextSource.workingCopy().sourceMap().summary()));
-                            if (candidateDecision.accepted()
-                                    && isStrictlyBetter(candidateDecision, decision)
-                                    && !candidateChildren.isEmpty()) {
-                                acceptedChildren.addAll(candidateChildren);
-                                recovered++;
-                                usedSafeRule |= contextSource.ruleId() != null;
-                                evidence.add(new UnitRecoveryEvidence(unit,
-                                        contextSource.ruleId() == null
-                                                ? QualityStatus.RECOVERED_VALIDATED
-                                                : QualityStatus.RECOVERED_SAFE,
-                                        true,
-                                        candidateChildren.size(), List.copyOf(attempts)));
-                                acceptedByContext = true;
-                                break;
-                            }
-                        }
-                    } catch (Exception contextFailure) {
-                        String reason = "CONTEXT_RECONSTRUCTION_FAILED:"
-                                + contextFailure.getClass().getSimpleName();
-                        attempts.add(new RecoveryAttemptEvidence(
-                                "CONTEXT_RECONSTRUCTION", ++attemptNumber,
-                                attempt.sourceSha256(), attempt.diagnostics(),
-                                attempt.antlrRecoveries(), attempt.coverage(), 0,
-                                List.of(reason), decision.qualityTuple(),
-                                attempt.sourceSha256(), reason, null));
-                    }
-                    if (acceptedByContext) break;
-                }
-            }
-
-            // Deterministic grammar-guided repair runs before any Agent call (FR-033) as a
-            // wave loop (FR-050..052): each wave fixes the first root cause on the current
-            // working text, then reparses so cascading diagnostics disappear. Waves accept
-            // strict improvements; the unit is adopted only when a wave ends completely clean.
-            // Two equally good survivors in one wave are an ambiguity → REVIEW_REQUIRED
-            // without consulting the Agent (FR-040).
-            EngineWaveResult engineResult = !acceptedByRule && !acceptedByContext
-                    && !attempt.diagnostics().isEmpty()
-                    ? runEngineWaves(module, unit, unitText, sourceFile, relativePath,
-                            attempt, decision, attempts, attemptNumber, tracker)
-                    : new EngineWaveResult(null, false, attemptNumber);
-            attemptNumber = engineResult.attemptNumber();
-            boolean acceptedByEngine = false;
-            boolean engineAmbiguous = engineResult.ambiguous();
-            if (!acceptedByRule && !acceptedByContext && engineResult.cleanChildren() != null) {
-                acceptedChildren.addAll(engineResult.cleanChildren());
-                recovered++;
-                evidence.add(new UnitRecoveryEvidence(unit, QualityStatus.RECOVERED_VALIDATED,
-                        true, engineResult.cleanChildren().size(), List.copyOf(attempts)));
-                acceptedByEngine = true;
-                tracker.repairProgress("repair_unit_engine_adopted",
-                        "✅ " + displayName(unit) + " 구간의 문법 오류를 자동으로 고쳤어요");
-            }
-
-            boolean acceptedByAgent = false;
-            boolean unitReviewRequired = engineAmbiguous;
-            if (!acceptedByRule && !acceptedByContext && !acceptedByEngine && !engineAmbiguous) {
-                if (!repairAgent.enabled()) {
-                    attempts.add(agentSkippedEvidence(++attemptNumber, attempt, decision,
-                            "REPAIR_AGENT_DISABLED"));
-                    unitReviewRequired = true;
-                } else {
-                    AgentLadderResult ladder = runAgentLadder(module, unit, unitText, sourceFile,
-                            relativePath, fileSha256, attempt, decision, attempts, attemptNumber,
-                            tracker);
-                    attemptNumber = ladder.attemptNumber();
-                    unitReviewRequired |= ladder.reviewRequired();
-                    if (ladder.children() != null) {
-                        acceptedChildren.addAll(ladder.children());
-                        recovered++;
-                        evidence.add(new UnitRecoveryEvidence(unit,
-                                QualityStatus.RECOVERED_VALIDATED, true,
-                                ladder.children().size(), List.copyOf(attempts)));
-                        acceptedByAgent = true;
-                    } else {
-                        unitReviewRequired = true;
-                    }
-                }
-            }
-            if (!acceptedByRule && !acceptedByContext && !acceptedByEngine && !acceptedByAgent) {
+            UnitOutcome outcome = recoverUnit(module, unit, source, firstChildren, firstPass,
+                    sourceFile, relativePath, fileSha256, tracker);
+            acceptedChildren.addAll(outcome.children());
+            evidence.add(outcome.evidence());
+            usedSafeRule |= outcome.usedSafeRule();
+            if (outcome.failed()) {
                 unresolved++;
-                hasReviewRequired |= unitReviewRequired;
+                hasReviewRequired |= outcome.reviewRequired();
                 failedUnitIds.add(unit.unitId());
-                evidence.add(new UnitRecoveryEvidence(unit,
-                        unitReviewRequired ? QualityStatus.REVIEW_REQUIRED : QualityStatus.UNRESOLVED,
-                        false, 0, List.copyOf(attempts)));
-                tracker.repairReviewRequired("repair_unit_review_required",
-                        "⚠️ " + displayName(unit)
-                                + " 구간은 자동 복구가 불확실해 검토 대상으로 남겼어요");
+            } else if (outcome.reusedFirstPass()) {
+                reused++;
+            } else {
+                recovered++;
             }
         }
 
+        return assembleOutcome(units, firstRoot, firstChildren, firstPass, firstDecision,
+                acceptedChildren, evidence, failedUnitIds, reused, recovered, unresolved,
+                usedSafeRule, hasReviewRequired);
+    }
+
+    /** 단위 1개 처리 결과 — 4중 불리언(acceptedByRule/Context/Engine/Agent) 대신 채택 경로를 담는다. */
+    private record UnitOutcome(List<JsonNode> children, UnitRecoveryEvidence evidence,
+                               boolean reusedFirstPass, boolean usedSafeRule,
+                               boolean failed, boolean reviewRequired) {
+
+        static UnitOutcome adopted(List<JsonNode> children, UnitRecoveryEvidence evidence,
+                                   boolean usedSafeRule) {
+            return new UnitOutcome(children, evidence, false, usedSafeRule, false, false);
+        }
+    }
+
+    /** 단위 1개를 재사용→정확 재파싱→안전규칙→컨텍스트→엔진→Agent 순서로 복구한다. */
+    private UnitOutcome recoverUnit(LanguageModule module, SourceUnit unit, String source,
+            List<JsonNode> firstChildren, RawParseResult firstPass, Path sourceFile,
+            String relativePath, String fileSha256, ParseProgressTracker tracker)
+            throws Exception {
+        List<JsonNode> reusable = childrenWithin(firstChildren, unit);
+        boolean intersectsError = firstPass.diagnostics().stream()
+                .anyMatch(diagnostic -> diagnostic.line() >= unit.startLine()
+                        && diagnostic.line() <= unit.endLine());
+        if (!intersectsError && reusableIsStructurallyPlausible(reusable, unit)) {
+            return new UnitOutcome(reusable, new UnitRecoveryEvidence(unit, QualityStatus.EXACT,
+                    true, reusable.size(), List.of()), true, false, false, false);
+        }
+
+        String unitText = source.substring(unit.startOffset(), unit.endOffset());
+        RawParseResult attempt = module.parseUnit(
+                new UnitParseRequest(unitText, sourceFile.getFileName().toString(), relativePath, unit),
+                tracker);
+        QualityDecision decision = qualityGate.evaluateFirstPass(attempt);
+        List<JsonNode> unitChildren = elements(objectMapper.readTree(attempt.astJson()).path("children"));
+        List<RecoveryAttemptEvidence> attempts = new ArrayList<>();
+        attempts.add(new RecoveryAttemptEvidence(
+                "MINIMAL_UNIT_EXACT", 1, attempt.sourceSha256(), attempt.diagnostics(),
+                attempt.antlrRecoveries(), attempt.coverage(), attempt.elapsedMillis(), decision.reasons(),
+                decision.qualityTuple(), attempt.sourceSha256(), null, null));
+        if (decision.accepted() && !unitChildren.isEmpty()) {
+            return UnitOutcome.adopted(unitChildren, new UnitRecoveryEvidence(unit,
+                    QualityStatus.RECOVERED_VALIDATED, true, unitChildren.size(),
+                    List.copyOf(attempts)), false);
+        }
+
+        int attemptNumber = 1;
+        List<ContextSourceCandidate> contextSources = new ArrayList<>();
+        contextSources.add(new ContextSourceCandidate(unitText, null, null));
+        for (RecoveryRule rule : ruleRegistry.forModule(module)) {
+            RecoveryRuleProposal proposal = rule.propose(unitText, unit, attempt);
+            if (!proposal.safe() || proposal.ambiguous() || proposal.edits().isEmpty()) continue;
+
+            WorkingCopy workingCopy;
+            try {
+                workingCopy = WorkingCopy.exact(unitText).applyOriginalEdits(proposal.edits());
+            } catch (IllegalArgumentException invalidRuleEdit) {
+                // 무기록 탈락 금지 — 후보 편집이 적용 불가한 사유를 증적으로 남긴다.
+                attempts.add(new RecoveryAttemptEvidence(
+                        "SAFE_RULE", ++attemptNumber, attempt.sourceSha256(),
+                        attempt.diagnostics(), attempt.antlrRecoveries(), attempt.coverage(), 0,
+                        List.of("INVALID_CANDIDATE_EDIT:" + boundedReason(invalidRuleEdit.getMessage())),
+                        decision.qualityTuple(), attempt.sourceSha256(),
+                        "INVALID_CANDIDATE_EDIT:" + proposal.ruleId(), null));
+                continue;
+            }
+            if (!workingCopy.sourceMap().preservesLineCount()) continue;
+
+            RawParseResult candidate = module.parseUnit(
+                    new UnitParseRequest(workingCopy.workingText(), sourceFile.getFileName().toString(),
+                            relativePath, unit), tracker);
+            QualityDecision candidateDecision = qualityGate.evaluateFirstPass(candidate);
+            List<JsonNode> candidateChildren = elements(
+                    objectMapper.readTree(candidate.astJson()).path("children"));
+            attempts.add(new RecoveryAttemptEvidence(
+                    "SAFE_RULE", ++attemptNumber, attempt.sourceSha256(), candidate.diagnostics(),
+                    candidate.antlrRecoveries(), candidate.coverage(), candidate.elapsedMillis(),
+                    candidateDecision.reasons(), candidateDecision.qualityTuple(),
+                    workingCopy.workingSha256(), proposal.ruleId(),
+                    workingCopy.unifiedDiff(relativePath + "#" + unit.unitId()),
+                    workingCopy.edits(), workingCopy.sourceMap().summary()));
+
+            contextSources.add(new ContextSourceCandidate(
+                    workingCopy.workingText(), proposal.ruleId(), workingCopy));
+
+            if (candidateDecision.accepted()
+                    && isStrictlyBetter(candidateDecision, decision)
+                    && !candidateChildren.isEmpty()) {
+                return UnitOutcome.adopted(candidateChildren, new UnitRecoveryEvidence(unit,
+                        QualityStatus.RECOVERED_SAFE, true, candidateChildren.size(),
+                        List.copyOf(attempts)), true);
+            }
+        }
+
+        for (ContextSourceCandidate contextSource : contextSources) {
+            try {
+                for (UnitParseContext context : module.reconstructUnitContexts(
+                        source, unit, contextSource.sourceText())) {
+                    RawParseResult candidate = module.parseUnit(
+                            new UnitParseRequest(context.sourceText(),
+                                    sourceFile.getFileName().toString(), relativePath, unit,
+                                    context.leadingContextLines()), tracker);
+                    QualityDecision candidateDecision = qualityGate.evaluateFirstPass(candidate);
+                    List<JsonNode> candidateChildren = childrenWithin(elements(
+                            objectMapper.readTree(candidate.astJson()).path("children")), unit);
+                    attempts.add(new RecoveryAttemptEvidence(
+                            "CONTEXT_RECONSTRUCTION", ++attemptNumber, attempt.sourceSha256(),
+                            candidate.diagnostics(), candidate.antlrRecoveries(),
+                            candidate.coverage(), candidate.elapsedMillis(),
+                            candidateDecision.reasons(), candidateDecision.qualityTuple(),
+                            candidate.sourceSha256(), contextRuleId(context, contextSource),
+                            contextSource.workingCopy() == null ? null
+                                    : contextSource.workingCopy().unifiedDiff(
+                                            relativePath + "#" + unit.unitId()),
+                            contextSource.workingCopy() == null ? List.of()
+                                    : contextSource.workingCopy().edits(),
+                            contextSource.workingCopy() == null ? null
+                                    : contextSource.workingCopy().sourceMap().summary()));
+                    if (candidateDecision.accepted()
+                            && isStrictlyBetter(candidateDecision, decision)
+                            && !candidateChildren.isEmpty()) {
+                        return UnitOutcome.adopted(candidateChildren, new UnitRecoveryEvidence(unit,
+                                contextSource.ruleId() == null
+                                        ? QualityStatus.RECOVERED_VALIDATED
+                                        : QualityStatus.RECOVERED_SAFE,
+                                true, candidateChildren.size(), List.copyOf(attempts)),
+                                contextSource.ruleId() != null);
+                    }
+                }
+            } catch (Exception contextFailure) {
+                String reason = "CONTEXT_RECONSTRUCTION_FAILED:"
+                        + contextFailure.getClass().getSimpleName();
+                attempts.add(new RecoveryAttemptEvidence(
+                        "CONTEXT_RECONSTRUCTION", ++attemptNumber,
+                        attempt.sourceSha256(), attempt.diagnostics(),
+                        attempt.antlrRecoveries(), attempt.coverage(), 0,
+                        List.of(reason), decision.qualityTuple(),
+                        attempt.sourceSha256(), reason, null));
+            }
+        }
+
+        // Deterministic grammar-guided repair runs before any Agent call (FR-033) as a
+        // wave loop (FR-050..052): each wave fixes the first root cause on the current
+        // working text, then reparses so cascading diagnostics disappear. Waves accept
+        // strict improvements; the unit is adopted only when a wave ends completely clean.
+        // Two equally good survivors in one wave are an ambiguity → REVIEW_REQUIRED
+        // without consulting the Agent (FR-040).
+        EngineWaveResult engineResult = !attempt.diagnostics().isEmpty()
+                ? runEngineWaves(module, unit, unitText, sourceFile, relativePath,
+                        attempt, decision, attempts, attemptNumber, tracker)
+                : new EngineWaveResult(null, false, attemptNumber);
+        attemptNumber = engineResult.attemptNumber();
+        if (engineResult.cleanChildren() != null) {
+            tracker.repairProgress("repair_unit_engine_adopted",
+                    "✅ " + displayName(unit) + " 구간의 문법 오류를 자동으로 고쳤어요");
+            return UnitOutcome.adopted(engineResult.cleanChildren(), new UnitRecoveryEvidence(unit,
+                    QualityStatus.RECOVERED_VALIDATED, true, engineResult.cleanChildren().size(),
+                    List.copyOf(attempts)), false);
+        }
+
+        boolean unitReviewRequired = engineResult.ambiguous();
+        if (!engineResult.ambiguous()) {
+            if (!repairAgent.enabled()) {
+                attempts.add(agentSkippedEvidence(++attemptNumber, attempt, decision,
+                        "REPAIR_AGENT_DISABLED"));
+                unitReviewRequired = true;
+            } else {
+                AgentLadderResult ladder = runAgentLadder(module, unit, unitText, sourceFile,
+                        relativePath, fileSha256, attempt, decision, attempts, attemptNumber,
+                        tracker);
+                unitReviewRequired |= ladder.reviewRequired();
+                if (ladder.children() != null) {
+                    return UnitOutcome.adopted(ladder.children(), new UnitRecoveryEvidence(unit,
+                            QualityStatus.RECOVERED_VALIDATED, true, ladder.children().size(),
+                            List.copyOf(attempts)), false);
+                }
+                unitReviewRequired = true;
+            }
+        }
+        tracker.repairReviewRequired("repair_unit_review_required",
+                "⚠️ " + displayName(unit)
+                        + " 구간은 자동 복구가 불확실해 검토 대상으로 남겼어요");
+        return new UnitOutcome(List.of(), new UnitRecoveryEvidence(unit,
+                unitReviewRequired ? QualityStatus.REVIEW_REQUIRED : QualityStatus.UNRESOLVED,
+                false, 0, List.copyOf(attempts)), false, false, true, unitReviewRequired);
+    }
+
+    /** 단위별 결과를 최종 AST·품질 판정으로 합성한다 — 손실 가드·세탁 방지 로직 포함(이동 전과 동일). */
+    private RecoveryOutcome assembleOutcome(List<SourceUnit> units, ObjectNode firstRoot,
+            List<JsonNode> firstChildren, RawParseResult firstPass, QualityDecision firstDecision,
+            List<JsonNode> acceptedChildren, List<UnitRecoveryEvidence> evidence,
+            java.util.Set<String> failedUnitIds, int reused, int recovered, int unresolved,
+            boolean usedSafeRule, boolean hasReviewRequired) throws Exception {
         // Shadow of every failed unit: from its start to the next unit's start. A defect at
         // column 0 can shrink the locator's unit boundary AND make ANTLR error recovery
         // scatter the unit's real body as top-level orphans just past that boundary — those
@@ -699,59 +712,14 @@ public final class LayeredRecoveryPipeline {
                     + first.code() + ":" + first.offendingToken();
             if (!seenFingerprints.add(fingerprint)) break;
 
-            List<TokenEditCandidate> generated = editEngine.generate(
-                    workingText, unit.startLine(), first, module.repairProfile());
-            RawParseResult bestParse = null;
-            QualityDecision bestDecision = null;
-            String bestWorkingText = null;
-            WorkingCopy bestCopy = null;
-            int survivors = 0;
-            for (TokenEditCandidate candidate : generated) {
-                if (!candidate.autoAdoptable()) continue;
-                WorkingCopy workingCopy;
-                try {
-                    workingCopy = WorkingCopy.exact(workingText)
-                            .applyOriginalEdits(List.of(candidate.toTextEdit()));
-                } catch (IllegalArgumentException invalidCandidate) {
-                    continue;
-                }
-                if (!workingCopy.sourceMap().preservesLineCount()
-                        || !indentationSafe(module.sliceSyntax(), workingCopy)) {
-                    continue;
-                }
-                RawParseResult candidateParse = module.parseUnit(
-                        new UnitParseRequest(workingCopy.workingText(),
-                                sourceFile.getFileName().toString(), relativePath, unit),
-                        tracker);
-                QualityDecision candidateDecision = qualityGate.evaluateFirstPass(candidateParse);
-                attempts.add(new RecoveryAttemptEvidence(
-                        "GRAMMAR_GUIDED", ++attemptNumber, workingParse.sourceSha256(),
-                        candidateParse.diagnostics(), candidateParse.antlrRecoveries(),
-                        candidateParse.coverage(), candidateParse.elapsedMillis(),
-                        candidateDecision.reasons(), candidateDecision.qualityTuple(),
-                        workingCopy.workingSha256(), candidate.provenance(),
-                        workingCopy.unifiedDiff(relativePath + "#" + unit.unitId()),
-                        workingCopy.edits(), workingCopy.sourceMap().summary()));
-                boolean candidateClean = candidateParse.diagnostics().isEmpty()
-                        && candidateParse.antlrRecoveries() == 0
-                        && candidateDecision.accepted();
-                // "no viable alternative" reports a single diagnostic per parse, so count
-                // alone cannot show progress — a strictly later first error does (CPCT+
-                // parses-further principle, plan D1). Line counts are preserved by every
-                // candidate, so (line, column) stays comparable across texts.
-                boolean strictImprovement = candidateClean
-                        || candidateParse.diagnostics().size() < workingParse.diagnostics().size()
-                        || (!candidateParse.diagnostics().isEmpty()
-                                && laterThan(candidateParse.diagnostics().get(0), first));
-                if (!strictImprovement) continue;
-                survivors++;
-                if (bestParse == null || betterParse(candidateParse, bestParse)) {
-                    bestParse = candidateParse;
-                    bestDecision = candidateDecision;
-                    bestWorkingText = workingCopy.workingText();
-                    bestCopy = workingCopy;
-                }
-            }
+            WaveSelection selection = selectBestCandidate(module, unit, workingText,
+                    workingParse, first, sourceFile, relativePath, attempts, attemptNumber,
+                    tracker);
+            attemptNumber = selection.attemptNumber();
+            RawParseResult bestParse = selection.parse();
+            QualityDecision bestDecision = selection.decision();
+            WorkingCopy bestCopy = selection.copy();
+            int survivors = selection.survivors();
             boolean cleanBest = bestParse != null && bestParse.diagnostics().isEmpty()
                     && bestParse.antlrRecoveries() == 0 && bestDecision.accepted();
             if (survivors > 1 && !cleanBest) {
@@ -765,7 +733,7 @@ public final class LayeredRecoveryPipeline {
                 return new EngineWaveResult(null, true, attemptNumber);
             }
             if (bestParse == null) break;
-            workingText = bestWorkingText;
+            workingText = bestCopy.workingText();
             workingParse = bestParse;
             workingDecision = bestDecision;
             adoptedEdits.addAll(bestCopy.edits());
@@ -781,6 +749,78 @@ public final class LayeredRecoveryPipeline {
         List<JsonNode> children = elements(
                 objectMapper.readTree(workingParse.astJson()).path("children"));
         return new EngineWaveResult(children.isEmpty() ? null : children, false, attemptNumber);
+    }
+
+    /** 한 wave 에서 살아남은 최선 후보 — parse 가 null 이면 채택 가능한 개선이 없었다. */
+    private record WaveSelection(RawParseResult parse, QualityDecision decision,
+                                 WorkingCopy copy, int survivors, int attemptNumber) {
+    }
+
+    /** 후보 편집을 생성·검증·재파싱해 strict 개선 생존자 중 최선을 고른다. */
+    private WaveSelection selectBestCandidate(LanguageModule module, SourceUnit unit,
+            String workingText, RawParseResult workingParse, ParseDiagnostic first,
+            Path sourceFile, String relativePath, List<RecoveryAttemptEvidence> attempts,
+            int attemptNumber, ParseProgressTracker tracker) throws Exception {
+        List<TokenEditCandidate> generated = editEngine.generate(
+                workingText, unit.startLine(), first, module.repairProfile());
+        RawParseResult bestParse = null;
+        QualityDecision bestDecision = null;
+        WorkingCopy bestCopy = null;
+        int survivors = 0;
+        for (TokenEditCandidate candidate : generated) {
+            if (!candidate.autoAdoptable()) continue;
+            WorkingCopy workingCopy;
+            try {
+                workingCopy = WorkingCopy.exact(workingText)
+                        .applyOriginalEdits(List.of(candidate.toTextEdit()));
+            } catch (IllegalArgumentException invalidCandidate) {
+                // 무기록 탈락 금지 — 후보 편집이 적용 불가한 사유를 증적으로 남긴다.
+                attempts.add(new RecoveryAttemptEvidence(
+                        "GRAMMAR_GUIDED", ++attemptNumber, workingParse.sourceSha256(),
+                        workingParse.diagnostics(), workingParse.antlrRecoveries(),
+                        workingParse.coverage(), 0,
+                        List.of("INVALID_CANDIDATE_EDIT:" + boundedReason(invalidCandidate.getMessage())),
+                        List.of(), workingParse.sourceSha256(),
+                        "INVALID_CANDIDATE_EDIT:" + candidate.provenance(), null));
+                continue;
+            }
+            if (!workingCopy.sourceMap().preservesLineCount()
+                    || !indentationSafe(module.sliceSyntax(), workingCopy)) {
+                continue;
+            }
+            RawParseResult candidateParse = module.parseUnit(
+                    new UnitParseRequest(workingCopy.workingText(),
+                            sourceFile.getFileName().toString(), relativePath, unit),
+                    tracker);
+            QualityDecision candidateDecision = qualityGate.evaluateFirstPass(candidateParse);
+            attempts.add(new RecoveryAttemptEvidence(
+                    "GRAMMAR_GUIDED", ++attemptNumber, workingParse.sourceSha256(),
+                    candidateParse.diagnostics(), candidateParse.antlrRecoveries(),
+                    candidateParse.coverage(), candidateParse.elapsedMillis(),
+                    candidateDecision.reasons(), candidateDecision.qualityTuple(),
+                    workingCopy.workingSha256(), candidate.provenance(),
+                    workingCopy.unifiedDiff(relativePath + "#" + unit.unitId()),
+                    workingCopy.edits(), workingCopy.sourceMap().summary()));
+            boolean candidateClean = candidateParse.diagnostics().isEmpty()
+                    && candidateParse.antlrRecoveries() == 0
+                    && candidateDecision.accepted();
+            // "no viable alternative" reports a single diagnostic per parse, so count
+            // alone cannot show progress — a strictly later first error does (CPCT+
+            // parses-further principle, plan D1). Line counts are preserved by every
+            // candidate, so (line, column) stays comparable across texts.
+            boolean strictImprovement = candidateClean
+                    || candidateParse.diagnostics().size() < workingParse.diagnostics().size()
+                    || (!candidateParse.diagnostics().isEmpty()
+                            && laterThan(candidateParse.diagnostics().get(0), first));
+            if (!strictImprovement) continue;
+            survivors++;
+            if (bestParse == null || betterParse(candidateParse, bestParse)) {
+                bestParse = candidateParse;
+                bestDecision = candidateDecision;
+                bestCopy = workingCopy;
+            }
+        }
+        return new WaveSelection(bestParse, bestDecision, bestCopy, survivors, attemptNumber);
     }
 
     private static final java.util.regex.Pattern EDIT_TOKEN = SourceTokens.PATTERN;
@@ -973,14 +1013,6 @@ public final class LayeredRecoveryPipeline {
     }
 
     private static String readText(Path path) throws Exception {
-        byte[] bytes = Files.readAllBytes(path);
-        for (String charset : List.of("UTF-8", "EUC-KR", "MS949")) {
-            try {
-                return Charset.forName(charset).newDecoder().decode(java.nio.ByteBuffer.wrap(bytes)).toString();
-            } catch (Exception ignored) {
-                // Try the next supported legacy encoding.
-            }
-        }
-        return new String(bytes, StandardCharsets.UTF_8);
+        return SourceTextCodec.decode(Files.readAllBytes(path)).text();
     }
 }

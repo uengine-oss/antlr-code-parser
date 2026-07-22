@@ -7,6 +7,7 @@ import java.util.function.Predicate;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 
+import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -16,7 +17,8 @@ import legacymodernizer.parser.service.ParseProgressTracker;
  * Java 파일 → AST 변환 리스너.
  * 패키지/import/클래스/인터페이스/메서드/필드/변수/호출 구조를 추출한다.
  */
-public class JavaAstListener extends Java20ParserBaseListener {
+public class JavaAstListener extends Java20ParserBaseListener
+        implements AntlrParseHarness.AstListener {
 
     private final ListenerHelper h;
 
@@ -128,9 +130,7 @@ public class JavaAstListener extends Java20ParserBaseListener {
             if (ctx != null) {
                 node.comment = ParserUtils.getLeadingComment(ctx, h.getTokens());
             }
-            // exitStatement 호출 (code, endLine 설정)
             h.exitStatement("CLASS", ctx.getStop().getLine(), ctx);
-            // 모든 자식에 moduleName 전파
             ListenerHelper.propagateModuleName(node, node.name);
         } else {
             h.exitStatement("CLASS", ctx.getStop().getLine(), ctx);
@@ -162,9 +162,7 @@ public class JavaAstListener extends Java20ParserBaseListener {
             if (ctx != null) {
                 node.comment = ParserUtils.getLeadingComment(ctx, h.getTokens());
             }
-            // exitStatement 호출 (code, endLine 설정)
             h.exitStatement("INTERFACE", ctx.getStop().getLine(), ctx);
-            // 모든 자식에 moduleName 전파
             ListenerHelper.propagateModuleName(node, node.name);
         } else {
             h.exitStatement("INTERFACE", ctx.getStop().getLine(), ctx);

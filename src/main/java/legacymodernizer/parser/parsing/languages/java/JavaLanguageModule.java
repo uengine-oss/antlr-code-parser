@@ -1,34 +1,25 @@
 package legacymodernizer.parser.parsing.languages.java;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.Optional;
 
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.springframework.stereotype.Component;
 
 import legacymodernizer.parser.antlr.java.Java20Lexer;
 import legacymodernizer.parser.antlr.java.Java20Parser;
 import legacymodernizer.parser.antlr.java.JavaAstListener;
-import legacymodernizer.parser.recovery.diagnostics.CollectingAntlrErrorListener;
-import legacymodernizer.parser.recovery.diagnostics.CountingErrorStrategy;
-import legacymodernizer.parser.recovery.diagnostics.DiagnosticPhase;
-import legacymodernizer.parser.recovery.diagnostics.ParseDiagnostic;
 import legacymodernizer.parser.parsing.RawParseResult;
 import legacymodernizer.parser.parsing.languages.AntlrLanguageModuleSupport;
 import legacymodernizer.parser.recovery.boundaries.SourceUnit;
 import legacymodernizer.parser.recovery.boundaries.UnitParseRequest;
 import legacymodernizer.parser.recovery.boundaries.UnitParseContext;
 import legacymodernizer.parser.recovery.quality.DeclarationCoverageCounter;
-import legacymodernizer.parser.parsing.AstCoordinates;
+import legacymodernizer.parser.parsing.AntlrParseHarness;
+import legacymodernizer.parser.parsing.SourceTextCodec;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.service.ParseProgressTracker;
@@ -48,7 +39,7 @@ public class JavaLanguageModule extends AntlrLanguageModuleSupport {
     public RawParseResult parseFile(File file, ParseProgressTracker tracker) throws Exception {
         log.debug("[Java] parsing: {}", file.getName());
         byte[] bytes = Files.readAllBytes(file.toPath());
-        return parseContent(bytes, new String(bytes, StandardCharsets.UTF_8), file.getName(),
+        return parseContent(bytes, SourceTextCodec.decode(bytes).text(), file.getName(),
                 computeRelativePath(file), 0, tracker);
     }
 
@@ -63,43 +54,16 @@ public class JavaLanguageModule extends AntlrLanguageModuleSupport {
                                         String filePath, int lineOffset,
                                         ParseProgressTracker tracker) throws Exception {
         long started = System.nanoTime();
-        try (ByteArrayInputStream input = new ByteArrayInputStream(sourceBytes)) {
-            CharStream chars = CharStreams.fromStream(input);
-            Java20Lexer lexer = new Java20Lexer(chars);
-            CollectingAntlrErrorListener lexerErrors = new CollectingAntlrErrorListener(
-                    DiagnosticPhase.LEXER, source);
-            lexer.removeErrorListeners();
-            lexer.addErrorListener(lexerErrors);
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            Java20Parser parser = new Java20Parser(tokens);
-            CollectingAntlrErrorListener parserErrors = new CollectingAntlrErrorListener(
-                    DiagnosticPhase.PARSER, source);
-            CountingErrorStrategy errorStrategy = new CountingErrorStrategy();
-            parser.removeErrorListeners();
-            parser.addErrorListener(parserErrors);
-            parser.setErrorHandler(errorStrategy);
-
-            Java20Parser.Start_Context tree = parser.start_();
-            JavaAstListener listener = new JavaAstListener(tokens, tracker);
-            listener.setFileInfo(fileName, filePath);
-            new ParseTreeWalker().walk(listener, tree);
-            AstCoordinates.rebaseChildren(listener.getRoot(), lineOffset);
-
-            String astJson = listener.getRoot().toJson();
-            List<ParseDiagnostic> diagnostics = new ArrayList<>();
-            lexerErrors.diagnostics().stream().map(diagnostic -> AstCoordinates.rebase(diagnostic, lineOffset))
-                    .forEach(diagnostics::add);
-            parserErrors.diagnostics().stream().map(diagnostic -> AstCoordinates.rebase(diagnostic, lineOffset))
-                    .forEach(diagnostics::add);
-            var coverage = DeclarationCoverageCounter.count(parser, tree,
-                    Set.of("normalClassDeclaration", "normalInterfaceDeclaration",
-                            "methodDeclaration", "interfaceMethodDeclaration"),
-                    JavaLanguageModule::isEmittedDeclaration,
-                    astJson, Set.of("CLASS", "INTERFACE", "METHOD"));
-            return new RawParseResult("java", "Java20", "start_", Hashes.sha256(sourceBytes),
-                    astJson, diagnostics, errorStrategy.recoveryCount(), coverage,
-                    (System.nanoTime() - started) / 1_000_000L);
-        }
+        var run = AntlrParseHarness.run(source, fileName, filePath, lineOffset, tracker,
+                Java20Lexer::new, Java20Parser::new, Java20Parser::start_, JavaAstListener::new);
+        var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
+                Set.of("normalClassDeclaration", "normalInterfaceDeclaration",
+                        "methodDeclaration", "interfaceMethodDeclaration"),
+                JavaLanguageModule::isEmittedDeclaration,
+                run.astJson(), Set.of("CLASS", "INTERFACE", "METHOD"));
+        return new RawParseResult("java", "Java20", "start_", Hashes.sha256(sourceBytes),
+                run.astJson(), run.diagnostics(), run.recoveries(), coverage,
+                (System.nanoTime() - started) / 1_000_000L);
     }
 
     @Override

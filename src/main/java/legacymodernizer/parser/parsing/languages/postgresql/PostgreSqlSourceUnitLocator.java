@@ -8,6 +8,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import legacymodernizer.parser.recovery.boundaries.SourceUnit;
+import legacymodernizer.parser.recovery.boundaries.UnitBoundaries;
 import legacymodernizer.parser.recovery.boundaries.UnitKind;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 
@@ -31,7 +32,7 @@ public final class PostgreSqlSourceUnitLocator {
             Matcher name = NAME.matcher(text.substring(matcher.start(), headerEnd));
             starts.add(new Start(matcher.start(), kind, name.find() ? name.group(1) : null));
         }
-        if (starts.isEmpty()) return List.of(fileUnit(text));
+        if (starts.isEmpty()) return List.of(UnitBoundaries.fileUnit("postgresql", text));
 
         List<SourceUnit> units = new ArrayList<>();
         for (int index = 0; index < starts.size(); index++) {
@@ -45,7 +46,8 @@ public final class PostgreSqlSourceUnitLocator {
                     + "\n" + text.substring(start.offset(), end);
             units.add(new SourceUnit(Hashes.sha256(identity.getBytes(StandardCharsets.UTF_8)),
                     start.kind(), start.name(), null, start.offset(), end,
-                    lineOf(text, start.offset()), lineOf(text, Math.max(start.offset(), end - 1)),
+                    UnitBoundaries.lineOf(text, start.offset()),
+                    UnitBoundaries.lineOf(text, Math.max(start.offset(), end - 1)),
                     index, exact ? "EXACT" : "CONSERVATIVE"));
         }
         return List.copyOf(units);
@@ -115,19 +117,6 @@ public final class PostgreSqlSourceUnitLocator {
             }
         }
         return new String(output);
-    }
-
-    private static SourceUnit fileUnit(String source) {
-        String identity = "postgresql\nFILE\n" + source;
-        return new SourceUnit(Hashes.sha256(identity.getBytes(StandardCharsets.UTF_8)), UnitKind.FILE,
-                null, null, 0, source.length(), source.isEmpty() ? 0 : 1,
-                source.isEmpty() ? 0 : lineOf(source, source.length() - 1), 0, "CONSERVATIVE");
-    }
-
-    private static int lineOf(String source, int offset) {
-        int line = 1;
-        for (int index = 0; index < Math.min(offset, source.length()); index++) if (source.charAt(index) == '\n') line++;
-        return line;
     }
 
     private enum State { NORMAL, LINE_COMMENT, BLOCK_COMMENT, SINGLE_QUOTE, DOUBLE_QUOTE, DOLLAR_QUOTE }

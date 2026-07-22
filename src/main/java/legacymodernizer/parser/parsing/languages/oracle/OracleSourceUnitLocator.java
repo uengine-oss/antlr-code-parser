@@ -10,6 +10,7 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 import legacymodernizer.parser.recovery.boundaries.SourceUnit;
+import legacymodernizer.parser.recovery.boundaries.UnitBoundaries;
 import legacymodernizer.parser.recovery.boundaries.UnitKind;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 
@@ -44,7 +45,7 @@ public final class OracleSourceUnitLocator {
             declarations.add(new DeclarationStart(declarationMatcher.start(), kind, name));
         }
         if (declarations.isEmpty()) {
-            return List.of(fileUnit(text));
+            return List.of(UnitBoundaries.fileUnit("oracle", text));
         }
 
         List<Integer> terminatorEnds = new ArrayList<>();
@@ -72,30 +73,16 @@ public final class OracleSourceUnitLocator {
                     Hashes.sha256(identity.getBytes(StandardCharsets.UTF_8)),
                     declaration.kind(), declaration.name(), null,
                     declaration.offset(), end,
-                    lineOf(text, declaration.offset()), lineOf(text, Math.max(declaration.offset(), end - 1)),
+                    UnitBoundaries.lineOf(text, declaration.offset()),
+                    UnitBoundaries.lineOf(text, Math.max(declaration.offset(), end - 1)),
                     index, exact ? "EXACT" : "CONSERVATIVE"));
         }
         return List.copyOf(units);
     }
 
-    private static SourceUnit fileUnit(String text) {
-        String identity = "oracle\nFILE\n" + text;
-        return new SourceUnit(Hashes.sha256(identity.getBytes(StandardCharsets.UTF_8)),
-                UnitKind.FILE, null, null, 0, text.length(), text.isEmpty() ? 0 : 1,
-                text.isEmpty() ? 0 : lineOf(text, Math.max(0, text.length() - 1)), 0, "CONSERVATIVE");
-    }
-
     private static int lineEnd(String text, int offset) {
         int newline = text.indexOf('\n', offset);
         return newline < 0 ? text.length() : newline;
-    }
-
-    private static int lineOf(String text, int offset) {
-        int line = 1;
-        for (int index = 0; index < Math.min(offset, text.length()); index++) {
-            if (text.charAt(index) == '\n') line++;
-        }
-        return line;
     }
 
     public static String sanitizeForStructure(String source) {

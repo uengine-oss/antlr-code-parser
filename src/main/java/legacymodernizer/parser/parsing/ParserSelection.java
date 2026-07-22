@@ -1,11 +1,8 @@
 package legacymodernizer.parser.parsing;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -26,32 +23,25 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class ParserSelection {
 
-    private final Map<String, List<LanguageModule>> modulesByExtension = new LinkedHashMap<>();
-    private final Map<String, LanguageModule> modulesByLanguage = new LinkedHashMap<>();
+    // 모듈 색인(id 중복 검사·extension→modules 맵)의 단일 진실은 registry — 여기서는 소비만 한다.
+    private final LanguageModuleRegistry registry;
     private final Map<String, String> familyByType = new LinkedHashMap<>();
 
     public ParserSelection(LanguageModuleRegistry registry) {
+        this.registry = registry;
         for (LanguageModule module : registry.modules()) {
-            String type = module.languageId().toLowerCase(Locale.ROOT);
-            if (modulesByLanguage.put(type, module) != null) {
-                throw new IllegalStateException("Duplicate language module: " + type);
-            }
-            familyByType.put(type, module.languageFamily());
-            for (String extension : module.parseExtensions()) {
-                modulesByExtension.computeIfAbsent(extension.toLowerCase(Locale.ROOT), ignored -> new ArrayList<>())
-                        .add(module);
-            }
+            familyByType.put(module.languageId().toLowerCase(Locale.ROOT), module.languageFamily());
         }
         log.info("Language modules initialized: extensions={} targets={}",
-                modulesByExtension.keySet(), modulesByLanguage.keySet());
+                registry.supportedExtensions(), familyByType.keySet());
     }
 
     public Set<String> supportedExtensions() {
-        return Set.copyOf(modulesByExtension.keySet());
+        return registry.supportedExtensions();
     }
 
     public List<LanguageModule> modules() {
-        return List.copyOf(modulesByLanguage.values());
+        return registry.modules();
     }
 
     public record DetectionResult(
@@ -76,8 +66,8 @@ public class ParserSelection {
         Map<String, Integer> countByType = new LinkedHashMap<>();
         for (Path file : files) {
             String extension = extensionOf(file);
-            List<LanguageModule> candidates = modulesByExtension.get(extension);
-            if (candidates == null || candidates.isEmpty()) continue;
+            List<LanguageModule> candidates = registry.candidates(extension);
+            if (candidates.isEmpty()) continue;
             LanguageModule selected = candidates.size() == 1
                     ? candidates.get(0) : resolveAmbiguous(candidates, file);
             if (selected == null) continue;
@@ -149,14 +139,10 @@ public class ParserSelection {
 
     private static String readText(Path file) {
         try {
-            return Files.readString(file, StandardCharsets.UTF_8);
-        } catch (Exception first) {
-            try {
-                return Files.readString(file, Charset.forName("EUC-KR"));
-            } catch (Exception second) {
-                log.warn("Cannot read shared-extension candidate: {}", file);
-                return "";
-            }
+            return SourceTextCodec.decode(Files.readAllBytes(file)).text();
+        } catch (Exception readFailure) {
+            log.warn("Cannot read shared-extension candidate: {}", file);
+            return "";
         }
     }
 }

@@ -32,7 +32,8 @@ public abstract class AntlrLanguageModuleSupport implements LanguageModule {
             } else {
                 return filePath.toString().replace('\\', '/');
             }
-        } catch (Exception e) {
+        } catch (IllegalArgumentException cannotRelativize) {
+            // 서로 다른 루트(드라이브) 경로는 relativize 불가 — 파일명으로 폴백.
             return fileName;
         }
     }

@@ -25,6 +25,7 @@ import legacymodernizer.parser.recovery.quality.QualityDecision;
 import legacymodernizer.parser.recovery.quality.QualityStatus;
 import legacymodernizer.parser.parsing.RawParseResult;
 import legacymodernizer.parser.recovery.quality.ParseQualityGate;
+import legacymodernizer.parser.recovery.evidence.RecoveryOutcome;
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.intake.SourceIntakeClassifier;
 import legacymodernizer.parser.service.ParseProgressTracker;
@@ -87,7 +88,9 @@ class ParseDiagnosticsQualityTest {
         QualityDecision decision = new ParseQualityGate().evaluateFirstPass(parseAttempt);
 
         Path sidecar = new ParseDiagnosticsWriter(storage).write(
-                broken, storage.sourceDir(), parseAttempt, decision);
+                broken, storage.sourceDir(), parseAttempt,
+                new RecoveryOutcome(null, decision, java.util.List.of(), 0, 0, 1),
+                parseAttempt.elapsedMillis());
         String json = Files.readString(sidecar);
         assertTrue(sidecar.startsWith(storage.diagnosticsDir()));
         assertFalse(sidecar.startsWith(storage.analysisDir()));

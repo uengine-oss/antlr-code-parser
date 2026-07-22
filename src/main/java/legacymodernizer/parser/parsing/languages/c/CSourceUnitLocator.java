@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import legacymodernizer.parser.recovery.boundaries.SourceUnit;
+import legacymodernizer.parser.recovery.boundaries.UnitBoundaries;
 import legacymodernizer.parser.recovery.boundaries.UnitKind;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 import legacymodernizer.parser.parsing.boundaries.CStyleStructuralMasker;
@@ -35,8 +36,9 @@ public final class CSourceUnitLocator {
                         String identity = "c\nFUNCTION\n" + start + "\n" + end + "\n"
                                 + text.substring(start, end);
                         units.add(new SourceUnit(Hashes.sha256(identity.getBytes(StandardCharsets.UTF_8)),
-                                UnitKind.FUNCTION, name, null, start, end, lineOf(text, start),
-                                lineOf(text, Math.max(start, end - 1)), ordinal++,
+                                UnitKind.FUNCTION, name, null, start, end,
+                                UnitBoundaries.lineOf(text, start),
+                                UnitBoundaries.lineOf(text, Math.max(start, end - 1)), ordinal++,
                                 exact ? "EXACT" : "CONSERVATIVE"));
                         index = closeBrace;
                         continue;
@@ -49,7 +51,7 @@ public final class CSourceUnitLocator {
                 braceDepth = Math.max(0, braceDepth - 1);
             }
         }
-        return units.isEmpty() ? List.of(fileUnit(text)) : List.copyOf(units);
+        return units.isEmpty() ? List.of(UnitBoundaries.fileUnit("c", text)) : List.copyOf(units);
     }
 
     private static int declarationStart(String source, int nameStart) {
@@ -95,16 +97,4 @@ public final class CSourceUnitLocator {
         return start;
     }
 
-    private static SourceUnit fileUnit(String source) {
-        String identity = "c\nFILE\n" + source;
-        return new SourceUnit(Hashes.sha256(identity.getBytes(StandardCharsets.UTF_8)),
-                UnitKind.FILE, null, null, 0, source.length(), source.isEmpty() ? 0 : 1,
-                source.isEmpty() ? 0 : lineOf(source, source.length() - 1), 0, "CONSERVATIVE");
-    }
-
-    private static int lineOf(String source, int offset) {
-        int line = 1;
-        for (int index = 0; index < Math.min(offset, source.length()); index++) if (source.charAt(index) == '\n') line++;
-        return line;
-    }
 }

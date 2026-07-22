@@ -1,6 +1,5 @@
 package legacymodernizer.parser.parsing;
 
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -122,15 +121,7 @@ public class ParseOrchestrator {
 
         int total = modulesByFile.size();
         AtomicInteger index = new AtomicInteger(0);
-        AtomicInteger successCount = new AtomicInteger(0);
-        AtomicInteger exactCount = new AtomicInteger(0);
-        AtomicInteger recoveredCount = new AtomicInteger(0);
-        AtomicInteger partialCount = new AtomicInteger(0);
-        AtomicInteger reviewRequiredCount = new AtomicInteger(0);
-        AtomicInteger unresolvedCount = new AtomicInteger(0);
-        AtomicInteger failedCount = new AtomicInteger(0);
-        AtomicInteger errorCount = new AtomicInteger(0);
-        AtomicInteger totalLines = new AtomicInteger(0);
+        RunCounters counters = new RunCounters();
 
         eventSink.emit(ParseStreamEvent.builder("message", "parsing_started")
                 .content(String.format("🚀 파싱을 시작합니다 — 코드 파일 %,d개의 구조를 차례로 읽을게요", total))
@@ -141,9 +132,7 @@ public class ParseOrchestrator {
 
         for (Map.Entry<Path, LanguageModule> entry : modulesByFile.entrySet()) {
             parseSingleFile(entry.getKey(), entry.getValue(), sourceBase, analysisBase, eventSink,
-                    index.incrementAndGet(), total, successCount, exactCount, recoveredCount,
-                    partialCount, reviewRequiredCount, unresolvedCount, failedCount,
-                    errorCount, totalLines);
+                    index.incrementAndGet(), total, counters);
         }
 
         try {
@@ -161,40 +150,47 @@ public class ParseOrchestrator {
         }
 
         Map<String, Integer> finalCounts = counts(
-                "exact", exactCount.get(),
-                "recovered", recoveredCount.get(),
-                "partial", partialCount.get(),
-                "reviewRequired", reviewRequiredCount.get(),
-                "unresolved", unresolvedCount.get(),
-                "failed", failedCount.get(),
-                "unresolvedOrFailed", unresolvedCount.get() + failedCount.get(),
-                "astFiles", successCount.get(),
-                "lines", totalLines.get());
+                "exact", counters.exact.get(),
+                "recovered", counters.recovered.get(),
+                "partial", counters.partial.get(),
+                "reviewRequired", counters.reviewRequired.get(),
+                "unresolved", counters.unresolved.get(),
+                "failed", counters.failed.get(),
+                "unresolvedOrFailed", counters.unresolved.get() + counters.failed.get(),
+                "astFiles", counters.success.get(),
+                "lines", counters.totalLines.get());
         eventSink.emit(ParseStreamEvent.builder("quality-summary", "quality_summary")
                 .content(toLegacyQualityJson(finalCounts)).phase("FINALIZING")
-                .status(errorCount.get() > 0 ? "WARNING" : "COMPLETED")
+                .status(counters.error.get() > 0 ? "WARNING" : "COMPLETED")
                 .current(total).total(total).percent(100).counts(finalCounts).build());
-        String summaryPrefix = errorCount.get() > 0 ? "⚠️" : "🎉";
+        String summaryPrefix = counters.error.get() > 0 ? "⚠️" : "🎉";
         eventSink.emit(ParseStreamEvent.builder("message", "run_completed")
                 .content(String.format(
                         "%s 파싱 완료 — 정확 %d · 복구 %d · 부분 %d · 검토 필요 %d · 미해결 %d · 실패 %d · AST %d개 · %,d라인",
-                        summaryPrefix, exactCount.get(), recoveredCount.get(), partialCount.get(),
-                        reviewRequiredCount.get(), unresolvedCount.get(), failedCount.get(),
-                        successCount.get(), totalLines.get()))
-                .phase("COMPLETED").status(errorCount.get() > 0 ? "WARNING" : "COMPLETED")
+                        summaryPrefix, counters.exact.get(), counters.recovered.get(),
+                        counters.partial.get(), counters.reviewRequired.get(),
+                        counters.unresolved.get(), counters.failed.get(),
+                        counters.success.get(), counters.totalLines.get()))
+                .phase("COMPLETED").status(counters.error.get() > 0 ? "WARNING" : "COMPLETED")
                 .current(total).total(total).percent(100).counts(finalCounts).build());
+    }
+
+    /** run 전체 집계 카운터 — parseSingleFile 의 AtomicInteger 파라미터 폭발을 대체한다. */
+    private static final class RunCounters {
+        final AtomicInteger success = new AtomicInteger(0);
+        final AtomicInteger exact = new AtomicInteger(0);
+        final AtomicInteger recovered = new AtomicInteger(0);
+        final AtomicInteger partial = new AtomicInteger(0);
+        final AtomicInteger reviewRequired = new AtomicInteger(0);
+        final AtomicInteger unresolved = new AtomicInteger(0);
+        final AtomicInteger failed = new AtomicInteger(0);
+        final AtomicInteger error = new AtomicInteger(0);
+        final AtomicInteger totalLines = new AtomicInteger(0);
     }
 
     private void parseSingleFile(Path file, LanguageModule module,
                                   Path sourceBase, Path analysisBase, ParseEventSink eventSink,
-                                  int fileIndex, int totalFiles,
-                                  AtomicInteger successCount, AtomicInteger exactCount,
-                                  AtomicInteger recoveredCount, AtomicInteger partialCount,
-                                  AtomicInteger reviewRequiredCount,
-                                  AtomicInteger unresolvedCount,
-                                  AtomicInteger failedCount,
-                                  AtomicInteger errorCount,
-                                  AtomicInteger totalLines) {
+                                  int fileIndex, int totalFiles, RunCounters counters) {
         Path relative = sourceBase.relativize(file);
         String fileName = relative.toString();
 
@@ -231,11 +227,11 @@ public class ParseOrchestrator {
 
             if (!recovery.hasAcceptedAst()) {
                 Files.deleteIfExists(output);
-                errorCount.incrementAndGet();
+                counters.error.incrementAndGet();
                 switch (recovery.decision().status()) {
-                    case REVIEW_REQUIRED -> reviewRequiredCount.incrementAndGet();
-                    case UNRESOLVED -> unresolvedCount.incrementAndGet();
-                    default -> failedCount.incrementAndGet();
+                    case REVIEW_REQUIRED -> counters.reviewRequired.incrementAndGet();
+                    case UNRESOLVED -> counters.unresolved.incrementAndGet();
+                    default -> counters.failed.incrementAndGet();
                 }
                 eventSink.emit(ParseStreamEvent.builder("error", "file_result")
                         .content(String.format("❌ [%d/%d] %s — 결과를 만들지 않았어요 (%s: %s)",
@@ -254,14 +250,14 @@ public class ParseOrchestrator {
 
             Files.writeString(output, recovery.astJson(), StandardCharsets.UTF_8);
 
-            successCount.incrementAndGet();
+            counters.success.incrementAndGet();
             switch (recovery.decision().status()) {
-                case EXACT -> exactCount.incrementAndGet();
-                case PARTIAL -> partialCount.incrementAndGet();
-                case RECOVERED_SAFE, RECOVERED_VALIDATED -> recoveredCount.incrementAndGet();
+                case EXACT -> counters.exact.incrementAndGet();
+                case PARTIAL -> counters.partial.incrementAndGet();
+                case RECOVERED_SAFE, RECOVERED_VALIDATED -> counters.recovered.incrementAndGet();
                 default -> { }
             }
-            totalLines.addAndGet(lineCount);
+            counters.totalLines.addAndGet(lineCount);
             QualityStatus quality = recovery.decision().status();
             String wireType = quality == QualityStatus.PARTIAL ? "warning" : "message";
             String symbol = quality == QualityStatus.EXACT ? "✅"
@@ -277,8 +273,8 @@ public class ParseOrchestrator {
             log.info("  [PARSED] {} ({})", relative, module.languageId());
 
         } catch (Throwable e) {
-            errorCount.incrementAndGet();
-            failedCount.incrementAndGet();
+            counters.error.incrementAndGet();
+            counters.failed.incrementAndGet();
             eventSink.emit(ParseStreamEvent.builder("error", "file_result")
                     .content(String.format("❌ [%d/%d] %s — 파싱하지 못했어요: %s",
                             fileIndex, totalFiles, fileName, e.getMessage()))
@@ -336,13 +332,10 @@ public class ParseOrchestrator {
 
     private int countLines(Path file) {
         try {
-            return (int) Files.lines(file, StandardCharsets.UTF_8).count();
-        } catch (Exception e) {
-            try {
-                return (int) Files.lines(file, Charset.forName("EUC-KR")).count();
-            } catch (Exception e2) {
-                return 0;
-            }
+            return (int) SourceTextCodec.decode(Files.readAllBytes(file)).text().lines().count();
+        } catch (Exception readFailure) {
+            log.warn("라인 수 계산 실패: {} - {}", file, readFailure.getMessage());
+            return 0;
         }
     }
 }

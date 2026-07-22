@@ -1,8 +1,6 @@
 package legacymodernizer.parser.parsing.languages.c;
 
 import java.io.File;
-import java.nio.charset.Charset;
-import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,25 +11,18 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.springframework.stereotype.Component;
 import legacymodernizer.parser.antlr.c.CLexer;
 import legacymodernizer.parser.antlr.c.CParser;
 import legacymodernizer.parser.antlr.c.CAstListener;
-import legacymodernizer.parser.recovery.diagnostics.CollectingAntlrErrorListener;
-import legacymodernizer.parser.recovery.diagnostics.CountingErrorStrategy;
-import legacymodernizer.parser.recovery.diagnostics.DiagnosticPhase;
-import legacymodernizer.parser.recovery.diagnostics.ParseDiagnostic;
 import legacymodernizer.parser.parsing.RawParseResult;
 import legacymodernizer.parser.parsing.languages.AntlrLanguageModuleSupport;
 import legacymodernizer.parser.recovery.boundaries.SourceUnit;
 import legacymodernizer.parser.recovery.boundaries.UnitParseRequest;
 import legacymodernizer.parser.recovery.boundaries.UnitParseContext;
 import legacymodernizer.parser.recovery.quality.DeclarationCoverageCounter;
-import legacymodernizer.parser.parsing.AstCoordinates;
+import legacymodernizer.parser.parsing.AntlrParseHarness;
+import legacymodernizer.parser.parsing.SourceTextCodec;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.service.ParseProgressTracker;
@@ -61,85 +52,36 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
     @Override
     public RawParseResult parseFile(File file, ParseProgressTracker tracker) throws Exception {
         log.debug("[C] 파싱: {}", file.getName());
-
-        long started = System.nanoTime();
         byte[] sourceBytes = Files.readAllBytes(file.toPath());
-        String source = readFileContent(file.toPath());
-        String workingSource = preprocessSource(source);
-        CharStream charStream = CharStreams.fromString(workingSource);
-        CLexer lexer = new CLexer(charStream);
-        CollectingAntlrErrorListener lexerErrors = new CollectingAntlrErrorListener(
-                DiagnosticPhase.LEXER, workingSource);
-        lexer.removeErrorListeners();
-        lexer.addErrorListener(lexerErrors);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        CParser parser = new CParser(tokens);
-        CollectingAntlrErrorListener parserErrors = new CollectingAntlrErrorListener(
-                DiagnosticPhase.PARSER, workingSource);
-        CountingErrorStrategy errorStrategy = new CountingErrorStrategy();
-        parser.removeErrorListeners();
-        parser.addErrorListener(parserErrors);
-        parser.setErrorHandler(errorStrategy);
-
-        if (!collectedTypeNames.isEmpty()) {
-            parser.registerTypeNames(collectedTypeNames);
-        }
-
-        CParser.CompilationUnitContext tree = parser.compilationUnit();
-
-        CAstListener listener = new CAstListener(tokens, tracker);
-        listener.setFileInfo(file.getName(), computeRelativePath(file));
-
-        new ParseTreeWalker().walk(listener, tree);
-
-        String astJson = listener.getRoot().toJson();
-        var diagnostics = new ArrayList<>(lexerErrors.diagnostics());
-        diagnostics.addAll(parserErrors.diagnostics());
-        var coverage = DeclarationCoverageCounter.count(parser, tree,
-                Set.of("functionDefinition"), astJson, Set.of("FUNCTION"));
-        return new RawParseResult("c", "C", "compilationUnit", Hashes.sha256(sourceBytes),
-                astJson, diagnostics, errorStrategy.recoveryCount(), coverage,
-                (System.nanoTime() - started) / 1_000_000L);
+        return parseContent(sourceBytes, SourceTextCodec.decode(sourceBytes).text(),
+                file.getName(), computeRelativePath(file), 0, tracker);
     }
 
     @Override
     public RawParseResult parseUnit(UnitParseRequest request, ParseProgressTracker tracker) throws Exception {
-        long started = System.nanoTime();
         byte[] sourceBytes = request.sourceText().getBytes(StandardCharsets.UTF_8);
-        String workingSource = preprocessSource(request.sourceText());
-        int lineOffset = request.originalLineOffset();
-        CharStream charStream = CharStreams.fromString(workingSource);
-        CLexer lexer = new CLexer(charStream);
-        CollectingAntlrErrorListener lexerErrors = new CollectingAntlrErrorListener(
-                DiagnosticPhase.LEXER, workingSource);
-        lexer.removeErrorListeners();
-        lexer.addErrorListener(lexerErrors);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        CParser parser = new CParser(tokens);
-        CollectingAntlrErrorListener parserErrors = new CollectingAntlrErrorListener(
-                DiagnosticPhase.PARSER, workingSource);
-        CountingErrorStrategy errorStrategy = new CountingErrorStrategy();
-        parser.removeErrorListeners();
-        parser.addErrorListener(parserErrors);
-        parser.setErrorHandler(errorStrategy);
-        if (!collectedTypeNames.isEmpty()) parser.registerTypeNames(collectedTypeNames);
+        return parseContent(sourceBytes, request.sourceText(), request.fileName(),
+                request.filePath(), request.originalLineOffset(), tracker);
+    }
 
-        CParser.CompilationUnitContext tree = parser.compilationUnit();
-        CAstListener listener = new CAstListener(tokens, tracker);
-        listener.setFileInfo(request.fileName(), request.filePath());
-        new ParseTreeWalker().walk(listener, tree);
-        AstCoordinates.rebaseChildren(listener.getRoot(), lineOffset);
-
-        String astJson = listener.getRoot().toJson();
-        List<ParseDiagnostic> diagnostics = new ArrayList<>();
-        lexerErrors.diagnostics().stream().map(diagnostic -> AstCoordinates.rebase(diagnostic, lineOffset))
-                .forEach(diagnostics::add);
-        parserErrors.diagnostics().stream().map(diagnostic -> AstCoordinates.rebase(diagnostic, lineOffset))
-                .forEach(diagnostics::add);
-        var coverage = DeclarationCoverageCounter.count(parser, tree,
-                Set.of("functionDefinition"), astJson, Set.of("FUNCTION"));
+    private RawParseResult parseContent(byte[] sourceBytes, String source, String fileName,
+                                        String filePath, int lineOffset,
+                                        ParseProgressTracker tracker) {
+        long started = System.nanoTime();
+        String workingSource = preprocessSource(source);
+        var run = AntlrParseHarness.run(workingSource, fileName, filePath, lineOffset, tracker,
+                CLexer::new,
+                tokens -> {
+                    CParser parser = new CParser(tokens);
+                    // 프로젝트 전체에서 사전 수집한 사용자 타입을 등록해야 선언 파싱이 정확하다.
+                    if (!collectedTypeNames.isEmpty()) parser.registerTypeNames(collectedTypeNames);
+                    return parser;
+                },
+                CParser::compilationUnit, CAstListener::new);
+        var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
+                Set.of("functionDefinition"), run.astJson(), Set.of("FUNCTION"));
         return new RawParseResult("c", "C", "compilationUnit", Hashes.sha256(sourceBytes),
-                astJson, diagnostics, errorStrategy.recoveryCount(), coverage,
+                run.astJson(), run.diagnostics(), run.recoveries(), coverage,
                 (System.nanoTime() - started) / 1_000_000L);
     }
 
@@ -270,15 +212,18 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
     private static final Pattern CLOSING_TYPEDEF = Pattern.compile(
             "\\}\\s*(\\w+)\\s*;");
 
-    // C 키워드 (수집에서 제외)
+    // 실제 C 언어 키워드·내장 상수 — 문법상 타입 이름일 수 없어 수집에서 배제.
     private static final Set<String> C_KEYWORDS = Set.of(
             "auto", "break", "case", "char", "const", "continue", "default", "do",
             "double", "else", "enum", "extern", "float", "for", "goto", "if",
             "inline", "int", "long", "register", "restrict", "return", "short",
             "signed", "sizeof", "static", "struct", "switch", "typedef", "union",
             "unsigned", "void", "volatile", "while", "_Bool", "_Complex", "_Imaginary",
-            "bool", "true", "false", "NULL", "nullptr",
-            // struct/union 멤버 이름이 잘못 수집되는 것 방지
+            "bool", "true", "false", "NULL", "nullptr"
+    );
+
+    // 흔한 struct/union 멤버 이름 — 키워드는 아니지만 타입으로 오인 수집되기 쉬워 배제.
+    private static final Set<String> COMMON_MEMBER_NAMES = Set.of(
             "value", "data", "next", "prev", "head", "tail", "buf", "ptr",
             "len", "size", "count", "index", "type", "name", "key", "node"
     );
@@ -301,6 +246,7 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
             String name = m.group(1);
             if (name != null && !name.isEmpty()
                     && !C_KEYWORDS.contains(name)
+                    && !COMMON_MEMBER_NAMES.contains(name)
                     && name.matches("[A-Za-z_]\\w*")) {
                 collectedTypeNames.add(name);
             }
@@ -355,6 +301,7 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
                 String name = paramMatcher.group(1);
                 if (name != null && !name.isEmpty()
                         && !C_KEYWORDS.contains(name)
+                        && !COMMON_MEMBER_NAMES.contains(name)
                         && name.matches("[A-Za-z_]\\w*")) {
                     collectedTypeNames.add(name);
                 }
@@ -426,14 +373,6 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
     }
 
     private String readFileContent(Path path) throws Exception {
-        try {
-            return Files.readString(path, StandardCharsets.UTF_8);
-        } catch (MalformedInputException e) {
-            try {
-                return Files.readString(path, Charset.forName("EUC-KR"));
-            } catch (Exception e2) {
-                return Files.readString(path, Charset.forName("MS949"));
-            }
-        }
+        return SourceTextCodec.decode(Files.readAllBytes(path)).text();
     }
 }

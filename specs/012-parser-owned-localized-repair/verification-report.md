@@ -132,6 +132,18 @@ RepairProfile 선언 확장(안전·언어별 데이터)으로 명시.
   (전부 행위 변경 또는 광범위 이동이라 기준선 잡고 별도 슬라이스로.)
 - 처리 후 재검증: suite 107 green, corpus 상태·AST 수 회귀 0, 원본 불변.
 
+## 16. 원칙 잔여 제로화 (2026-07-22 심야) — **유보 13건 전부 구현 완료**
+
+§15의 유보 목록을 전부 해소: SourceTextCodec 단일 디코딩(UTF-8→EUC-KR→MS949, lossy 플래그)
++ 4개 언어 모듈 UTF-8 고정 해소(fromString 전환), AntlrParseHarness로 5개 모듈 배선 공용화,
+UnitBoundaries/AffinityMarkers 공용화, registry→selection 단방향화, recover()/enterDeclaration/
+parseSingleFile/runEngineWaves/enterExpr_stmt 분해, 후보 탈락 무기록 2곳 evidence화,
+C_KEYWORDS/COMMON_MEMBER_NAMES 분리, Oracle rebase 사본 제거, writer 오버로드 제거,
+'무엇' 주석·빈 오버라이드 정리. 독립 재검증: suite 107 green, corpus 상태·AST inventory
+해시 **바이트 동일**(회귀 0), 원본 불변, 변이 결정론 벤치 동일(오답 0). 주의: 이 corpus에는
+UTF-8 strict가 실패하는 EUC-KR 파일이 없어 코덱의 한글 복원 효과는 단위 경로로만 검증됨
+(실물 EUC-KR corpus 확보 시 재확인 권장).
+
 ## REVIEW_REQUIRED (설계상 올바른 미해결)
 
 - **AMS 10 unresolved units** — 원인 실물 확인: 덤프의 줄바꿈 손상(주석이 줄 중간에서

@@ -1,6 +1,5 @@
 package legacymodernizer.parser.parsing.languages.oracle;
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -10,23 +9,17 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.springframework.stereotype.Component;
 
 import legacymodernizer.parser.antlr.CaseChangingCharStream;
 import legacymodernizer.parser.antlr.plsql.PlSqlAstListener;
 import legacymodernizer.parser.antlr.plsql.PlSqlLexer;
 import legacymodernizer.parser.antlr.plsql.PlSqlParser;
-import legacymodernizer.parser.model.Node;
-import legacymodernizer.parser.recovery.diagnostics.CollectingAntlrErrorListener;
-import legacymodernizer.parser.recovery.diagnostics.CountingErrorStrategy;
-import legacymodernizer.parser.recovery.diagnostics.DiagnosticPhase;
 import legacymodernizer.parser.recovery.diagnostics.ParseDiagnostic;
+import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.RawParseResult;
+import legacymodernizer.parser.parsing.SourceTextCodec;
+import legacymodernizer.parser.parsing.languages.AffinityMarkers;
 import legacymodernizer.parser.parsing.languages.AntlrLanguageModuleSupport;
 import legacymodernizer.parser.recovery.boundaries.SourceUnit;
 import legacymodernizer.parser.recovery.boundaries.UnitParseRequest;
@@ -41,20 +34,18 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class OracleLanguageModule extends AntlrLanguageModuleSupport {
 
-    private record Marker(Pattern pattern, int weight) { }
-
-    private static final List<Marker> AFFINITY_MARKERS = List.of(
-            new Marker(Pattern.compile("\\bVARCHAR2\\b", Pattern.CASE_INSENSITIVE), 10),
-            new Marker(Pattern.compile("\\bDBMS_\\w+", Pattern.CASE_INSENSITIVE), 10),
-            new Marker(Pattern.compile("\\bNVL\\s*\\(", Pattern.CASE_INSENSITIVE), 5),
-            new Marker(Pattern.compile("\\bSYSDATE\\b", Pattern.CASE_INSENSITIVE), 5),
-            new Marker(Pattern.compile("\\bFROM\\s+DUAL\\b", Pattern.CASE_INSENSITIVE), 8),
-            new Marker(Pattern.compile("\\bPACKAGE\\s+BODY\\b", Pattern.CASE_INSENSITIVE), 8),
-            new Marker(Pattern.compile("\\bEXCEPTION\\s+WHEN\\b", Pattern.CASE_INSENSITIVE), 4),
-            new Marker(Pattern.compile("\\bMERGE\\s+INTO\\b", Pattern.CASE_INSENSITIVE), 3),
-            new Marker(Pattern.compile("\\bROWNUM\\b", Pattern.CASE_INSENSITIVE), 4),
-            new Marker(Pattern.compile("\\bCONNECT\\s+BY\\b", Pattern.CASE_INSENSITIVE), 6),
-            new Marker(Pattern.compile("\\b(IS|AS)\\s+BEGIN\\b", Pattern.CASE_INSENSITIVE), 3));
+    private static final List<AffinityMarkers.Marker> AFFINITY_MARKERS = List.of(
+            new AffinityMarkers.Marker(Pattern.compile("\\bVARCHAR2\\b", Pattern.CASE_INSENSITIVE), 10),
+            new AffinityMarkers.Marker(Pattern.compile("\\bDBMS_\\w+", Pattern.CASE_INSENSITIVE), 10),
+            new AffinityMarkers.Marker(Pattern.compile("\\bNVL\\s*\\(", Pattern.CASE_INSENSITIVE), 5),
+            new AffinityMarkers.Marker(Pattern.compile("\\bSYSDATE\\b", Pattern.CASE_INSENSITIVE), 5),
+            new AffinityMarkers.Marker(Pattern.compile("\\bFROM\\s+DUAL\\b", Pattern.CASE_INSENSITIVE), 8),
+            new AffinityMarkers.Marker(Pattern.compile("\\bPACKAGE\\s+BODY\\b", Pattern.CASE_INSENSITIVE), 8),
+            new AffinityMarkers.Marker(Pattern.compile("\\bEXCEPTION\\s+WHEN\\b", Pattern.CASE_INSENSITIVE), 4),
+            new AffinityMarkers.Marker(Pattern.compile("\\bMERGE\\s+INTO\\b", Pattern.CASE_INSENSITIVE), 3),
+            new AffinityMarkers.Marker(Pattern.compile("\\bROWNUM\\b", Pattern.CASE_INSENSITIVE), 4),
+            new AffinityMarkers.Marker(Pattern.compile("\\bCONNECT\\s+BY\\b", Pattern.CASE_INSENSITIVE), 6),
+            new AffinityMarkers.Marker(Pattern.compile("\\b(IS|AS)\\s+BEGIN\\b", Pattern.CASE_INSENSITIVE), 3));
 
     private final OracleSourceUnitLocator unitLocator = new OracleSourceUnitLocator();
     private final OraclePackageMemberLocator packageMemberLocator = new OraclePackageMemberLocator();
@@ -66,7 +57,7 @@ public class OracleLanguageModule extends AntlrLanguageModuleSupport {
     @Override
     public RawParseResult parseFile(File file, ParseProgressTracker tracker) throws Exception {
         byte[] sourceBytes = Files.readAllBytes(file.toPath());
-        return parseContent(sourceBytes, new String(sourceBytes, StandardCharsets.UTF_8),
+        return parseContent(sourceBytes, SourceTextCodec.decode(sourceBytes).text(),
                 file.getName(), computeRelativePath(file), 0, tracker);
     }
 
@@ -87,59 +78,16 @@ public class OracleLanguageModule extends AntlrLanguageModuleSupport {
                                         String filePath, int lineOffset,
                                         ParseProgressTracker tracker) throws Exception {
         long started = System.nanoTime();
-        try (ByteArrayInputStream input = new ByteArrayInputStream(sourceBytes)) {
-            CharStream chars = CharStreams.fromStream(input);
-            PlSqlLexer lexer = new PlSqlLexer(new CaseChangingCharStream(chars, true));
-            CollectingAntlrErrorListener lexerErrors = new CollectingAntlrErrorListener(
-                    DiagnosticPhase.LEXER, source);
-            lexer.removeErrorListeners();
-            lexer.addErrorListener(lexerErrors);
-
-            CommonTokenStream tokens = new CommonTokenStream(lexer);
-            PlSqlParser parser = new PlSqlParser(tokens);
-            CollectingAntlrErrorListener parserErrors = new CollectingAntlrErrorListener(
-                    DiagnosticPhase.PARSER, source);
-            CountingErrorStrategy errorStrategy = new CountingErrorStrategy();
-            parser.removeErrorListeners();
-            parser.addErrorListener(parserErrors);
-            parser.setErrorHandler(errorStrategy);
-            ParserRuleContext tree = parser.sql_script();
-
-            PlSqlAstListener listener = new PlSqlAstListener(tokens, tracker);
-            listener.setFileInfo(fileName, filePath);
-            new ParseTreeWalker().walk(listener, tree);
-            if (lineOffset > 0) rebaseNodeLines(listener.getRoot(), lineOffset, true);
-
-            String astJson = listener.getRoot().toJson();
-            List<ParseDiagnostic> diagnostics = new ArrayList<>();
-            lexerErrors.diagnostics().stream().map(diagnostic -> rebase(diagnostic, lineOffset))
-                    .forEach(diagnostics::add);
-            parserErrors.diagnostics().stream().map(diagnostic -> rebase(diagnostic, lineOffset))
-                    .forEach(diagnostics::add);
-            var coverage = DeclarationCoverageCounter.count(parser, tree,
-                    Set.of("create_procedure_body", "create_function_body", "create_trigger",
-                            "procedure_body", "function_body"),
-                    astJson, Set.of("PROCEDURE", "FUNCTION", "TRIGGER"));
-            return new RawParseResult("oracle", "PlSql", "sql_script", Hashes.sha256(sourceBytes),
-                    astJson, diagnostics, errorStrategy.recoveryCount(), coverage,
-                    (System.nanoTime() - started) / 1_000_000L);
-        }
-    }
-
-    private static ParseDiagnostic rebase(ParseDiagnostic diagnostic, int lineOffset) {
-        if (lineOffset == 0) return diagnostic;
-        return new ParseDiagnostic(diagnostic.phase(), diagnostic.severity(), diagnostic.code(),
-                diagnostic.message(), diagnostic.line() + lineOffset, diagnostic.column(),
-                diagnostic.offendingToken(), diagnostic.expectedTokens(), diagnostic.ruleStack(),
-                diagnostic.tokenWindow());
-    }
-
-    private static void rebaseNodeLines(Node node, int lineOffset, boolean root) {
-        if (!root) {
-            if (node.startLine > 0) node.startLine += lineOffset;
-            if (node.endLine > 0) node.endLine += lineOffset;
-        }
-        node.children.forEach(child -> rebaseNodeLines(child, lineOffset, false));
+        var run = AntlrParseHarness.run(source, fileName, filePath, lineOffset, tracker,
+                chars -> new PlSqlLexer(new CaseChangingCharStream(chars, true)),
+                PlSqlParser::new, PlSqlParser::sql_script, PlSqlAstListener::new);
+        var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
+                Set.of("create_procedure_body", "create_function_body", "create_trigger",
+                        "procedure_body", "function_body"),
+                run.astJson(), Set.of("PROCEDURE", "FUNCTION", "TRIGGER"));
+        return new RawParseResult("oracle", "PlSql", "sql_script", Hashes.sha256(sourceBytes),
+                run.astJson(), run.diagnostics(), run.recoveries(), coverage,
+                (System.nanoTime() - started) / 1_000_000L);
     }
 
     @Override
@@ -166,12 +114,7 @@ public class OracleLanguageModule extends AntlrLanguageModuleSupport {
 
     @Override
     public int contentAffinity(String source) {
-        int score = 0;
-        for (Marker marker : AFFINITY_MARKERS) {
-            var matcher = marker.pattern().matcher(source);
-            while (matcher.find()) score += marker.weight();
-        }
-        return score;
+        return AffinityMarkers.score(AFFINITY_MARKERS, source);
     }
 
     @Override

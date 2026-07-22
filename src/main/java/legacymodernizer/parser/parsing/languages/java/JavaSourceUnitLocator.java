@@ -7,6 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import legacymodernizer.parser.recovery.boundaries.SourceUnit;
+import legacymodernizer.parser.recovery.boundaries.UnitBoundaries;
 import legacymodernizer.parser.recovery.boundaries.UnitKind;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 import legacymodernizer.parser.parsing.boundaries.CStyleStructuralMasker;
@@ -28,7 +29,7 @@ public final class JavaSourceUnitLocator {
             if (open < 0 || depth[open] != 0) continue;
             starts.add(new Start(declarationStart(text, matcher.start()), open, matcher.group(2)));
         }
-        if (starts.isEmpty()) return List.of(fileUnit(text));
+        if (starts.isEmpty()) return List.of(UnitBoundaries.fileUnit("java", text));
 
         List<SourceUnit> units = new ArrayList<>();
         for (int index = 0; index < starts.size(); index++) {
@@ -81,27 +82,14 @@ public final class JavaSourceUnitLocator {
                                    String name, String confidence) {
         String identity = "java\nCLASS\n" + start + "\n" + end + "\n" + source.substring(start, end);
         return new SourceUnit(Hashes.sha256(identity.getBytes(StandardCharsets.UTF_8)),
-                UnitKind.CLASS, name, null, start, end, lineOf(source, start),
-                lineOf(source, Math.max(start, end - 1)), ordinal, confidence);
-    }
-
-    private static SourceUnit fileUnit(String source) {
-        String identity = "java\nFILE\n" + source;
-        return new SourceUnit(Hashes.sha256(identity.getBytes(StandardCharsets.UTF_8)),
-                UnitKind.FILE, null, null, 0, source.length(), source.isEmpty() ? 0 : 1,
-                source.isEmpty() ? 0 : lineOf(source, source.length() - 1), 0, "CONSERVATIVE");
+                UnitKind.CLASS, name, null, start, end, UnitBoundaries.lineOf(source, start),
+                UnitBoundaries.lineOf(source, Math.max(start, end - 1)), ordinal, confidence);
     }
 
     private static int lineStart(String source, int offset) {
         int cursor = Math.min(offset, source.length());
         while (cursor > 0 && source.charAt(cursor - 1) != '\n' && source.charAt(cursor - 1) != '\r') cursor--;
         return cursor;
-    }
-
-    private static int lineOf(String source, int offset) {
-        int line = 1;
-        for (int index = 0; index < Math.min(offset, source.length()); index++) if (source.charAt(index) == '\n') line++;
-        return line;
     }
 
     private record Start(int startOffset, int openBrace, String name) { }

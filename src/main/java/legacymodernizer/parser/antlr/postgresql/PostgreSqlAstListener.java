@@ -6,6 +6,7 @@ import java.util.List;
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
+import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -25,7 +26,8 @@ import lombok.extern.slf4j.Slf4j;
  * - 통일된 속성명 사용 (Node 클래스 참조)
  */
 @Slf4j
-public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
+public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
+        implements AntlrParseHarness.AstListener {
     private final ListenerHelper h;
     private boolean insideInsert = false;
     private boolean insideExplain = false;
@@ -115,31 +117,26 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
 
     @Override
     public void enterCreatefunctionstmt(PostgreSQLParser.CreatefunctionstmtContext ctx) {
-        // 함수명 추출
         String fullName = null;
         if (ctx.func_name() != null) {
             fullName = ctx.func_name().getText();
         }
 
-        // 스키마와 이름 분리
         String[] parts = ParserUtils.extractSchemaAndName(fullName);
         String name = parts[1];
 
         Node node = h.enterStatement("PROCEDURE", name, ctx.getStart().getLine());
         node.schema = parts[0];
 
-        // 파라미터 추출
         if (ctx.func_args_with_defaults() != null) {
             node.parameters = extractPostgreSQLParameters(ctx.func_args_with_defaults());
             emitParameters(ctx.func_args_with_defaults(), node);
         }
 
-        // 리턴 타입 추출
         if (ctx.func_return() != null) {
             node.returnType = extractPostgreSQLReturnType(ctx.func_return());
         }
 
-        // 시그니처 추출 (AS $$ 이전까지)
         int dollarLineNumber = findDollarStringLine(ctx);
         node.signature = extractSignatureUntil(ctx, dollarLineNumber);
 
@@ -273,6 +270,8 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
         return count;
     }
 
+    // AntlrParseHarness 를 쓰지 않는 이유: 중첩 파싱은 리스너 walk 가 아니라 visitor 로 부분
+    // 트리를 부모 노드에 접붙이고, rebase 공식도 파일 오프셋이 아닌 $$ 시작 줄 기준이라 구조가 다르다.
     private void parsePlpgsqlBlock(String plpgsqlCode, int baseLineNumber) {
         try {
             CharStream input = CharStreams.fromString(plpgsqlCode);
@@ -316,6 +315,8 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
         }
     }
 
+    // AstCoordinates.rebase(단순 오프셋 합산)와 공식이 다른 이유: 중첩 블록의 1행이
+    // $$ 시작 행과 겹치므로 line-1 보정이 필요하다.
     private static ParseDiagnostic rebase(ParseDiagnostic diagnostic, int baseLineNumber) {
         return new ParseDiagnostic(diagnostic.phase(), diagnostic.severity(), diagnostic.code(),
                 diagnostic.message(), baseLineNumber + Math.max(0, diagnostic.line() - 1),
@@ -872,13 +873,4 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
         h.exitStatement("COMMENT", ctx.getStop().getLine(), ctx);
     }
 
-    @Override
-    public void enterCase_expr(PostgreSQLParser.Case_exprContext ctx) {
-        // SQL CASE 표현식은 노드로 만들지 않음
-    }
-
-    @Override
-    public void exitCase_expr(PostgreSQLParser.Case_exprContext ctx) {
-        // SQL CASE 표현식은 노드로 만들지 않음
-    }
 }

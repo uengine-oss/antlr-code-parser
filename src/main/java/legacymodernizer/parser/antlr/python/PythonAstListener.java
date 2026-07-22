@@ -7,6 +7,7 @@ import java.util.Stack;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
+import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -25,7 +26,8 @@ import legacymodernizer.parser.service.ParseProgressTracker;
  * - 선행 주석(# 주석)과 docstring은 comment 속성에 포함
  * - 통일된 속성명 사용 (Node 클래스 참조)
  */
-public class PythonAstListener extends PythonParserBaseListener {
+public class PythonAstListener extends PythonParserBaseListener
+        implements AntlrParseHarness.AstListener {
 
     private final ListenerHelper h;
     private List<String> pendingDecorators = new ArrayList<>();
@@ -370,12 +372,8 @@ public class PythonAstListener extends PythonParserBaseListener {
                 return;
             }
             String fieldType = isPythonConstant(fieldName, typeAnnotation) ? "CONSTANT_FIELD" : "FIELD";
-            Node node = h.enterStatement(fieldType, fieldName, ctx.getStart().getLine());
-            if (typeAnnotation != null) {
-                node.variableType = typeAnnotation;
-            }
-            node.initValue = initializerText;
-            inferVariableType(node, initializerText);
+            openAssignedNode(fieldType, fieldName, ctx.getStart().getLine(),
+                    typeAnnotation, initializerText);
             return;
         }
 
@@ -383,25 +381,28 @@ public class PythonAstListener extends PythonParserBaseListener {
 
         if ("CLASS".equals(enclosing)) {
             String fieldType = isPythonConstant(varName, typeAnnotation) ? "CONSTANT_FIELD" : "FIELD";
-            Node node = h.enterStatement(fieldType, varName, ctx.getStart().getLine());
-            if (typeAnnotation != null) {
-                node.variableType = typeAnnotation;
-            }
-            node.initValue = initializerText;
-            inferVariableType(node, initializerText);
+            openAssignedNode(fieldType, varName, ctx.getStart().getLine(),
+                    typeAnnotation, initializerText);
         } else if ("METHOD".equals(enclosing) || "FUNCTION".equals(enclosing)) {
             // 함수 내 지역변수는 노드로 만들지 않음 — 초기화식의 호출/생성은 enterTrailer 가 잡는다.
             return;
         } else {
             // 모듈 레벨: ALL_CAPS면 CONSTANT_FIELD, 아니면 VARIABLE
             String modType = isPythonConstant(varName, typeAnnotation) ? "CONSTANT_FIELD" : "VARIABLE";
-            Node node = h.enterStatement(modType, varName, ctx.getStart().getLine());
-            if (typeAnnotation != null) {
-                node.variableType = typeAnnotation;
-            }
-            node.initValue = initializerText;
-            inferVariableType(node, initializerText);
+            openAssignedNode(modType, varName, ctx.getStart().getLine(),
+                    typeAnnotation, initializerText);
         }
+    }
+
+    /** 3분기(self 필드·클래스 필드·모듈 변수) 공통: 노드 생성 + 어노테이션·initValue·타입 추론. */
+    private void openAssignedNode(String nodeType, String name, int line,
+                                  String typeAnnotation, String initializerText) {
+        Node node = h.enterStatement(nodeType, name, line);
+        if (typeAnnotation != null) {
+            node.variableType = typeAnnotation;
+        }
+        node.initValue = initializerText;
+        inferVariableType(node, initializerText);
     }
 
     @Override

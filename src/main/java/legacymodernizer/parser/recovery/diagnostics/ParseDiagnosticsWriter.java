@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
 import org.springframework.stereotype.Component;
 
@@ -13,7 +12,6 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-import legacymodernizer.parser.recovery.quality.QualityDecision;
 import legacymodernizer.parser.parsing.RawParseResult;
 import legacymodernizer.parser.recovery.evidence.RecoveryOutcome;
 import legacymodernizer.parser.intake.ParserWorkspace;
@@ -29,13 +27,6 @@ public final class ParseDiagnosticsWriter {
 
     public ParseDiagnosticsWriter(ParserWorkspace parserWorkspace) {
         this.parserWorkspace = parserWorkspace;
-    }
-
-    public Path write(Path sourceFile, Path sourceRoot,
-                      RawParseResult firstPass, QualityDecision decision) throws IOException {
-        return write(sourceFile, sourceRoot, firstPass,
-                new RecoveryOutcome(decision.accepted() ? firstPass.astJson() : null,
-                        decision, List.of(), 0, 0, decision.accepted() ? 0 : 1));
     }
 
     public Path write(Path sourceFile, Path sourceRoot,

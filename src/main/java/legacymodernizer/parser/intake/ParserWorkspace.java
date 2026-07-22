@@ -1,7 +1,6 @@
 package legacymodernizer.parser.intake;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -17,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import legacymodernizer.parser.intake.SourceIntakeClassifier.Kind;
+import legacymodernizer.parser.parsing.SourceTextCodec;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -269,18 +269,9 @@ public class ParserWorkspace {
         return decode(Files.readAllBytes(path));
     }
 
-    /** 텍스트 디코드 — UTF-8 → EUC-KR → MS949 폴백. 모두 실패 시 "[binary file]". */
+    /** 텍스트 디코드 — {@link SourceTextCodec} 단일 진실. 모두 실패(lossy) 시 "[binary file]". */
     private String decode(byte[] bytes) {
-        for (String cs : new String[] {"UTF-8", "EUC-KR", "MS949"}) {
-            try {
-                var decoder = Charset.forName(cs).newDecoder();
-                decoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPORT);
-                decoder.onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT);
-                return decoder.decode(java.nio.ByteBuffer.wrap(bytes)).toString();
-            } catch (Exception ignored) {
-                // 다음 인코딩 시도
-            }
-        }
-        return "[binary file]";
+        SourceTextCodec.DecodedText decoded = SourceTextCodec.decode(bytes);
+        return decoded.lossy() ? "[binary file]" : decoded.text();
     }
 }
