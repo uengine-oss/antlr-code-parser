@@ -113,8 +113,8 @@ Every claim below is reproducible from the listed command or artifact. Categorie
 | GPU 동시성 | target/corpus-reports/gpu-concurrency-benchmark.json |
 | 변이 벤치마크(결정론/GPU) | target/corpus-reports/mutation-deterministic.json / mutation-gpu-agent.json |
 | 가드 적용 후 corpus 회귀 확인 | target/corpus-reports/full-corpus-deterministic-012-guarded.json |
-| AMS repair sidecar | target/test-data/repairs/AMS_procedures.sql.repair.json |
-| baseline AST (audit) | D:\work\robo\.audit\data\analysis\ |
+| AMS repair sidecar | (정리됨 — Reproduce의 AMS live 명령 재실행 시 target/test-data/repairs/ 에 재생성) |
+| baseline AST (audit) | (정리됨 — .audit clone에 corpus를 .audit/data/source 로 복사 후 AntlrAnalysisTest 실행 시 .audit/data/analysis 에 재생성) |
 
 ## Reproduce
 
