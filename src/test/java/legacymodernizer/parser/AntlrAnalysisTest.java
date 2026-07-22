@@ -18,28 +18,28 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import legacymodernizer.parser.service.FileStorageService;
-import legacymodernizer.parser.service.LanguageDetector;
-import legacymodernizer.parser.service.ParsingOrchestrator;
+import legacymodernizer.parser.intake.ParserWorkspace;
+import legacymodernizer.parser.parsing.ParseOrchestrator;
+import legacymodernizer.parser.parsing.ParserSelection;
 
 /**
  * end-to-end 파싱 스모크 테스트.
  *
- * <p>호출자가 target(언어)을 던지지 않는다 — {@link ParsingOrchestrator} 가
- * {@link LanguageDetector} 로 파일별 파서를 자동 결정해 {@code data/source} 를 파싱하고,
+ * <p>호출자가 target(언어)을 던지지 않는다 — {@link ParseOrchestrator}가
+ * {@link ParserSelection}으로 파일별 파서를 자동 결정해 {@code data/source}를 파싱하고,
  * {@code data/analysis} 에 JSON 을 미러로 떨군다. (테스트 데이터가 있을 때만 검증)
  */
 @SpringBootTest
 public class AntlrAnalysisTest {
 
     @Autowired
-    private ParsingOrchestrator orchestrator;
+    private ParseOrchestrator parseOrchestrator;
 
     @Autowired
-    private FileStorageService storageService;
+    private ParserWorkspace parserWorkspace;
 
     @Autowired
-    private LanguageDetector languageDetector;
+    private ParserSelection parserSelection;
 
     /** Windows 콘솔 한글 깨짐 방지: System.out 을 UTF-8 로 설정. */
     @BeforeAll
@@ -53,7 +53,7 @@ public class AntlrAnalysisTest {
     @BeforeEach
     void setUp() throws Exception {
         // 직전 run 의 analysis/ 정리 (파싱이 source 구조 미러로 새로 생성).
-        Path analysisDir = storageService.analysisDir();
+        Path analysisDir = parserWorkspace.analysisDir();
         if (Files.exists(analysisDir)) {
             deleteRecursively(analysisDir.toFile());
         }
@@ -65,19 +65,20 @@ public class AntlrAnalysisTest {
      */
     @Test
     void parsesSourceDirIntoAnalysisJson() {
-        Path sourceDir = storageService.sourceDir();
+        Path sourceDir = parserWorkspace.sourceDir();
         if (!Files.exists(sourceDir)) {
             System.out.println("스킵: source 디렉토리 없음 — " + sourceDir);
             return;
         }
-        if (languageDetector.detect(sourceDir).fileStrategies().isEmpty()) {
+        if (parserSelection.detect(sourceDir).modulesByFile().isEmpty()) {
             System.out.println("스킵: 파싱 대상(지원 확장자) 파일 없음 — " + sourceDir);
             return;
         }
 
         List<String> streamMessages = new ArrayList<>();
-        orchestrator.parse(null, (type, content) -> {
-            String message = String.format("[%s] %s", type, content != null ? content : "");
+        parseOrchestrator.parse(null, event -> {
+            String message = String.format("[%s/%s] %s", event.type(), event.event(),
+                    event.content() != null ? event.content() : "");
             streamMessages.add(message);
             System.out.println(message);
         });
@@ -87,7 +88,7 @@ public class AntlrAnalysisTest {
         assertTrue(streamMessages.stream().anyMatch(m -> m.contains("파싱 완료")),
                 "완료 메시지가 없습니다");
 
-        Path analysisDir = storageService.analysisDir();
+        Path analysisDir = parserWorkspace.analysisDir();
         assertTrue(Files.exists(analysisDir), "analysis 디렉토리가 생성되지 않았습니다");
 
         long jsonCount = countNonEmptyJson(analysisDir);

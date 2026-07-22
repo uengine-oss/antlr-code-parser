@@ -29,6 +29,12 @@ and writes **AST JSON** to `analysis/` — the input contract for robo-data-anal
 | 003 | [Language/Target Parser Strategy & Detection](003-language-target-strategy/spec.md) | auto-discovered strategies; extension + `.sql` dialect-score detection |
 | 004 | [AST Node Model & JSON Output Contract](004-ast-node-json-output/spec.md) | `Node.toJson()` shape → the contract robo-data-analyzer step2 reads |
 | 005 | [Health Check, CORS & Web Configuration](005-health-cors-config/spec.md) | `GET /` health, CORS, global exception handling |
+| 006 | [Unified Intake Classification](006-unified-intake-classification/spec.md) | upload/path inputs → one content-classified Parser workspace |
+| 007 | [Semantic Control-flow AST](007-semantic-control-flow-ast/spec.md) | preserve C control structures in the frozen Node vocabulary |
+| 008 | [Preserve Macro Symbols](008-preserve-macro-symbols-in-initvalue/spec.md) | keep symbolic C initializer references for downstream linking |
+| 009 | [Layered Parser Recovery](009-layered-parser-recovery/spec.md) | exact path → minimal unit → rules/context → constrained Repair Agent |
+| 010 | [Parse Quality & Friendly Stream](010-parse-quality-and-friendly-stream/spec.md) | shopmall semantic proof; typed friendly NDJSON; useful repair evidence only |
+| 011 | [Live GPU Repair Agent](011-live-gpu-repair-agent/spec.md) | real SGLang GPU proof; exact edit binding; complete retry evidence |
 
 ## Cross-service contract
 

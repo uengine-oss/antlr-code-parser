@@ -1,0 +1,116 @@
+{
+  "schemaVersion": "1.0.0",
+  "catalogVersion": "1.0.0",
+  "parserBuild": "0.0.1-SNAPSHOT",
+  "antlrRuntimeVersion": "4.13.2",
+  "languages": [
+    {
+      "id": "java",
+      "aliases": [],
+      "family": "framework",
+      "parseExtensions": [".java"],
+      "sharedExtension": false,
+      "entryRules": {"FILE": "start_", "CLASS": "classDeclaration", "METHOD": "methodDeclaration"},
+      "unitKinds": ["FILE", "CLASS", "METHOD"],
+      "emittedNodeTypes": ["FILE", "CLASS", "INTERFACE", "METHOD", "FIELD", "IMPORT", "FUNCTION_CALL", "NEW_INSTANCE", "IF", "ELSE", "LOOP", "SWITCH", "CASE", "TRY", "CATCH"],
+      "routineNodeTypes": ["METHOD"],
+      "grammar": {
+        "provenance": "local-pinned",
+        "upstreamRepository": null,
+        "upstreamCommit": null,
+        "files": [
+          {"path": "antlr-grammars/Java20Lexer.g4", "sha256": "8415f2cd84b82dcdd2edc72bec98cb47e9bb9cde8aaa8e19cbb87a276511302e"},
+          {"path": "antlr-grammars/Java20Parser.g4", "sha256": "d94b89ae23291d8492e800a4ef03508db90fa2a830fd8ba8e136b61e2e676852"}
+        ]
+      },
+      "recoveryRuleSets": ["common-safe", "java"]
+    },
+    {
+      "id": "python",
+      "aliases": ["python3"],
+      "family": "framework",
+      "parseExtensions": [".py"],
+      "sharedExtension": false,
+      "entryRules": {"FILE": "root", "CLASS": "classdef", "FUNCTION": "funcdef", "METHOD": "funcdef"},
+      "unitKinds": ["FILE", "CLASS", "FUNCTION", "METHOD"],
+      "emittedNodeTypes": ["FILE", "CLASS", "FUNCTION", "METHOD", "FIELD", "CONSTANT_FIELD", "VARIABLE", "IMPORT", "FUNCTION_CALL", "NEW_INSTANCE", "IF", "ELSE", "LOOP", "TRY", "CATCH"],
+      "routineNodeTypes": ["FUNCTION", "METHOD"],
+      "grammar": {
+        "provenance": "local-pinned",
+        "upstreamRepository": null,
+        "upstreamCommit": null,
+        "files": [
+          {"path": "antlr-grammars/PythonLexer.g4", "sha256": "d848cb8b7c555f4ac13d7176fe9304255cd2a313da1c6d72a046b8f02f525201"},
+          {"path": "antlr-grammars/PythonParser.g4", "sha256": "8a196a39e5b05e285057ea1029f562084e7f88566c2eecb88699c13523416474"}
+        ]
+      },
+      "recoveryRuleSets": ["common-safe", "python"]
+    },
+    {
+      "id": "c",
+      "aliases": ["c11"],
+      "family": "framework",
+      "parseExtensions": [".c", ".h"],
+      "sharedExtension": false,
+      "entryRules": {"FILE": "compilationUnit", "FUNCTION": "functionDefinition"},
+      "unitKinds": ["FILE", "FUNCTION"],
+      "emittedNodeTypes": ["FILE", "INCLUDE", "DEFINE", "STRUCT", "UNION", "ENUM", "ENUM_CONSTANT", "FUNCTION", "TYPEDEF", "CONSTANT_FIELD", "GLOBAL_VARIABLE", "MEMBER", "FUNCTION_CALL", "IF", "ELSE", "LOOP", "SWITCH", "CASE"],
+      "routineNodeTypes": ["FUNCTION"],
+      "grammar": {
+        "provenance": "local-pinned",
+        "upstreamRepository": null,
+        "upstreamCommit": null,
+        "files": [
+          {"path": "antlr-grammars/CLexer.g4", "sha256": "571f7f3ff1f9717bf2d8699e24f3d5837291c51cdce5a83a908ec965e37f0856"},
+          {"path": "antlr-grammars/CParser.g4", "sha256": "2b2731c111d55f5e589a28788131a88a64f389a1e165c4f0864bec373f899dff"}
+        ]
+      },
+      "recoveryRuleSets": ["common-safe", "c"]
+    },
+    {
+      "id": "oracle",
+      "aliases": ["plsql"],
+      "family": "dbms",
+      "parseExtensions": [".sql", ".pks", ".pkb", ".prc", ".fnc"],
+      "sharedExtension": true,
+      "entryRules": {"FILE": "sql_script", "PROCEDURE": "create_procedure_body", "FUNCTION": "create_function_body", "PACKAGE": "create_package_body", "TRIGGER": "create_trigger"},
+      "unitKinds": ["FILE", "PACKAGE", "PROCEDURE", "FUNCTION", "TRIGGER"],
+      "emittedNodeTypes": ["FILE", "PROCEDURE", "FUNCTION", "TRIGGER", "PARAMETER", "VARIABLE", "PACKAGE_VARIABLE", "CURSOR", "CURSOR_VARIABLE", "DECLARE", "BEGIN", "IF", "ELSIF", "ELSE", "LOOP", "TRY", "EXCEPTION", "SELECT", "INSERT", "UPDATE", "DELETE", "MERGE", "RETURN", "CALL", "ASSIGNMENT", "OPEN_CURSOR", "FETCH", "CLOSE_CURSOR", "EXECUTE_IMMEDIATE", "COMMIT", "EXIT", "CTE", "JOIN", "TRIGGER_BLOCK"],
+      "routineNodeTypes": ["FUNCTION", "PROCEDURE", "TRIGGER"],
+      "grammar": {
+        "provenance": "local-pinned",
+        "upstreamRepository": null,
+        "upstreamCommit": null,
+        "files": [
+          {"path": "antlr-grammars/PlSqlLexer.g4", "sha256": "8e2af4e4f288165c27f6ed5c73d97418ccea0df869ada88dd3c3203649dbed1b"},
+          {"path": "antlr-grammars/PlSqlParser.g4", "sha256": "6526fc375b8f55c00649e95ef4d7b469a044fb580ec714a9d28f5c0b1d166b68"}
+        ]
+      },
+      "recoveryRuleSets": ["common-safe", "oracle"]
+    },
+    {
+      "id": "postgresql",
+      "aliases": ["postgres", "pgsql"],
+      "family": "dbms",
+      "parseExtensions": [".sql"],
+      "sharedExtension": true,
+      "entryRules": {"FILE": "root", "FUNCTION": "createfunctionstmt", "PROCEDURE": "createfunctionstmt", "TRIGGER": "createtrigstmt"},
+      "unitKinds": ["FILE", "FUNCTION", "PROCEDURE", "TRIGGER"],
+      "emittedNodeTypes": ["FILE", "PROCEDURE", "TRIGGER", "PARAMETER", "BEGIN", "RETURN", "SELECT", "INSERT", "UPDATE", "DELETE", "MERGE", "CREATE_TABLE", "CREATE_VIEW", "CREATE_INDEX", "CREATE_SEQUENCE", "CREATE_TRIGGER", "ALTER_TABLE", "DROP", "DO", "EXECUTE", "GRANT", "REVOKE"],
+      "routineNodeTypes": ["PROCEDURE", "TRIGGER"],
+      "grammar": {
+        "provenance": "local-pinned",
+        "upstreamRepository": null,
+        "upstreamCommit": null,
+        "files": [
+          {"path": "antlr-grammars/PostgreSQLLexer.g4", "sha256": "858018bfe65724ca32eeb9e1946b4d9d4dfdf61fcf4f92593e4747ac28b3bf0b"},
+          {"path": "antlr-grammars/PostgreSQLParser.g4", "sha256": "54680f8853d64ea3e360d2d50cd42047a38f5ae8ce8f7c162628b071182b9209"},
+          {"path": "antlr-grammars/PlpgsqlLexer.g4", "sha256": "9c0e740df7e5f2f7f383dbacb8b8ca46677d416d1e443fc30c2d2c6a7884c3ba"},
+          {"path": "antlr-grammars/PlpgsqlParser.g4", "sha256": "e49ae51ea100dae0564b4bd1756b4c2ac112d64aa99e6d630368345128bcc60a"}
+        ]
+      },
+      "recoveryRuleSets": ["common-safe", "postgresql"]
+    }
+  ],
+  "catalogSha256": "30702d58073125ae900c10d2275f8c10f3e8cfed00875627e9ceb922e2a73108"
+}

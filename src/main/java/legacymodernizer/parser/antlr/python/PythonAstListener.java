@@ -514,4 +514,96 @@ public class PythonAstListener extends PythonParserBaseListener {
         }
         return null;
     }
+
+    // ========================================
+    // 제어 흐름 의미 AST (spec 007 계약의 Python 구현): IF / ELSE / LOOP / TRY / CATCH
+    //
+    // C/Java 리스너와 동일 원칙: 함수/메서드 안에서만 emit, for/while 은 LOOP,
+    // elif 는 ELSE(분기 — 조건은 code_text 에), else 는 부모가 if 일 때만 ELSE
+    // (Python 의 loop-else/try-else 는 계약 부모=IF 위반이라 제외 — 미지원 명시).
+    // Python 에는 SWITCH/CASE 가 없다(계약 §1). match 문은 이번 범위 밖 — 미지원 명시.
+    // ========================================
+
+    private boolean isInsideRoutine() {
+        Stack<Node> stack = h.getNodeStack();
+        for (int i = stack.size() - 1; i >= 0; i--) {
+            String t = stack.get(i).type;
+            if ("FUNCTION".equals(t) || "METHOD".equals(t)) return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void enterIf_stmt(PythonParser.If_stmtContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("IF", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitIf_stmt(PythonParser.If_stmtContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("IF", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterElif_clause(PythonParser.Elif_clauseContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("ELSE", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitElif_clause(PythonParser.Elif_clauseContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("ELSE", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterElse_clause(PythonParser.Else_clauseContext ctx) {
+        if (isInsideRoutine() && ctx.getParent() instanceof PythonParser.If_stmtContext) {
+            h.enterStatement("ELSE", ctx.getStart().getLine());
+        }
+    }
+
+    @Override
+    public void exitElse_clause(PythonParser.Else_clauseContext ctx) {
+        if (isInsideRoutine() && ctx.getParent() instanceof PythonParser.If_stmtContext) {
+            h.exitStatementWithFullComment("ELSE", ctx.getStop().getLine(), ctx);
+        }
+    }
+
+    @Override
+    public void enterWhile_stmt(PythonParser.While_stmtContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitWhile_stmt(PythonParser.While_stmtContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("LOOP", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterFor_stmt(PythonParser.For_stmtContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitFor_stmt(PythonParser.For_stmtContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("LOOP", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterTry_stmt(PythonParser.Try_stmtContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("TRY", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitTry_stmt(PythonParser.Try_stmtContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("TRY", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterExcept_clause(PythonParser.Except_clauseContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("CATCH", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitExcept_clause(PythonParser.Except_clauseContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("CATCH", ctx.getStop().getLine(), ctx);
+    }
 }

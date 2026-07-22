@@ -1,5 +1,8 @@
 package legacymodernizer.parser.antlr.postgresql;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
@@ -9,6 +12,10 @@ import legacymodernizer.parser.antlr.ParserUtils;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlAstVisitor;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlLexer;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlParser;
+import legacymodernizer.parser.recovery.diagnostics.CollectingAntlrErrorListener;
+import legacymodernizer.parser.recovery.diagnostics.CountingErrorStrategy;
+import legacymodernizer.parser.recovery.diagnostics.DiagnosticPhase;
+import legacymodernizer.parser.recovery.diagnostics.ParseDiagnostic;
 import legacymodernizer.parser.service.ParseProgressTracker;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,9 +29,19 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
     private final ListenerHelper h;
     private boolean insideInsert = false;
     private boolean insideExplain = false;
+    private final List<ParseDiagnostic> nestedDiagnostics = new ArrayList<>();
+    private int nestedRecoveries;
 
     public Node getRoot() {
         return h.getRoot();
+    }
+
+    public List<ParseDiagnostic> getNestedDiagnostics() {
+        return List.copyOf(nestedDiagnostics);
+    }
+
+    public int getNestedRecoveries() {
+        return nestedRecoveries;
     }
 
     public PostgreSqlAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
@@ -260,13 +277,27 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
         try {
             CharStream input = CharStreams.fromString(plpgsqlCode);
             PlpgsqlLexer lexer = new PlpgsqlLexer(input);
+            CollectingAntlrErrorListener lexerErrors = new CollectingAntlrErrorListener(
+                    DiagnosticPhase.LEXER, plpgsqlCode);
+            lexer.removeErrorListeners();
+            lexer.addErrorListener(lexerErrors);
             CommonTokenStream plTokens = new CommonTokenStream(lexer);
             PlpgsqlParser parser = new PlpgsqlParser(plTokens);
+            CollectingAntlrErrorListener parserErrors = new CollectingAntlrErrorListener(
+                    DiagnosticPhase.PARSER, plpgsqlCode);
+            CountingErrorStrategy errorStrategy = new CountingErrorStrategy();
 
             // ANTLR 기본 에러 리스너 제거 — 복구 파싱 중 stderr 스팸 방지(부분 트리는 그대로 처리).
             parser.removeErrorListeners();
+            parser.addErrorListener(parserErrors);
+            parser.setErrorHandler(errorStrategy);
 
             ParseTree tree = parser.plpgsqlBlock();
+            lexerErrors.diagnostics().stream().map(diagnostic -> rebase(diagnostic, baseLineNumber))
+                    .forEach(nestedDiagnostics::add);
+            parserErrors.diagnostics().stream().map(diagnostic -> rebase(diagnostic, baseLineNumber))
+                    .forEach(nestedDiagnostics::add);
+            nestedRecoveries += errorStrategy.recoveryCount();
 
             PlpgsqlAstVisitor visitor = new PlpgsqlAstVisitor(
                 h.getNodeStack().peek(),
@@ -276,10 +307,20 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener {
             visitor.visit(tree);
 
         } catch (Exception e) {
+            nestedDiagnostics.add(new ParseDiagnostic(
+                    DiagnosticPhase.SYSTEM, "ERROR", "PLPGSQL_NESTED_PARSE_FAILED",
+                    e.getMessage(), baseLineNumber, 0, null, null, List.of(), ""));
             // PL/pgSQL 블록 파싱 실패 — 해당 서브트리만 누락하고 outer 파싱은 계속(파일 단위 안전).
             log.warn("PL/pgSQL 블록 파싱 실패 (line {} 부근) — 해당 서브트리 누락: {}",
                     baseLineNumber, e.getMessage());
         }
+    }
+
+    private static ParseDiagnostic rebase(ParseDiagnostic diagnostic, int baseLineNumber) {
+        return new ParseDiagnostic(diagnostic.phase(), diagnostic.severity(), diagnostic.code(),
+                diagnostic.message(), baseLineNumber + Math.max(0, diagnostic.line() - 1),
+                diagnostic.column(), diagnostic.offendingToken(), diagnostic.expectedTokens(),
+                diagnostic.ruleStack(), diagnostic.tokenWindow());
     }
 
     // ========================================

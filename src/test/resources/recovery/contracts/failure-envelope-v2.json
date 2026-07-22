@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "2.0.0",
+  "failureEnvelopeHash": "da5b0946408ec095433bbc78efde6ed06ac809907ba4a5bd02cf12837f122ad4",
+  "language": "oracle",
+  "grammarRevision": "PlSqlParser.g4@pinned",
+  "fileSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "unitSha256": "9b7c9ab37ca37fee8ef73ca699bb939e559f82eedb0cb051906420bfedd19ced",
+  "unitId": "oracle:procedure:fixture",
+  "unitKind": "PROCEDURE",
+  "originalStartOffset": 100,
+  "originalEndOffset": 121,
+  "originalStartLine": 10,
+  "originalEndLine": 10,
+  "sliceLevel": "L1",
+  "sliceUnitStartOffset": 0,
+  "sliceUnitEndOffset": 21,
+  "sliceFileStartOffset": 100,
+  "sliceFileEndOffset": 121,
+  "sliceSha256": "9b7c9ab37ca37fee8ef73ca699bb939e559f82eedb0cb051906420bfedd19ced",
+  "declarationHeader": "",
+  "diagnostics": [
+    {
+      "phase": "PARSER",
+      "code": "ANTLR_SYNTAX_ERROR",
+      "message": "extraneous input 'AS'",
+      "line": 10,
+      "column": 16,
+      "excerptStartOffset": 16,
+      "excerptEndOffset": 18,
+      "offendingToken": "AS",
+      "expectedTokens": "identifier",
+      "ruleStack": ["table_ref"],
+      "tokenWindow": "FROM T AS X"
+    }
+  ],
+  "coverage": {
+    "declarationsDiscovered": 1,
+    "declarationsEmitted": 0,
+    "missingDeclarations": ["fixture"],
+    "knownAndComplete": false
+  },
+  "priorAttempts": [],
+  "contextHeader": "unit=fixture; kind=PROCEDURE",
+  "sourceExcerpt": "SELECT * FROM T AS X;",
+  "sourceLineStartOffsets": [0],
+  "diagnosticWindowTokens": [
+    {"startOffset": 0, "endOffset": 6, "text": "SELECT"},
+    {"startOffset": 7, "endOffset": 8, "text": "*"},
+    {"startOffset": 9, "endOffset": 13, "text": "FROM"},
+    {"startOffset": 14, "endOffset": 15, "text": "T"},
+    {"startOffset": 16, "endOffset": 18, "text": "AS"},
+    {"startOffset": 19, "endOffset": 20, "text": "X"},
+    {"startOffset": 20, "endOffset": 21, "text": ";"}
+  ],
+  "constraints": {
+    "allowedStartOffset": 0,
+    "allowedEndOffset": 21,
+    "maxChangedCharacters": 8,
+    "maxChangedLines": 2,
+    "remainingAttempts": 3,
+    "forbiddenOutputs": ["AST", "NODE_JSON", "FULL_FILE_REWRITE"]
+  }
+}

@@ -1,0 +1,39 @@
+package legacymodernizer.parser.parsing.languages;
+
+import java.io.File;
+import java.nio.file.Path;
+
+import legacymodernizer.parser.intake.ParserWorkspace;
+
+/**
+ * 언어별 파싱 전략의 공통 베이스.
+ *
+ * <p>Each module implements file parsing plus its language id and parse extensions.
+ * 업로드(저장)·전체 순회는 storage·orchestrator 영역으로 분리됨.
+ */
+public abstract class AntlrLanguageModuleSupport implements LanguageModule {
+
+    protected final ParserWorkspace parserWorkspace;
+
+    protected AntlrLanguageModuleSupport(ParserWorkspace parserWorkspace) {
+        this.parserWorkspace = parserWorkspace;
+    }
+
+    /**
+     * sourceDir 기준 상대 경로 계산 — 각 전략이 {@code listener.setFileInfo} 호출 시 사용.
+     */
+    protected String computeRelativePath(File file) {
+        String fileName = file.getName();
+        Path sourceDir = parserWorkspace.sourceDir();
+        Path filePath = file.toPath();
+        try {
+            if (filePath.startsWith(sourceDir)) {
+                return sourceDir.relativize(filePath).toString().replace('\\', '/');
+            } else {
+                return filePath.toString().replace('\\', '/');
+            }
+        } catch (Exception e) {
+            return fileName;
+        }
+    }
+}

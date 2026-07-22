@@ -325,5 +325,179 @@ public class JavaAstListener extends Java20ParserBaseListener {
     public void exitClassInstanceCreationExpression(Java20Parser.ClassInstanceCreationExpressionContext ctx) {
         h.exitStatement("NEW_INSTANCE", ctx.getStop().getLine(), ctx);
     }
-    
+
+    // ========================================
+    // 제어 흐름 의미 AST (spec 007 계약의 Java 구현): IF / ELSE / LOOP / SWITCH / CASE / TRY / CATCH
+    //
+    // C 리스너와 동일 원칙: 메서드 안에서만 emit, for/while/do 는 구분 없이 LOOP,
+    // else-if 는 ELSE 아래 중첩 IF 로 자연 표현(인위적 평탄화 없음), finally 는 TRY 본문에 포함.
+    // 기존 FUNCTION_CALL/NEW_INSTANCE emit 은 불변 — 제어문 아래로 자연 중첩된다.
+    // switch expression(값으로 쓰는 switch)은 이번 범위 밖(계약 v2.0 SWITCH=문장) — 미지원 명시.
+    // ========================================
+
+    private boolean isInsideRoutine() {
+        for (int i = h.getNodeStack().size() - 1; i >= 0; i--) {
+            String t = h.getNodeStack().get(i).type;
+            if ("METHOD".equals(t) || "FUNCTION".equals(t)) return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void enterIfThenStatement(Java20Parser.IfThenStatementContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("IF", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitIfThenStatement(Java20Parser.IfThenStatementContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("IF", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterIfThenElseStatement(Java20Parser.IfThenElseStatementContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("IF", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitIfThenElseStatement(Java20Parser.IfThenElseStatementContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("IF", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterIfThenElseStatementNoShortIf(Java20Parser.IfThenElseStatementNoShortIfContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("IF", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitIfThenElseStatementNoShortIf(Java20Parser.IfThenElseStatementNoShortIfContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("IF", ctx.getStop().getLine(), ctx);
+    }
+
+    /** ctx 가 if-then-else 의 else 분기인지 — then 분기·중첩 statement 와 구분한다. */
+    private static boolean isElseBranch(org.antlr.v4.runtime.ParserRuleContext ctx) {
+        org.antlr.v4.runtime.ParserRuleContext p = ctx.getParent();
+        if (p instanceof Java20Parser.IfThenElseStatementContext) {
+            return ((Java20Parser.IfThenElseStatementContext) p).statement() == ctx;
+        }
+        if (p instanceof Java20Parser.IfThenElseStatementNoShortIfContext) {
+            Java20Parser.IfThenElseStatementNoShortIfContext sel =
+                    (Java20Parser.IfThenElseStatementNoShortIfContext) p;
+            return sel.statementNoShortIf().size() >= 2 && sel.statementNoShortIf(1) == ctx;
+        }
+        return false;
+    }
+
+    @Override
+    public void enterStatement(Java20Parser.StatementContext ctx) {
+        if (isInsideRoutine() && isElseBranch(ctx)) h.enterStatement("ELSE", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitStatement(Java20Parser.StatementContext ctx) {
+        if (isInsideRoutine() && isElseBranch(ctx)) h.exitStatementWithFullComment("ELSE", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterStatementNoShortIf(Java20Parser.StatementNoShortIfContext ctx) {
+        if (isInsideRoutine() && isElseBranch(ctx)) h.enterStatement("ELSE", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitStatementNoShortIf(Java20Parser.StatementNoShortIfContext ctx) {
+        if (isInsideRoutine() && isElseBranch(ctx)) h.exitStatementWithFullComment("ELSE", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterWhileStatement(Java20Parser.WhileStatementContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitWhileStatement(Java20Parser.WhileStatementContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("LOOP", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterWhileStatementNoShortIf(Java20Parser.WhileStatementNoShortIfContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitWhileStatementNoShortIf(Java20Parser.WhileStatementNoShortIfContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("LOOP", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterDoStatement(Java20Parser.DoStatementContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitDoStatement(Java20Parser.DoStatementContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("LOOP", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterForStatement(Java20Parser.ForStatementContext ctx) {
+        // basic/enhanced for 의 공통 부모 — 여기 한 곳만 hook (자식까지 걸면 이중 LOOP)
+        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitForStatement(Java20Parser.ForStatementContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("LOOP", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterForStatementNoShortIf(Java20Parser.ForStatementNoShortIfContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitForStatementNoShortIf(Java20Parser.ForStatementNoShortIfContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("LOOP", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterSwitchStatement(Java20Parser.SwitchStatementContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("SWITCH", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitSwitchStatement(Java20Parser.SwitchStatementContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("SWITCH", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterSwitchBlockStatementGroup(Java20Parser.SwitchBlockStatementGroupContext ctx) {
+        // case/default 라벨 + 본문 묶음 = CASE (C 의 case/default 와 동일 의미 단위)
+        if (isInsideRoutine()) h.enterStatement("CASE", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitSwitchBlockStatementGroup(Java20Parser.SwitchBlockStatementGroupContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("CASE", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterTryStatement(Java20Parser.TryStatementContext ctx) {
+        // try-with-resources 도 이 규칙의 대안으로 파싱되므로 여기 한 곳으로 충분.
+        if (isInsideRoutine()) h.enterStatement("TRY", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitTryStatement(Java20Parser.TryStatementContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("TRY", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterCatchClause(Java20Parser.CatchClauseContext ctx) {
+        if (isInsideRoutine()) h.enterStatement("CATCH", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitCatchClause(Java20Parser.CatchClauseContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("CATCH", ctx.getStop().getLine(), ctx);
+    }
+
 }

@@ -58,14 +58,18 @@
 - Content-Type: `application/x-ndjson` (NDJSON 스트림), 타임아웃 30분.
 
 ```
-{"type":"message","content":"🔎 언어 자동 감지..."}
-{"type":"detected","target":"java","strategy":"framework","sqlDialect":null,"targets":[...]}
-{"type":"message","content":"📄 [1/5] user/UserService.java 파싱 시작..."}
-{"type":"skipped","content":"..."}
-{"type":"message","content":"🎉 파싱 완료! ..."}
-{"type":"complete"}
+{"schemaVersion":"1.1.0","type":"message","event":"run_started","content":"🧭 코드 구조 파악을 준비하고 있어요","phase":"PREPARING","status":"RUNNING"}
+{"schemaVersion":"1.1.0","type":"detected","event":"language_detected","content":"{...}","phase":"DETECTION","status":"COMPLETED","language":"java"}
+{"schemaVersion":"1.1.0","type":"message","event":"file_started","content":"📄 [1/5] user/UserService.java — JAVA 320라인을 읽고 있어요","current":1,"total":5,"percent":0,"file":"user/UserService.java","language":"java"}
+{"schemaVersion":"1.1.0","type":"message","event":"file_result","content":"✅ [1/5] user/UserService.java — 문법 오류 없이 정확히 파싱됐어요","quality":"EXACT"}
+{"schemaVersion":"1.1.0","type":"warning","event":"file_skipped","content":"⏭️ 분석 대상에서 제외했어요: ..."}
+{"schemaVersion":"1.1.0","type":"message","event":"run_completed","content":"🎉 파싱 완료 — 정확 5 · 복구 0 · 부분 0 · 검토 필요 0 · 미해결 0 · 실패 0 · AST 5개","percent":100,"counts":{"exact":5,"recovered":0}}
+{"schemaVersion":"1.1.0","type":"complete","event":"complete","phase":"COMPLETED","status":"COMPLETED","percent":100}
 ```
-**이벤트 타입**: `message`(진행) · `detected`(감지 결과 `{target,strategy,sqlDialect,targets}`) · `skipped`(대상 외) · `error` · `complete`.
+**호환 계약**: 기존 `type/content` 는 유지됩니다. `event`, `phase`, `status`, `current`,
+`total`, `percent`, `file`, `language`, `line`, `quality`, `counts` 는 UI가 문자열을 다시
+해석하지 않고 진행률과 품질을 표시하도록 추가된 선택 필드입니다. 정상 종료에는
+`complete` 가 정확히 한 번 옵니다.
 
 > ⚠️ AST JSON 내용은 응답에 포함되지 않습니다 — `analysis/` 폴더에 저장됩니다.
 
@@ -73,7 +77,7 @@
 
 ## 🧭 DDL 구분 (경로가 아니라 내용 기반)
 
-`IntakeClassifier` 가 **파일 내용**으로 분류합니다:
+`SourceIntakeClassifier` 가 **파일 내용**으로 분류합니다:
 - `.sql` 안에 표 정의(CREATE TABLE/VIEW/INDEX/SEQUENCE)만 있고 프로시저(FUNCTION/PROCEDURE/PACKAGE/TRIGGER/TYPE)가 없으면 → **DDL**.
 - 그 외 `.sql` 및 `.sql` 아닌 소스 → **SOURCE**.
 - `ddl/` 접두 경로는 역호환 힌트로만 쓰고 분류 전 제거됩니다(경로로 판단하지 않음).
@@ -97,15 +101,72 @@ data/
 
 ## 🔧 지원 Target (자동 감지)
 
-| Target | 전략 클래스 | target 값 | 확장자 |
+| Target | 언어 모듈 | target 값 | 확장자 |
 |--------|------------|-----------|--------|
-| Java | JavaParserStrategy | `java` | `.java` |
-| C | CParserStrategy | `c` | `.c .h` |
-| Python | PythonParserStrategy | `python` | `.py` |
-| Oracle PL/SQL | PlSqlParserStrategy | `oracle` | `.sql .pks .pkb .prc .fnc` |
-| PostgreSQL | PostgreSqlParserStrategy | `postgresql` | `.sql` |
+| Java | JavaLanguageModule | `java` | `.java` |
+| C | CLanguageModule | `c` | `.c .h` |
+| Python | PythonLanguageModule | `python` | `.py` |
+| Oracle PL/SQL | OracleLanguageModule | `oracle` | `.sql .pks .pkb .prc .fnc` |
+| PostgreSQL | PostgreSqlLanguageModule | `postgresql` | `.sql` |
 
-> `.sql` 은 Oracle/PostgreSQL 둘 다 주장하므로, 프로젝트 단위 방언 마커 점수로 1회 결정합니다(동점/0이면 oracle 기본 — `LanguageDetector`).
+> `.sql` 은 Oracle/PostgreSQL 둘 다 주장하므로, 프로젝트 단위 방언 마커 점수로 1회 결정합니다(동점/0이면 oracle 기본 — `ParserSelection`).
+
+### 새 언어 추가 순서
+
+새 언어는 중앙 `switch`에 덧붙이지 않습니다. 해당 언어 폴더에 Spring `@Component`인
+`LanguageModule` 구현체를 추가하면 `LanguageModuleRegistry`가 자동 등록합니다.
+
+1. `antlr-grammars/`에 검토·고정한 Lexer/Parser `.g4`와 출처를 둡니다.
+2. 생성 Parser는 `src/main/java/.../antlr/<language>/`에, AST Listener는 같은 언어 경계에 둡니다.
+3. `parsing/languages/<language>/`에 `<Language>LanguageModule`과 필요한
+   `<Language>SourceUnitLocator`를 추가합니다.
+4. 확장자, 공용 확장자 우선순위, 내용 감지 점수와 DBMS/framework 계열을 모듈에서 선언합니다.
+5. (선택) `sliceSyntax()`로 주석·문자열·문장 종결자 규칙을, `repairProfile()`로 삭제 허용
+   구조 키워드를 선언합니다. 선언하지 않으면 보수적 기본값이 적용되고 자동 복구 범위만
+   좁아집니다(fail-closed).
+6. `languages/language-catalog.json`에 entry rule, 생성 Node 타입, Grammar SHA-256,
+   복구 rule-set을 등록하고 catalog checksum을 갱신합니다.
+7. 정상 AST golden test, 문법 오류·최소 단위 복구 test, 기존 Node JSON 불변 test를 추가한 뒤
+   `mvn clean test`를 실행합니다. Core 수정 0으로 등록되는지는
+   `NewLanguageOnboardingRehearsalTest` 패턴으로 확인합니다.
+
+공통 오류 진단, 품질 판정, 최대 3회 재시도, Repair Agent, 감사 JSON과 NDJSON 스트림은
+언어별로 다시 만들지 않습니다. 새 언어 모듈은 문법 실행·AST 변환·최소 복구 단위만 책임집니다.
+
+---
+
+## 🛠️ 실제 GPU Repair Agent
+
+정상 파일은 Agent를 호출하지 않습니다. 실패 unit은 먼저 **결정론 grammar-guided 엔진**이
+공략합니다 — ANTLR의 extraneous/missing/mismatched 신호와 기대 토큰 집합으로 단일 토큰
+후보를 만들고, wave당 전체 unit 재파싱으로 평가해 유일한 strict 생존자만 채택합니다
+(최대 3 wave, 의미 위험 토큰 변경은 재파싱이 성공해도 차단).
+
+엔진이 실패한 경우에만 Agent를 호출하며, 이때도 unit 전체가 아니라 **Parser가 좁힌 bounded
+slice**(L1 문장→L2 +선언 헤더→L3 캡 윈도우, 최대 4,000자)만 전송합니다. 제안은
+`expectedText + offset + snapshot hash`로 검증하고(excerpt 내 유일 일치 시 결정론 재정박),
+전체 unit strict 재파싱이 엄격히 개선된 경우에만 AST에 채택됩니다. 모든 Agent 호출은
+문자수 가중 token-budget 세마포어로 동시성이 제한됩니다. 원본 파일은 수정하지 않습니다.
+
+사내 SGLang GPU를 사용하는 Parser 프로세스에는 다음 환경변수를 전달합니다.
+
+```powershell
+$env:PARSER_REPAIR_AGENT_ENABLED="true"
+$env:PARSER_REPAIR_AGENT_API_BASE="http://ai-server.dream-flow.com:30000/v1"
+$env:PARSER_REPAIR_AGENT_MODEL="frentis-ai-model"
+$env:PARSER_REPAIR_AGENT_API_KEY="<secret>"
+$env:PARSER_REPAIR_AGENT_THINKING_ENABLED="false"   # SGLang 전용
+$env:PARSER_REPAIR_AGENT_TOP_K="1"                  # SGLang 전용
+$env:PARSER_REPAIR_AGENT_TIMEOUT_SECONDS="600"
+```
+
+OpenAI 계열 모델(GPT-5.4-mini 등)은 SGLang 전용 옵션 대신
+`PARSER_REPAIR_AGENT_REASONING_EFFORT`(none/low/…)를 사용합니다. 두 옵션군은 provider별로
+상호 배타적으로 설정합니다. 동시 Agent 트래픽은
+`parser.repair.agent.budget.chars`(기본 200,000자) 예산으로 제한됩니다.
+
+API 키는 저장소나 문서에 기록하지 않습니다. 설정이 없거나 서버 응답·편집 범위·재파싱이
+검증을 통과하지 못하면 해당 단위는 `REVIEW_REQUIRED`로 남고 다음 파일 처리는 계속됩니다.
 
 ---
 
@@ -139,20 +200,14 @@ curl -X POST http://localhost:8080/antlr/parsing \
 ```
 src/main/java/legacymodernizer/parser/
 ├── ParserApplication.java          ← Spring Boot 진입점
-├── controller/
-│   ├── FileUploadController.java   ← /antlr/fileUpload, /antlr/parsing
-│   └── HealthCheckController.java  ← GET / → "OK"
-├── service/
-│   ├── FileStorageService.java     ← 파일 저장/반입(업로드·경로 모드)
-│   ├── IntakeClassifier.java       ← DDL/SOURCE 내용 기반 분류
-│   ├── LanguageDetector.java       ← 언어/방언 자동 감지
-│   ├── ParsingOrchestrator.java    ← 파일별 자동 라우팅·파싱·스트림
-│   ├── ParseProgressTracker.java
-│   ├── StreamCallback.java
-│   └── strategy/
-│       ├── TargetParserStrategy.java · AbstractParserStrategy.java
-│       ├── JavaParserStrategy · CParserStrategy · PythonParserStrategy
-│       └── PlSqlParserStrategy · PostgreSqlParserStrategy
+├── api/                            ← HTTP·NDJSON 경계
+│   ├── FileUploadController.java · HealthCheckController.java · WebConfig.java
+│   └── stream/                     ← ParseEventSink · ParseStreamEvent
+├── intake/                         ← ParserWorkspace · SourceIntakeClassifier
+├── parsing/                        ← ParseOrchestrator · ParserSelection · RawParseResult
+│   └── languages/                  ← 공통 등록 + c/java/oracle/postgresql/python 모듈
+├── recovery/                       ← 실패 진단·최소단위·규칙·품질·Repair Agent·감사
+├── service/ParseProgressTracker.java ← 보호된 Listener 호환을 위한 유일한 임시 예외
 ├── model/
 │   └── Node.java                   ← AST 노드 (toJson 직렬화)
 ├── antlr/                          ← 생성된 파서(커밋됨): java/ c/ python/ plsql/ postgresql/ plpgsql/
@@ -166,7 +221,7 @@ src/main/java/legacymodernizer/parser/
 ## 🔑 핵심 포인트
 
 1. **언어 자동 감지**: 호출자가 언어를 지정하지 않음(확장자 + `.sql` 방언 점수).
-2. **DDL 구분 = 내용 기반**(`IntakeClassifier`), 경로 아님.
+2. **DDL 구분 = 내용 기반**(`SourceIntakeClassifier`), 경로 아님.
 3. **2단계 처리**: 업로드 → 파싱 분리. 경로 모드는 업로드 생략(`project_root`).
 4. **파싱 결과**: 응답에 없고 `analysis/` 폴더에 저장.
 5. **파일 대체**: 업로드 시 기존 파일 모두 삭제 후 새로 저장.
