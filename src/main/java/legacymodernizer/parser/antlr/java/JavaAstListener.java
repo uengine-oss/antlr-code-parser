@@ -270,7 +270,23 @@ public class JavaAstListener extends Java20ParserBaseListener
             if (node.name != null && node.name.contains("=")) {
                 node.name = node.name.split("=")[0];
             }
+            setSingleInitValue(node, ctx.variableDeclaratorList());
         }
+    }
+
+    /**
+     * 선언자가 하나일 때만 초기화식을 {@code initValue} 로 싣는다 — C/Python/PL/SQL 리스너와 동일 계약.
+     * 한 줄에 여러 선언자가 있으면 이름과 값의 짝을 노드 하나로 표현할 수 없으므로 비운다(정직한 미기재).
+     */
+    private void setSingleInitValue(Node node, Java20Parser.VariableDeclaratorListContext list) {
+        if (list.variableDeclarator().size() != 1) {
+            return;
+        }
+        Java20Parser.VariableDeclaratorContext declarator = list.variableDeclarator(0);
+        if (declarator.variableInitializer() == null) {
+            return;
+        }
+        node.initValue = declarator.variableInitializer().getText();
     }
 
     @Override
