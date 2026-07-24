@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.io.File;
 
 import org.springframework.stereotype.Service;
@@ -45,6 +46,7 @@ public class ParserWorkspace {
     private static final String ANALYSIS = "analysis";
     private static final String DIAGNOSTICS = "diagnostics";
     private static final String REPAIRS = "repairs";
+    private final Map<Path, Path> sourceOrigins = new ConcurrentHashMap<>();
 
     /** 입구 반입 요약 — 분류 수 + 건너뛴 파일(사유 포함). */
     public record IntakeResult(int ddlCount, int sourceCount, List<String> skipped) {}
@@ -113,6 +115,7 @@ public class ParserWorkspace {
      * @return {files: [...], ddlFiles: [...], nontargetFiles: [...]}
      */
     public Map<String, Object> uploadFiles(MultipartFile[] files, Set<String> targetExtensions, String targetFolder) {
+        sourceOrigins.clear();
         clearDirectory(sourceDir());
         clearDirectory(ddlDir());
         clearDirectory(analysisDir());
@@ -178,6 +181,7 @@ public class ParserWorkspace {
      * data/ 는 매 반입마다 전량 리셋(헌법 IV). 한 파일 실패는 격리·기록하고 계속(spec 006 US4).
      */
     public IntakeResult intakeFromPath(Path localRoot) {
+        sourceOrigins.clear();
         clearDirectory(sourceDir());
         clearDirectory(ddlDir());
         clearDirectory(analysisDir());
@@ -199,7 +203,13 @@ public class ParserWorkspace {
                 Kind kind = classifier.classify(rel, readContent(f));
                 Path dest = (kind == Kind.DDL ? ddlBase : sourceBase).resolve(rel);
                 materialize(f, dest);
-                if (kind == Kind.DDL) ddlCount++; else sourceCount++;
+                if (kind == Kind.DDL) {
+                    ddlCount++;
+                } else {
+                    sourceCount++;
+                    sourceOrigins.put(dest.toAbsolutePath().normalize(),
+                            f.toAbsolutePath().normalize());
+                }
             } catch (Exception e) {
                 skipped.add(rel + " (" + e.getMessage() + ")");
                 log.warn("[반입 건너뜀] {} - {}", rel, e.getMessage());
@@ -207,6 +217,15 @@ public class ParserWorkspace {
         }
         log.info("[경로 반입] ddl={}개, source={}개, 건너뜀={}개", ddlCount, sourceCount, skipped.size());
         return new IntakeResult(ddlCount, sourceCount, skipped);
+    }
+
+    /**
+     * Returns the user-selected source that produced a workspace file. Uploaded files have no
+     * external origin and therefore resolve to the workspace file itself.
+     */
+    public Path sourceOrigin(Path workspaceFile) {
+        Path normalized = workspaceFile.toAbsolutePath().normalize();
+        return sourceOrigins.getOrDefault(normalized, normalized);
     }
 
     // ═══════════════════════════════════════════════════════════════════

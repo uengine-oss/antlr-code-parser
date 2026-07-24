@@ -238,6 +238,8 @@ class DeterministicEngineRecoveryTest {
         assertTrue(outcome.units().stream().flatMap(unit -> unit.attempts().stream())
                         .noneMatch(attempt -> "REPAIR_AGENT".equals(attempt.stage())),
                 "no Agent call may occur in deterministic-only mode");
+        assertTrue(outcome.hasVerifiedSourceRepair());
+        assertFalse(outcome.repairedSource().contains("APP_TABLE AS A"));
         assertEquals(originalSha, Hashes.sha256(Files.readAllBytes(file)),
                 "original file must stay byte-identical");
     }

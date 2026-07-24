@@ -21,6 +21,9 @@ import legacymodernizer.parser.recovery.reports.RepairPromotionReporter;
 import legacymodernizer.parser.recovery.quality.QualityDecision;
 import legacymodernizer.parser.recovery.quality.QualityStatus;
 import legacymodernizer.parser.recovery.quality.ParseQualityGate;
+import legacymodernizer.parser.recovery.source.SourceApplicationResult;
+import legacymodernizer.parser.recovery.source.SourceApplicationStatus;
+import legacymodernizer.parser.recovery.source.VerifiedSourceRepairApplier;
 import legacymodernizer.parser.parsing.languages.LanguageCatalogValidator;
 import legacymodernizer.parser.parsing.languages.LanguageModule;
 import legacymodernizer.parser.recovery.LayeredRecoveryPipeline;
@@ -50,6 +53,7 @@ public class ParseOrchestrator {
     private final RepairPromotionReporter repairPromotionReporter;
     private final LanguageCatalogValidator languageCatalogValidator;
     private final LayeredRecoveryPipeline recoveryPipeline;
+    private final VerifiedSourceRepairApplier sourceRepairApplier;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -248,6 +252,7 @@ public class ParseOrchestrator {
                 return;
             }
 
+            applyVerifiedSourceRepair(file, recovery, tracker);
             Files.writeString(output, recovery.astJson(), StandardCharsets.UTF_8);
 
             counters.success.incrementAndGet();
@@ -286,6 +291,30 @@ public class ParseOrchestrator {
     }
 
     /** 구조화된 감지 결과({target, strategy, sqlDialect, targets})를 'detected' 이벤트로 스트림에 전달. */
+    private void applyVerifiedSourceRepair(Path workspaceFile, RecoveryOutcome recovery,
+                                           ParseProgressTracker tracker) {
+        Path sourceTarget = parserWorkspace.sourceOrigin(workspaceFile);
+        try {
+            SourceApplicationResult result = sourceRepairApplier.apply(sourceTarget, recovery);
+            if (result.status() == SourceApplicationStatus.APPLIED) {
+                tracker.repairProgress("repair_source_applied",
+                        "Verified minimal repair applied to original source: "
+                                + sourceTarget.getFileName());
+                log.info("  [SOURCE REPAIRED] {} ({})", sourceTarget, result.charset());
+            } else if (result.status() == SourceApplicationStatus.STALE_SOURCE
+                    || result.status() == SourceApplicationStatus.LOSSY_SOURCE) {
+                tracker.repairReviewRequired("repair_source_not_applied",
+                        "Verified repair was not written: " + result.status());
+                log.warn("  [SOURCE REPAIR SKIPPED] {} - {}", sourceTarget, result.status());
+            }
+        } catch (Exception error) {
+            tracker.repairReviewRequired("repair_source_apply_failed",
+                    "Verified repair could not be written: "
+                            + error.getClass().getSimpleName());
+            log.warn("  [SOURCE REPAIR FAILED] {} - {}", sourceTarget, error.getMessage());
+        }
+    }
+
     private void emitDetected(ParseEventSink eventSink, DetectionResult detection) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("target", detection.primaryTarget());

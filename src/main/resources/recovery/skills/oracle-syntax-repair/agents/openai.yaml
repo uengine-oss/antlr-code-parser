@@ -1,0 +1,4 @@
+interface:
+  display_name: "Oracle Syntax Repair"
+  short_description: "Oracle PL/SQL syntax repair guidance"
+  default_prompt: "Use $oracle-syntax-repair to repair a bounded Oracle PL/SQL syntax error."

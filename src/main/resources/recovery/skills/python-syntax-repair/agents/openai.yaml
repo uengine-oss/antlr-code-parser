@@ -1,0 +1,4 @@
+interface:
+  display_name: "Python Syntax Repair"
+  short_description: "Python-specific syntax repair guidance"
+  default_prompt: "Use $python-syntax-repair to repair a bounded Python syntax error."

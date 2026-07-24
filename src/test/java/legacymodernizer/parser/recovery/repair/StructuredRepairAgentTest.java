@@ -69,6 +69,11 @@ class StructuredRepairAgentTest {
         assertEquals(StructuredRepairAgent.SUBMIT_FUNCTION,
                 request.path("tools").get(0).path("function").path("name").asText());
         assertTrue(request.path("tools").get(0).path("function").path("strict").asBoolean());
+        String systemPrompt = request.path("messages").get(0).path("content").asText();
+        assertTrue(systemPrompt.contains("Return one bounded syntax repair tool call."));
+        assertTrue(systemPrompt.contains("name=\"common-syntax-repair\""));
+        assertTrue(systemPrompt.contains("name=\"oracle-syntax-repair\""));
+        assertFalse(systemPrompt.contains("name=\"postgresql-syntax-repair\""));
         String userEnvelope = request.path("messages").get(1).path("content").asText();
         assertEquals(envelope.sourceExcerpt(),
                 objectMapper.readTree(userEnvelope).path("sourceExcerpt").asText());

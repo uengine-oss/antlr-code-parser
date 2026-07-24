@@ -146,7 +146,9 @@ data/
 slice**(L1 문장→L2 +선언 헤더→L3 캡 윈도우, 최대 4,000자)만 전송합니다. 제안은
 `expectedText + offset + snapshot hash`로 검증하고(excerpt 내 유일 일치 시 결정론 재정박),
 전체 unit strict 재파싱이 엄격히 개선된 경우에만 AST에 채택됩니다. 모든 Agent 호출은
-문자수 가중 token-budget 세마포어로 동시성이 제한됩니다. 원본 파일은 수정하지 않습니다.
+문자수 가중 token-budget 세마포어로 동시성이 제한됩니다. 기본값에서는 원본 파일을
+수정하지 않습니다. `PARSER_REPAIR_APPLY_TO_SOURCE=true`를 명시한 경우에만, 파일 전체가
+안전하게 복구되고 원본 SHA-256과 문자셋 왕복 검증이 통과한 결과를 원자적으로 반영합니다.
 
 사내 SGLang GPU를 사용하는 Parser 프로세스에는 다음 환경변수를 전달합니다.
 

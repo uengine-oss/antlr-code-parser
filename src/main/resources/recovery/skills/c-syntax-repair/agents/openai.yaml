@@ -1,0 +1,4 @@
+interface:
+  display_name: "C Syntax Repair"
+  short_description: "C-specific syntax repair guidance"
+  default_prompt: "Use $c-syntax-repair to repair a bounded C syntax error."

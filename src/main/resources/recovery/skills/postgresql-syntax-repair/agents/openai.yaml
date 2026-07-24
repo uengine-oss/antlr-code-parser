@@ -1,0 +1,4 @@
+interface:
+  display_name: "PostgreSQL Syntax Repair"
+  short_description: "PostgreSQL syntax repair guidance"
+  default_prompt: "Use $postgresql-syntax-repair to repair a bounded PostgreSQL syntax error."

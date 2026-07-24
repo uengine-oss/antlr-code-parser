@@ -121,6 +121,7 @@ public final class LayeredRecoveryPipeline {
         units = expandUnitsCutByGapDamage(units, firstPass, firstChildren, source);
         List<JsonNode> acceptedChildren = new ArrayList<>();
         List<UnitRecoveryEvidence> evidence = new ArrayList<>();
+        List<TextEdit> acceptedSourceEdits = new ArrayList<>();
         int reused = 0;
         int recovered = 0;
         int unresolved = 0;
@@ -133,6 +134,14 @@ public final class LayeredRecoveryPipeline {
                     sourceFile, relativePath, fileSha256, tracker);
             acceptedChildren.addAll(outcome.children());
             evidence.add(outcome.evidence());
+            if (outcome.repairedUnitText() != null) {
+                String originalUnitText = source.substring(unit.startOffset(), unit.endOffset());
+                if (!originalUnitText.equals(outcome.repairedUnitText())) {
+                    acceptedSourceEdits.add(new TextEdit(unit.startOffset(), unit.endOffset(),
+                            outcome.repairedUnitText(), "VERIFIED_RECOVERY",
+                            "Fully validated direct unit repair"));
+                }
+            }
             usedSafeRule |= outcome.usedSafeRule();
             if (outcome.failed()) {
                 unresolved++;
@@ -147,17 +156,24 @@ public final class LayeredRecoveryPipeline {
 
         return assembleOutcome(units, firstRoot, firstChildren, firstPass, firstDecision,
                 acceptedChildren, evidence, failedUnitIds, reused, recovered, unresolved,
-                usedSafeRule, hasReviewRequired);
+                usedSafeRule, hasReviewRequired, source, fileSha256, acceptedSourceEdits);
     }
 
     /** 단위 1개 처리 결과 — 4중 불리언(acceptedByRule/Context/Engine/Agent) 대신 채택 경로를 담는다. */
     private record UnitOutcome(List<JsonNode> children, UnitRecoveryEvidence evidence,
                                boolean reusedFirstPass, boolean usedSafeRule,
-                               boolean failed, boolean reviewRequired) {
+                               boolean failed, boolean reviewRequired,
+                               String repairedUnitText) {
 
         static UnitOutcome adopted(List<JsonNode> children, UnitRecoveryEvidence evidence,
                                    boolean usedSafeRule) {
-            return new UnitOutcome(children, evidence, false, usedSafeRule, false, false);
+            return adopted(children, evidence, usedSafeRule, null);
+        }
+
+        static UnitOutcome adopted(List<JsonNode> children, UnitRecoveryEvidence evidence,
+                                   boolean usedSafeRule, String repairedUnitText) {
+            return new UnitOutcome(children, evidence, false, usedSafeRule, false, false,
+                    repairedUnitText);
         }
     }
 
@@ -172,7 +188,7 @@ public final class LayeredRecoveryPipeline {
                         && diagnostic.line() <= unit.endLine());
         if (!intersectsError && reusableIsStructurallyPlausible(reusable, unit)) {
             return new UnitOutcome(reusable, new UnitRecoveryEvidence(unit, QualityStatus.EXACT,
-                    true, reusable.size(), List.of()), true, false, false, false);
+                    true, reusable.size(), List.of()), true, false, false, false, null);
         }
 
         String unitText = source.substring(unit.startOffset(), unit.endOffset());
@@ -236,7 +252,7 @@ public final class LayeredRecoveryPipeline {
                     && !candidateChildren.isEmpty()) {
                 return UnitOutcome.adopted(candidateChildren, new UnitRecoveryEvidence(unit,
                         QualityStatus.RECOVERED_SAFE, true, candidateChildren.size(),
-                        List.copyOf(attempts)), true);
+                        List.copyOf(attempts)), true, workingCopy.workingText());
             }
         }
 
@@ -272,7 +288,9 @@ public final class LayeredRecoveryPipeline {
                                         ? QualityStatus.RECOVERED_VALIDATED
                                         : QualityStatus.RECOVERED_SAFE,
                                 true, candidateChildren.size(), List.copyOf(attempts)),
-                                contextSource.ruleId() != null);
+                                contextSource.ruleId() != null,
+                                contextSource.workingCopy() == null ? null
+                                        : contextSource.workingCopy().workingText());
                     }
                 }
             } catch (Exception contextFailure) {
@@ -296,14 +314,14 @@ public final class LayeredRecoveryPipeline {
         EngineWaveResult engineResult = !attempt.diagnostics().isEmpty()
                 ? runEngineWaves(module, unit, unitText, sourceFile, relativePath,
                         attempt, decision, attempts, attemptNumber, tracker)
-                : new EngineWaveResult(null, false, attemptNumber);
+                : new EngineWaveResult(null, null, false, attemptNumber);
         attemptNumber = engineResult.attemptNumber();
         if (engineResult.cleanChildren() != null) {
             tracker.repairProgress("repair_unit_engine_adopted",
                     "✅ " + displayName(unit) + " 구간의 문법 오류를 자동으로 고쳤어요");
             return UnitOutcome.adopted(engineResult.cleanChildren(), new UnitRecoveryEvidence(unit,
                     QualityStatus.RECOVERED_VALIDATED, true, engineResult.cleanChildren().size(),
-                    List.copyOf(attempts)), false);
+                    List.copyOf(attempts)), false, engineResult.repairedText());
         }
 
         boolean unitReviewRequired = engineResult.ambiguous();
@@ -320,7 +338,7 @@ public final class LayeredRecoveryPipeline {
                 if (ladder.children() != null) {
                     return UnitOutcome.adopted(ladder.children(), new UnitRecoveryEvidence(unit,
                             QualityStatus.RECOVERED_VALIDATED, true, ladder.children().size(),
-                            List.copyOf(attempts)), false);
+                            List.copyOf(attempts)), false, ladder.repairedText());
                 }
                 unitReviewRequired = true;
             }
@@ -330,7 +348,7 @@ public final class LayeredRecoveryPipeline {
                         + " 구간은 자동 복구가 불확실해 검토 대상으로 남겼어요");
         return new UnitOutcome(List.of(), new UnitRecoveryEvidence(unit,
                 unitReviewRequired ? QualityStatus.REVIEW_REQUIRED : QualityStatus.UNRESOLVED,
-                false, 0, List.copyOf(attempts)), false, false, true, unitReviewRequired);
+                false, 0, List.copyOf(attempts)), false, false, true, unitReviewRequired, null);
     }
 
     /** 단위별 결과를 최종 AST·품질 판정으로 합성한다 — 손실 가드·세탁 방지 로직 포함(이동 전과 동일). */
@@ -338,7 +356,8 @@ public final class LayeredRecoveryPipeline {
             List<JsonNode> firstChildren, RawParseResult firstPass, QualityDecision firstDecision,
             List<JsonNode> acceptedChildren, List<UnitRecoveryEvidence> evidence,
             java.util.Set<String> failedUnitIds, int reused, int recovered, int unresolved,
-            boolean usedSafeRule, boolean hasReviewRequired) throws Exception {
+            boolean usedSafeRule, boolean hasReviewRequired, String source,
+            String fileSha256, List<TextEdit> acceptedSourceEdits) throws Exception {
         // Shadow of every failed unit: from its start to the next unit's start. A defect at
         // column 0 can shrink the locator's unit boundary AND make ANTLR error recovery
         // scatter the unit's real body as top-level orphans just past that boundary — those
@@ -420,8 +439,15 @@ public final class LayeredRecoveryPipeline {
         }
         QualityDecision finalDecision = new QualityDecision(status, hasAst,
                 List.of(0, unresolved, 0, 0, 0, 0, 0), reasons);
+        String repairedSource = null;
+        if (fullyRecovered && !acceptedSourceEdits.isEmpty()) {
+            String materialized = WorkingCopy.exact(source)
+                    .applyOriginalEdits(acceptedSourceEdits).workingText();
+            if (!source.equals(materialized)) repairedSource = materialized;
+        }
         return new RecoveryOutcome(hasAst ? objectMapper.writeValueAsString(firstRoot) : null,
-                finalDecision, List.copyOf(evidence), reused, recovered, unresolved);
+                finalDecision, List.copyOf(evidence), reused, recovered, unresolved,
+                fileSha256, repairedSource);
     }
 
     /**
@@ -445,20 +471,23 @@ public final class LayeredRecoveryPipeline {
         EngineWaveResult engine = runEngineWaves(module, fileUnit, source, sourceFile,
                 relativePath, firstPass, firstDecision, attempts, 0, tracker);
         List<JsonNode> children = engine.cleanChildren();
+        String repairedSource = engine.repairedText();
         if (children == null && !engine.ambiguous() && repairAgent.enabled()) {
             AgentLadderResult ladder = runAgentLadder(module, fileUnit, source, sourceFile,
                     relativePath, fileSha256, firstPass, firstDecision, attempts,
                     engine.attemptNumber(), tracker);
             children = ladder.children();
+            repairedSource = ladder.repairedText();
         }
-        if (children == null || children.isEmpty()) {
+        if (children == null || children.isEmpty() || repairedSource == null
+                || repairedSource.equals(source)) {
             return null;
         }
         // Structural invariant from the text-scanning unit locator (parse-independent): a
         // repaired whole file must still contain every named routine the locator sees in the
         // source. Catches "repairs" that merge or swallow declarations yet reparse cleanly
         // (found by mutation benchmarking, 2026-07-22).
-        if (!containsEveryLocatedUnit(module, source, children)) {
+        if (!containsEveryLocatedUnit(module, repairedSource, children)) {
             tracker.repairProgress("repair_whole_file_rejected",
                     "⚠️ 파일 전체 복구안이 구조 보존 확인을 통과하지 못해 폐기하고 구간 복구로 전환해요");
             return null;
@@ -473,7 +502,7 @@ public final class LayeredRecoveryPipeline {
                 QualityStatus.RECOVERED_VALIDATED, true, children.size(),
                 List.copyOf(attempts));
         return new RecoveryOutcome(objectMapper.writeValueAsString(root), decision,
-                List.of(fileEvidence), 0, 1, 0);
+                List.of(fileEvidence), 0, 1, 0, fileSha256, repairedSource);
     }
 
     /**
@@ -604,7 +633,8 @@ public final class LayeredRecoveryPipeline {
 
     /** Outcome of the Agent slice ladder for one unit (or the whole file). */
     private record AgentLadderResult(
-            List<JsonNode> children, int attemptNumber, boolean reviewRequired) {
+            List<JsonNode> children, String repairedText,
+            int attemptNumber, boolean reviewRequired) {
     }
 
     /**
@@ -672,7 +702,8 @@ public final class LayeredRecoveryPipeline {
                 if (candidateDecision.accepted()
                         && isStrictlyBetter(candidateDecision, decision)
                         && !candidateChildren.isEmpty()) {
-                    return new AgentLadderResult(candidateChildren, attemptNumber, reviewRequired);
+                    return new AgentLadderResult(candidateChildren, workingCopy.workingText(),
+                            attemptNumber, reviewRequired);
                 }
             } catch (RepairAgentException | IllegalArgumentException error) {
                 attempts.add(agentFailureEvidence(++attemptNumber, attempt, decision,
@@ -680,12 +711,13 @@ public final class LayeredRecoveryPipeline {
                 reviewRequired = true;
             }
         }
-        return new AgentLadderResult(null, attemptNumber, true);
+        return new AgentLadderResult(null, null, attemptNumber, true);
     }
 
     /** Outcome of the deterministic wave loop for one unit. */
     private record EngineWaveResult(
-            List<JsonNode> cleanChildren, boolean ambiguous, int attemptNumber) {
+            List<JsonNode> cleanChildren, String repairedText,
+            boolean ambiguous, int attemptNumber) {
     }
 
     private static final int MAX_ENGINE_WAVES = 3;
@@ -730,7 +762,7 @@ public final class LayeredRecoveryPipeline {
                         List.of("GRAMMAR_GUIDED_AMBIGUOUS:" + survivors),
                         workingDecision.qualityTuple(), workingParse.sourceSha256(),
                         "GRAMMAR_GUIDED_AMBIGUOUS", null));
-                return new EngineWaveResult(null, true, attemptNumber);
+                return new EngineWaveResult(null, null, true, attemptNumber);
             }
             if (bestParse == null) break;
             workingText = bestCopy.workingText();
@@ -745,10 +777,11 @@ public final class LayeredRecoveryPipeline {
         boolean clean = !adoptedEdits.isEmpty() && workingParse.diagnostics().isEmpty()
                 && workingParse.antlrRecoveries() == 0 && workingDecision.accepted()
                 && isStrictlyBetter(workingDecision, firstDecision);
-        if (!clean) return new EngineWaveResult(null, false, attemptNumber);
+        if (!clean) return new EngineWaveResult(null, null, false, attemptNumber);
         List<JsonNode> children = elements(
                 objectMapper.readTree(workingParse.astJson()).path("children"));
-        return new EngineWaveResult(children.isEmpty() ? null : children, false, attemptNumber);
+        return new EngineWaveResult(children.isEmpty() ? null : children,
+                children.isEmpty() ? null : workingText, false, attemptNumber);
     }
 
     /** 한 wave 에서 살아남은 최선 후보 — parse 가 null 이면 채택 가능한 개선이 없었다. */

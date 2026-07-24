@@ -38,6 +38,7 @@ public final class StructuredRepairAgent implements RepairAgent {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final String systemPrompt;
+    private final RepairPromptAssembler promptAssembler;
     /** FR-025: prompt token count of the most recent proposal, when the provider reports it. */
     private volatile Integer lastPromptTokens;
 
@@ -77,6 +78,7 @@ public final class StructuredRepairAgent implements RepairAgent {
         this.objectMapper = new ObjectMapper()
                 .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         this.systemPrompt = loadSystemPrompt();
+        this.promptAssembler = new RepairPromptAssembler(new RepairSkillCatalog());
     }
 
     StructuredRepairAgent(boolean enabled, URI chatCompletionsEndpoint, String apiKey,
@@ -84,7 +86,8 @@ public final class StructuredRepairAgent implements RepairAgent {
                           HttpClient httpClient, ObjectMapper objectMapper,
                           String systemPrompt) {
         this(enabled, chatCompletionsEndpoint, apiKey, model, timeout, maxOutputTokens,
-                null, null, null, httpClient, objectMapper, systemPrompt);
+                null, null, null, httpClient, objectMapper, systemPrompt,
+                new RepairPromptAssembler(new RepairSkillCatalog()));
     }
 
     StructuredRepairAgent(boolean enabled, URI chatCompletionsEndpoint, String apiKey,
@@ -92,7 +95,8 @@ public final class StructuredRepairAgent implements RepairAgent {
                           Boolean thinkingEnabled, HttpClient httpClient,
                           ObjectMapper objectMapper, String systemPrompt) {
         this(enabled, chatCompletionsEndpoint, apiKey, model, timeout, maxOutputTokens,
-                null, thinkingEnabled, null, httpClient, objectMapper, systemPrompt);
+                null, thinkingEnabled, null, httpClient, objectMapper, systemPrompt,
+                new RepairPromptAssembler(new RepairSkillCatalog()));
     }
 
     StructuredRepairAgent(boolean enabled, URI chatCompletionsEndpoint, String apiKey,
@@ -100,6 +104,16 @@ public final class StructuredRepairAgent implements RepairAgent {
                           String reasoningEffort, Boolean thinkingEnabled, Integer topK,
                           HttpClient httpClient,
                           ObjectMapper objectMapper, String systemPrompt) {
+        this(enabled, chatCompletionsEndpoint, apiKey, model, timeout, maxOutputTokens,
+                reasoningEffort, thinkingEnabled, topK, httpClient, objectMapper, systemPrompt,
+                new RepairPromptAssembler(new RepairSkillCatalog()));
+    }
+
+    StructuredRepairAgent(boolean enabled, URI chatCompletionsEndpoint, String apiKey,
+                          String model, Duration timeout, int maxOutputTokens,
+                          String reasoningEffort, Boolean thinkingEnabled, Integer topK,
+                          HttpClient httpClient, ObjectMapper objectMapper, String systemPrompt,
+                          RepairPromptAssembler promptAssembler) {
         this.enabled = enabled;
         this.chatCompletionsEndpoint = chatCompletionsEndpoint;
         this.apiKey = apiKey == null ? "" : apiKey;
@@ -114,6 +128,7 @@ public final class StructuredRepairAgent implements RepairAgent {
         this.objectMapper = objectMapper.enable(
                 DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         this.systemPrompt = systemPrompt;
+        this.promptAssembler = promptAssembler;
     }
 
     @Override
@@ -185,7 +200,8 @@ public final class StructuredRepairAgent implements RepairAgent {
         if (topK != null) request.put("top_k", topK);
 
         ArrayNode messages = request.putArray("messages");
-        messages.addObject().put("role", "system").put("content", systemPrompt);
+        messages.addObject().put("role", "system").put("content",
+                promptAssembler.assemble(systemPrompt, envelope.language()));
         messages.addObject().put("role", "user").put("content",
                 objectMapper.writeValueAsString(envelope));
 

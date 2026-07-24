@@ -61,6 +61,8 @@ class RepairAgentRecoveryTest {
         assertEquals(1, calls.get());
         assertEquals(QualityStatus.RECOVERED_VALIDATED, result.outcome().decision().status());
         assertEquals(1, result.outcome().recoveredUnits());
+        assertTrue(result.outcome().hasVerifiedSourceRepair());
+        assertFalse(result.outcome().repairedSource().contains("@@@@@@"));
         assertEquals(result.originalSha256(), Hashes.sha256(Files.readAllBytes(result.file())));
         assertTrue(result.outcome().units().get(0).attempts().stream().anyMatch(attempt ->
                 "REPAIR_AGENT".equals(attempt.stage()) && attempt.diff() != null));
@@ -187,6 +189,14 @@ class RepairAgentRecoveryTest {
             assertTrue(Files.isRegularFile(audit));
             assertEquals(QualityStatus.RECOVERED_VALIDATED,
                     result.outcome().decision().status(), result.outcome().units().toString());
+            assertTrue(result.outcome().hasVerifiedSourceRepair());
+            assertFalse(result.outcome().repairedSource().contains("@@@@@@"));
+            assertTrue(result.outcome().units().get(0).attempts().stream().anyMatch(attempt ->
+                    "REPAIR_AGENT".equals(attempt.stage())
+                            && "REPAIR_AGENT".equals(attempt.ruleId())
+                            && attempt.diff() != null
+                            && !attempt.edits().isEmpty()
+                            && attempt.agentRequest() != null));
             assertEquals(result.originalSha256(), Hashes.sha256(Files.readAllBytes(result.file())));
         } finally {
             restoreProperty("parser.repair.agent.enabled", previousEnabled);

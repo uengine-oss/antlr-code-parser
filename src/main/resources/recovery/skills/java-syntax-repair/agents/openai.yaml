@@ -1,0 +1,4 @@
+interface:
+  display_name: "Java Syntax Repair"
+  short_description: "Java-specific syntax repair guidance"
+  default_prompt: "Use $java-syntax-repair to repair a bounded Java syntax error."

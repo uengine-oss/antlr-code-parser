@@ -1,0 +1,4 @@
+interface:
+  display_name: "Common Syntax Repair"
+  short_description: "Safe minimal syntax repair rules"
+  default_prompt: "Use $common-syntax-repair to propose one minimal parser repair."
