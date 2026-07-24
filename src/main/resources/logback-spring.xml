@@ -1,6 +1,6 @@
 <configuration>
     <!-- Spring Boot 속성으로부터 인코딩 값을 읽어와 사용 -->
-    <springProperty scope="context" name="consoleCharset" source="logging.charset.console" defaultValue="UTF-8"/>
+    <springProperty scope="context" name="consoleCharset" source="logging.charset.console" defaultValue="${file.encoding:-UTF-8}"/>
     <springProperty scope="context" name="fileCharset" source="logging.charset.file" defaultValue="UTF-8"/>
 
     <!-- 콘솔 출력 설정 -->
