@@ -26,7 +26,7 @@ EXPOSE 8081
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl --fail --silent http://localhost:8081/actuator/health >/dev/null || exit 1
+    CMD curl --fail --silent http://localhost:8081/ >/dev/null || exit 1
 
 # Run the application with increased memory for ANTLR parsing
 ENTRYPOINT ["java", "-Xms512m", "-Xmx4096m", "-jar", "app.jar"]
