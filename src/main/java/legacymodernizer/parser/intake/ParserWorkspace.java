@@ -52,15 +52,32 @@ public class ParserWorkspace {
     public record IntakeResult(int ddlCount, int sourceCount, List<String> skipped) {}
 
     private static String resolveBaseDir() {
-        String configuredTestRoot = System.getProperty("parser.data.root");
+        return resolveBaseDir(
+                System.getProperty("parser.data.root"),
+                System.getenv("ROBO_DATA_DIR"),
+                System.getenv("DOCKER_COMPOSE_CONTEXT"),
+                System.getProperty("user.dir"));
+    }
+
+    static String resolveBaseDir(
+            String configuredTestRoot,
+            String sharedDataRoot,
+            String dockerContext,
+            String userDir) {
         if (configuredTestRoot != null && !configuredTestRoot.isBlank()) {
-            return configuredTestRoot;
+            return Paths.get(configuredTestRoot).toAbsolutePath().normalize().toString();
         }
-        String dockerContext = System.getenv("DOCKER_COMPOSE_CONTEXT");
-        if (dockerContext != null) {
-            return dockerContext;
+        if (sharedDataRoot != null) {
+            if (sharedDataRoot.isBlank()) {
+                throw new IllegalArgumentException("ROBO_DATA_DIR must not be blank");
+            }
+            return Paths.get(sharedDataRoot).toAbsolutePath().normalize().toString();
         }
-        return new File(System.getProperty("user.dir")).getParent() + File.separator + "data";
+        if (dockerContext != null && !dockerContext.isBlank()) {
+            return Paths.get(dockerContext).toAbsolutePath().normalize().toString();
+        }
+        return Paths.get(new File(userDir).getParent(), "data")
+                .toAbsolutePath().normalize().toString();
     }
 
     // ═══════════════════════════════════════════════════════════════════

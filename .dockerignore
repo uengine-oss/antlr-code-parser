@@ -1,0 +1,14 @@
+.git/
+.github/
+.claude/
+.specify/
+.mvn/wrapper/maven-wrapper.jar
+target/
+data/
+logs/
+specs/
+*.log
+*.tmp
+.idea/
+.vscode/
+Thumbs.db
