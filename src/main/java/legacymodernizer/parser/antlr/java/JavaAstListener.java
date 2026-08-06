@@ -359,7 +359,10 @@ public class JavaAstListener extends Java20ParserBaseListener
 
     @Override
     public void enterIfThenStatement(Java20Parser.IfThenStatementContext ctx) {
-        if (isInsideRoutine()) h.enterStatement("IF", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        // 조건식 원문 보존 (spec 016 FR-003) — 이하 IF/LOOP/SWITCH/CASE 동일.
+        h.enterStatement("IF", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.expression());
     }
 
     @Override
@@ -369,7 +372,9 @@ public class JavaAstListener extends Java20ParserBaseListener
 
     @Override
     public void enterIfThenElseStatement(Java20Parser.IfThenElseStatementContext ctx) {
-        if (isInsideRoutine()) h.enterStatement("IF", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        h.enterStatement("IF", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.expression());
     }
 
     @Override
@@ -379,7 +384,9 @@ public class JavaAstListener extends Java20ParserBaseListener
 
     @Override
     public void enterIfThenElseStatementNoShortIf(Java20Parser.IfThenElseStatementNoShortIfContext ctx) {
-        if (isInsideRoutine()) h.enterStatement("IF", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        h.enterStatement("IF", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.expression());
     }
 
     @Override
@@ -423,7 +430,9 @@ public class JavaAstListener extends Java20ParserBaseListener
 
     @Override
     public void enterWhileStatement(Java20Parser.WhileStatementContext ctx) {
-        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        h.enterStatement("LOOP", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.expression());
     }
 
     @Override
@@ -433,7 +442,9 @@ public class JavaAstListener extends Java20ParserBaseListener
 
     @Override
     public void enterWhileStatementNoShortIf(Java20Parser.WhileStatementNoShortIfContext ctx) {
-        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        h.enterStatement("LOOP", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.expression());
     }
 
     @Override
@@ -443,7 +454,9 @@ public class JavaAstListener extends Java20ParserBaseListener
 
     @Override
     public void enterDoStatement(Java20Parser.DoStatementContext ctx) {
-        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        h.enterStatement("LOOP", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.expression());
     }
 
     @Override
@@ -454,7 +467,15 @@ public class JavaAstListener extends Java20ParserBaseListener
     @Override
     public void enterForStatement(Java20Parser.ForStatementContext ctx) {
         // basic/enhanced for 의 공통 부모 — 여기 한 곳만 hook (자식까지 걸면 이중 LOOP)
-        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        Node node = h.enterStatement("LOOP", ctx.getStart().getLine());
+        // basic for 는 grammar 가 ';' 로 구분한 test 절만, enhanced for 는 반복 대상 식.
+        // 초기화/증감은 도달 기계장치라 조건이 아니다(TA-102).
+        if (ctx.basicForStatement() != null) {
+            node.expression = ParserUtils.getExactSourceText(ctx.basicForStatement().expression());
+        } else if (ctx.enhancedForStatement() != null) {
+            node.expression = ParserUtils.getExactSourceText(ctx.enhancedForStatement().expression());
+        }
     }
 
     @Override
@@ -464,7 +485,15 @@ public class JavaAstListener extends Java20ParserBaseListener
 
     @Override
     public void enterForStatementNoShortIf(Java20Parser.ForStatementNoShortIfContext ctx) {
-        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        Node node = h.enterStatement("LOOP", ctx.getStart().getLine());
+        if (ctx.basicForStatementNoShortIf() != null) {
+            node.expression = ParserUtils.getExactSourceText(
+                    ctx.basicForStatementNoShortIf().expression());
+        } else if (ctx.enhancedForStatementNoShortIf() != null) {
+            node.expression = ParserUtils.getExactSourceText(
+                    ctx.enhancedForStatementNoShortIf().expression());
+        }
     }
 
     @Override
@@ -474,7 +503,9 @@ public class JavaAstListener extends Java20ParserBaseListener
 
     @Override
     public void enterSwitchStatement(Java20Parser.SwitchStatementContext ctx) {
-        if (isInsideRoutine()) h.enterStatement("SWITCH", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        h.enterStatement("SWITCH", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.expression());
     }
 
     @Override
@@ -485,7 +516,14 @@ public class JavaAstListener extends Java20ParserBaseListener
     @Override
     public void enterSwitchBlockStatementGroup(Java20Parser.SwitchBlockStatementGroupContext ctx) {
         // case/default 라벨 + 본문 묶음 = CASE (C 의 case/default 와 동일 의미 단위)
-        if (isInsideRoutine()) h.enterStatement("CASE", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        Node node = h.enterStatement("CASE", ctx.getStart().getLine());
+        // 라벨 상수 원문 보존 — 첫 라벨이 case 상수를 갖는 경우만 (default 는 null).
+        Java20Parser.SwitchLabelContext label = ctx.switchLabel(0);
+        if (label != null && !label.caseConstant().isEmpty()) {
+            node.expression = ParserUtils.getExactSourceText(
+                    label.caseConstant(0), label.caseConstant(label.caseConstant().size() - 1));
+        }
     }
 
     @Override
@@ -512,6 +550,97 @@ public class JavaAstListener extends Java20ParserBaseListener
     @Override
     public void exitCatchClause(Java20Parser.CatchClauseContext ctx) {
         if (isInsideRoutine()) h.exitStatementWithFullComment("CATCH", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterFinallyBlock(Java20Parser.FinallyBlockContext ctx) {
+        // 무조건 실행 arm — 자원 정리 의미가 함수 내부 분석에서 소실되지 않도록 emit.
+        // analyzer 소비(분기 역할)는 첫 Java corpus 의 red 테스트와 함께 확정한다.
+        if (isInsideRoutine()) h.enterStatement("FINALLY", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitFinallyBlock(Java20Parser.FinallyBlockContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("FINALLY", ctx.getStop().getLine(), ctx);
+    }
+
+    // ========================================
+    // 구조 statement — return/throw/break/continue (spec 016)
+    // ========================================
+    // leaf(스택 비진입) emit — 표현식 안의 METHOD 호출 등 기존 자식은 종전 부모에
+    // 그대로 붙어 기존 노드 수·부모가 보존된다(FR-009). 표현식 원문은 expression
+    // 필드로 보존한다(FR-003). throw 는 return 과 다른 노드다(FR-006).
+
+    @Override
+    public void enterReturnStatement(Java20Parser.ReturnStatementContext ctx) {
+        if (!isInsideRoutine()) return;
+        Node node = h.addLeafStatement(
+                "RETURN", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+        node.expression = ParserUtils.getExactSourceText(ctx.expression());
+    }
+
+    @Override
+    public void enterThrowStatement(Java20Parser.ThrowStatementContext ctx) {
+        if (!isInsideRoutine()) return;
+        Node node = h.addLeafStatement(
+                "THROW", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+        node.expression = ParserUtils.getExactSourceText(ctx.expression());
+    }
+
+    @Override
+    public void enterBreakStatement(Java20Parser.BreakStatementContext ctx) {
+        if (!isInsideRoutine()) return;
+        // 'break' Identifier? ';' — 라벨이 있으면 child(1)이 라벨이다.
+        String label = ctx.getChildCount() >= 3 ? ctx.getChild(1).getText() : null;
+        h.addLeafStatement("BREAK", label, ctx.getStart().getLine(), ctx.getStop().getLine());
+    }
+
+    @Override
+    public void enterContinueStatement(Java20Parser.ContinueStatementContext ctx) {
+        if (!isInsideRoutine()) return;
+        String label = ctx.getChildCount() >= 3 ? ctx.getChild(1).getText() : null;
+        h.addLeafStatement("CONTINUE", label, ctx.getStart().getLine(), ctx.getStop().getLine());
+    }
+
+    /**
+     * 지역 선언 초기화(`int rc = f();`)는 실행 효과다 (spec 016) — 선언 자체는 노드가
+     * 아니지만 초기화는 ASSIGNMENT leaf 로 보존한다. for 머리(forInit)의 선언은
+     * localVariableDeclarationStatement 문맥이 아니라서 제외된다 (TA-102 정합).
+     */
+    @Override
+    public void enterLocalVariableDeclaration(Java20Parser.LocalVariableDeclarationContext ctx) {
+        if (!isInsideRoutine()) return;
+        if (!(ctx.getParent() instanceof Java20Parser.LocalVariableDeclarationStatementContext)) {
+            return;
+        }
+        for (Java20Parser.VariableDeclaratorContext declarator
+                : ctx.variableDeclaratorList().variableDeclarator()) {
+            if (declarator.variableInitializer() == null) continue;
+            Node node = h.addLeafStatement(
+                    "ASSIGNMENT", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+            node.target = declarator.variableDeclaratorId().getText();
+            node.operator = "=";
+            node.expression = ParserUtils.getExactSourceText(declarator.variableInitializer());
+        }
+    }
+
+    /**
+     * statement-level 대입만 ASSIGNMENT leaf 로 emit 한다 (spec 016).
+     * for 머리(forInit/forUpdate)의 대입은 statementExpressionList 문맥이라 제외된다 —
+     * 도달 기계장치이지 문장 효과가 아니다 (TA-102 정합).
+     */
+    @Override
+    public void enterAssignment(Java20Parser.AssignmentContext ctx) {
+        if (!isInsideRoutine()) return;
+        if (!(ctx.getParent() instanceof Java20Parser.StatementExpressionContext)) return;
+        if (!(ctx.getParent().getParent() instanceof Java20Parser.ExpressionStatementContext)) {
+            return;
+        }
+        Node node = h.addLeafStatement(
+                "ASSIGNMENT", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+        node.target = ParserUtils.getExactSourceText(ctx.leftHandSide());
+        node.operator = ctx.assignmentOperator().getText();
+        node.expression = ParserUtils.getExactSourceText(ctx.expression());
     }
 
 }

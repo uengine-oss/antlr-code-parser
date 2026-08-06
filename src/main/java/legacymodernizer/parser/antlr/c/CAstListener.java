@@ -1,5 +1,6 @@
 package legacymodernizer.parser.antlr.c;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,6 +39,11 @@ public class CAstListener extends CParserBaseListener
 
     public Node getRoot() {
         return h.getRoot();
+    }
+
+    @Override
+    public void finalizeAst() {
+        normalizeSwitchCases(h.getRoot());
     }
 
     public void setFileInfo(String fileName, String filePath) {
@@ -365,6 +371,15 @@ public class CAstListener extends CParserBaseListener
         } else if (isGlobal) {
             nodeType = "GLOBAL_VARIABLE";
         } else {
+            // 지역 선언 자체는 노드가 아니지만, 초기화(`int rc = init();`)는 실행
+            // 효과이므로 ASSIGNMENT leaf 로 보존한다 (spec 016 — lvalue 는 타입 제거).
+            if (initDecl.initializer() != null && isInsideFunction()) {
+                Node assignment = h.addLeafStatement(
+                        "ASSIGNMENT", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+                assignment.target = name;
+                assignment.operator = "=";
+                assignment.expression = ParserUtils.getExactSourceText(initDecl.initializer());
+            }
             return;
         }
 
@@ -469,7 +484,9 @@ public class CAstListener extends CParserBaseListener
     public void enterSelectionStatement(CParser.SelectionStatementContext ctx) {
         if (!isInsideFunction()) return;
         // selectionStatement: If '(' expr ')' stmt (Else stmt)?  |  Switch '(' expr ')' stmt
-        h.enterStatement(ctx.If() != null ? "IF" : "SWITCH", ctx.getStart().getLine());
+        Node node = h.enterStatement(ctx.If() != null ? "IF" : "SWITCH", ctx.getStart().getLine());
+        // 조건식 원문 보존 (spec 016 FR-003) — downstream 이 괄호 짝을 재파싱하지 않는다.
+        node.expression = ParserUtils.getExactSourceText(ctx.expression());
     }
 
     @Override
@@ -483,7 +500,31 @@ public class CAstListener extends CParserBaseListener
     public void enterIterationStatement(CParser.IterationStatementContext ctx) {
         if (!isInsideFunction()) return;
         // for / while / do-while → 종류 구분 없이 LOOP (PL/SQL 선례와 동일)
-        h.enterStatement("LOOP", ctx.getStart().getLine());
+        Node node = h.enterStatement("LOOP", ctx.getStart().getLine());
+        // 판정절만 expression 으로 보존 — for 의 초기화/증감은 도달 기계장치라 조건이
+        // 아니다(TA-102). grammar 가 ';' 로 구분한 test 절을 그대로 소유시킨다.
+        if (ctx.expression() != null) {
+            node.expression = ParserUtils.getExactSourceText(ctx.expression());
+        } else if (ctx.forCondition() != null) {
+            node.expression = ParserUtils.getExactSourceText(forTestClause(ctx.forCondition()));
+        }
+    }
+
+    /** forCondition 의 첫 ';' 와 둘째 ';' 사이 test 절 — 없으면 null. */
+    private static CParser.ForExpressionContext forTestClause(CParser.ForConditionContext ctx) {
+        int semicolons = 0;
+        for (int index = 0; index < ctx.getChildCount(); index++) {
+            var child = ctx.getChild(index);
+            if (child instanceof org.antlr.v4.runtime.tree.TerminalNode
+                    && ";".equals(child.getText())) {
+                semicolons++;
+                continue;
+            }
+            if (semicolons == 1 && child instanceof CParser.ForExpressionContext) {
+                return (CParser.ForExpressionContext) child;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -497,7 +538,9 @@ public class CAstListener extends CParserBaseListener
         if (!isInsideFunction()) return;
         // case X: / default: → CASE. goto 레이블(Identifier ':')은 제어분기가 아니므로 제외.
         if (ctx.Case() == null && ctx.Default() == null) return;
-        h.enterStatement("CASE", ctx.getStart().getLine());
+        Node node = h.enterStatement("CASE", ctx.getStart().getLine());
+        // 라벨 상수 원문 보존 (spec 016 FR-003). default 는 expression null.
+        node.expression = ParserUtils.getExactSourceText(ctx.constantExpression());
     }
 
     @Override
@@ -505,6 +548,70 @@ public class CAstListener extends CParserBaseListener
         if (!isInsideFunction()) return;
         if (ctx.Case() == null && ctx.Default() == null) return;
         h.exitStatementWithFullComment("CASE", ctx.getStop().getLine(), ctx);
+    }
+
+    /**
+     * C grammar의 labeledStatement는 라벨 직후 statement 하나만 품는다. 따라서 같은
+     * case의 뒤 문장들은 parse tree상 SWITCH의 형제이며, 중첩 라벨은 CASE 안 CASE가 된다.
+     * AST 소비자가 이를 재해석하지 않도록 생산 단계에서 source-level 소유권으로 확정한다.
+     */
+    private static void normalizeSwitchCases(Node node) {
+        if ("SWITCH".equals(node.type)) {
+            ArrayList<Node> flattened = new ArrayList<>();
+            for (Node child : new ArrayList<>(node.children)) {
+                if ("CASE".equals(child.type)) {
+                    flattenCaseLabels(child, flattened);
+                } else {
+                    flattened.add(child);
+                }
+            }
+
+            ArrayList<Node> normalized = new ArrayList<>();
+            Node activeCase = null;
+            for (Node child : flattened) {
+                if ("CASE".equals(child.type)) {
+                    child.parent = node;
+                    normalized.add(child);
+                    activeCase = child;
+                } else if (activeCase == null) {
+                    child.parent = node;
+                    normalized.add(child);
+                } else {
+                    child.parent = activeCase;
+                    activeCase.children.add(child);
+                }
+            }
+            node.children = normalized;
+
+            ArrayList<Node> cases = new ArrayList<>();
+            for (Node child : normalized) {
+                if ("CASE".equals(child.type)) cases.add(child);
+            }
+            for (int i = 0; i < cases.size(); i++) {
+                Node current = cases.get(i);
+                int end = i + 1 < cases.size()
+                        ? cases.get(i + 1).startLine - 1
+                        : node.endLine;
+                current.endLine = Math.max(current.startLine, end);
+            }
+        }
+
+        for (Node child : new ArrayList<>(node.children)) {
+            normalizeSwitchCases(child);
+        }
+    }
+
+    /** 중첩된 stacked label을 SWITCH-level CASE 형제로 평탄화한다. */
+    private static void flattenCaseLabels(Node caseNode, List<Node> out) {
+        ArrayList<Node> ownChildren = new ArrayList<>();
+        ArrayList<Node> nestedCases = new ArrayList<>();
+        for (Node child : caseNode.children) {
+            if ("CASE".equals(child.type)) nestedCases.add(child);
+            else ownChildren.add(child);
+        }
+        caseNode.children = ownChildren;
+        out.add(caseNode);
+        for (Node nested : nestedCases) flattenCaseLabels(nested, out);
     }
 
     // if 의 else 분기만 ELSE 노드로 감싼다. else-if 는 문법상 else 안에 중첩된
@@ -532,6 +639,65 @@ public class CAstListener extends CParserBaseListener
                 (CParser.SelectionStatementContext) ctx.getParent();
         return sel.If() != null && sel.Else() != null
                 && sel.statement().size() >= 2 && sel.statement(1) == ctx;
+    }
+
+    // ========================================
+    // 구조 statement — jumpStatement (spec 016)
+    // ========================================
+
+    /**
+     * grammar 가 구분하는 return/break/continue/goto 를 leaf 노드로 emit 한다.
+     * leaf(스택 비진입)라 반환식 안의 FUNCTION_CALL 등 기존 자식은 종전 부모에
+     * 그대로 붙는다 — 기존 노드 수·부모 보존(FR-009). 반환식 원문은 downstream 이
+     * 소스를 다시 파싱하지 않도록 expression 필드로 보존한다(FR-003).
+     */
+    @Override
+    public void enterJumpStatement(CParser.JumpStatementContext ctx) {
+        if (!isInsideFunction()) return;
+        String keyword = ctx.getStart().getText();
+        int startLine = ctx.getStart().getLine();
+        int endLine = ctx.getStop().getLine();
+        switch (keyword) {
+            case "return": {
+                Node node = h.addLeafStatement("RETURN", null, startLine, endLine);
+                node.expression = ParserUtils.getExactSourceText(ctx.expression());
+                break;
+            }
+            case "break":
+                h.addLeafStatement("BREAK", null, startLine, endLine);
+                break;
+            case "continue":
+                h.addLeafStatement("CONTINUE", null, startLine, endLine);
+                break;
+            case "goto": {
+                // 'goto' Identifier | 'goto' unaryExpression(GCC 확장) — child(1)이 대상.
+                String label = ctx.getChildCount() >= 2 ? ctx.getChild(1).getText() : null;
+                h.addLeafStatement("GOTO", label, startLine, endLine);
+                break;
+            }
+            default:
+                // grammar 상 도달 불가 — 새 jump 형태가 생기면 조용히 삼키지 않도록 명시.
+                throw new IllegalStateException("unknown C jumpStatement keyword: " + keyword);
+        }
+    }
+
+    /**
+     * statement-level 대입만 ASSIGNMENT leaf 로 emit 한다 (spec 016).
+     * for 머리(초기화/증감)·조건식·인자 안 대입은 문장 효과가 아니라 도달 기계장치라
+     * 노드가 아니다 — expressionStatement 문맥일 때만 grammar 사실이다.
+     * 중첩 대입(`a = b = c`)은 바깥 문장 하나가 대표하고 우변 원문이 나머지를 보존한다.
+     */
+    @Override
+    public void enterAssignmentExpression(CParser.AssignmentExpressionContext ctx) {
+        if (!isInsideFunction()) return;
+        if (ctx.assignementOperator == null) return;   // 대입 대안이 아닌 경우
+        if (!(ctx.getParent() instanceof CParser.ExpressionContext)) return;
+        if (!(ctx.getParent().getParent() instanceof CParser.ExpressionStatementContext)) return;
+        Node node = h.addLeafStatement(
+                "ASSIGNMENT", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+        node.target = ParserUtils.getExactSourceText(ctx.unaryExpression());
+        node.operator = ctx.assignementOperator.getText();
+        node.expression = ParserUtils.getExactSourceText(ctx.assignmentExpression());
     }
 
     // ========================================

@@ -250,8 +250,13 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterAssignment_statement(PlSqlParser.Assignment_statementContext ctx) {
-        h.enterStatement("ASSIGNMENT", ctx.getStart().getLine());
-        // 좌·우변 텍스트는 노드 원문으로 보존 — 식별자 추출/플래그는 Analyzer 책임
+        Node node = h.enterStatement("ASSIGNMENT", ctx.getStart().getLine());
+        // 좌변·연산자·우변 원문을 명시 필드로 보존 — downstream 이 소스를 재파싱하지
+        // 않는다(spec 016 FR-003). 식별자 의미 해석은 계속 Analyzer 책임이다.
+        node.target = ParserUtils.getExactSourceText(
+                ctx.general_element() != null ? ctx.general_element() : ctx.bind_variable());
+        node.operator = ctx.ASSIGN_OP() != null ? ctx.ASSIGN_OP().getText() : null;
+        node.expression = ParserUtils.getExactSourceText(ctx.expression());
     }
 
     @Override
@@ -261,8 +266,10 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterReturn_statement(PlSqlParser.Return_statementContext ctx) {
-        h.enterStatement("RETURN", ctx.getStart().getLine());
-        // 반환식은 노드 텍스트로 보존 — Analyzer 가 식별자 분석
+        Node node = h.enterStatement("RETURN", ctx.getStart().getLine());
+        // 반환식 원문을 expression 필드로 보존 — downstream 이 소스를 재파싱하지
+        // 않는다(spec 016 FR-003). 값 없는 RETURN 은 expression null (FR-004).
+        node.expression = ParserUtils.getExactSourceText(ctx.expression());
     }
 
     @Override
@@ -360,7 +367,9 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterIf_statement(PlSqlParser.If_statementContext ctx) {
-        h.enterStatement("IF", ctx.getStart().getLine());
+        // 조건식 원문 보존 (spec 016 FR-003)
+        h.enterStatement("IF", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.condition());
         // condition 텍스트는 노드 원문에 포함 — 플래그/식별자는 Analyzer 책임
     }
 
@@ -371,8 +380,9 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterElsif_part(PlSqlParser.Elsif_partContext ctx) {
-        h.enterStatement("ELSIF", ctx.getStart().getLine());
-        // condition 은 노드 원문 — Analyzer 책임
+        // 조건식 원문 보존 (spec 016 FR-003)
+        h.enterStatement("ELSIF", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.condition());
     }
 
     @Override
@@ -392,7 +402,9 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterLoop_statement(PlSqlParser.Loop_statementContext ctx) {
-        h.enterStatement("LOOP", ctx.getStart().getLine());
+        // WHILE 판정절만 조건으로 보존 — FOR cursor 파라미터는 도달 기계장치다(TA-102).
+        h.enterStatement("LOOP", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.condition());
     }
 
     @Override

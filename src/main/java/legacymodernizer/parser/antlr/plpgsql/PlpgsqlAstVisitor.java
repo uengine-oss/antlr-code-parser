@@ -160,7 +160,12 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
     @Override
     public Node visitAssignmentStmt(PlpgsqlParser.AssignmentStmtContext ctx) {
         Node node = createNode("ASSIGNMENT", ctx, currentBlockNode);
+        // 좌변·연산자·우변 원문을 명시 필드로 보존 — downstream 이 소스를 재파싱하지
+        // 않는다(spec 016 FR-003). 기존 initializer-call 자식 emit 은 그대로 유지.
+        node.target = ParserUtils.getExactSourceText(ctx.variableRef());
+        node.operator = ctx.ASSIGN() != null ? ctx.ASSIGN().getText() : null;
         if (ctx.expression() != null) {
+            node.expression = ParserUtils.getExactSourceText(ctx.expression());
             ParserUtils.emitInitializerCall(
                     node, ctx.expression().getText(), node.startLine, node.endLine);
         }
@@ -197,6 +202,9 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
         }
         Node node = createNode(returnType, ctx, currentBlockNode);
         if (ctx.expression() != null) {
+            // 반환식 원문을 expression 필드로 보존 — downstream 이 소스를 재파싱하지
+            // 않는다(spec 016 FR-003). 기존 initializer-call 자식 emit 은 그대로 유지.
+            node.expression = ParserUtils.getExactSourceText(ctx.expression());
             ParserUtils.emitInitializerCall(
                     node, ctx.expression().getText(), node.startLine, node.endLine);
         }
@@ -264,6 +272,8 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
         Node ifNode = createNode("IF", ctx, currentBlockNode);
         // IF 조건 expression(0) 의 호출을 FUNCTION_CALL 노드로 emit
         if (ctx.expression() != null && !ctx.expression().isEmpty()) {
+            // 조건식 원문 보존 (spec 016 FR-003)
+            ifNode.expression = ParserUtils.getExactSourceText(ctx.expression(0));
             ParserUtils.emitInitializerCall(
                     ifNode, ctx.expression(0).getText(), ifNode.startLine, ifNode.endLine);
         }
@@ -286,6 +296,8 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
 
                 Node elsifNode = new Node("ELSIF", elsifStartLine, ifNode);
                 elsifNode.endLine = elsifEndLine;
+                // 조건식 원문 보존 (spec 016 FR-003)
+                elsifNode.expression = ParserUtils.getExactSourceText(ctx.expression(i + 1));
                 // ELSIF 조건 expression(i+1) 의 호출을 FUNCTION_CALL 노드로 emit
                 ParserUtils.emitInitializerCall(
                         elsifNode, ctx.expression(i + 1).getText(),
@@ -329,6 +341,8 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
     @Override
     public Node visitWhileStmt(PlpgsqlParser.WhileStmtContext ctx) {
         Node whileNode = createNode("WHILE", ctx, currentBlockNode);
+        // 판정절 원문 보존 (spec 016 FR-003)
+        whileNode.expression = ParserUtils.getExactSourceText(ctx.expression());
         Node previousBlock = currentBlockNode;
         currentBlockNode = whileNode;
 
@@ -450,19 +464,24 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
     @Override
     public Node visitCaseStmt(PlpgsqlParser.CaseStmtContext ctx) {
         Node caseNode = createNode("CASE", ctx, currentBlockNode);
+        // selector 식 원문 보존 (spec 016 FR-003) — searched CASE 는 null.
+        caseNode.expression = ParserUtils.getExactSourceText(ctx.expression());
         Node previousBlock = currentBlockNode;
         currentBlockNode = caseNode;
-        
+
         // WHEN 절들
         int whenCount = ctx.whenClauseList().whenClause().size();
         for (int i = 0; i < whenCount; i++) {
-            PlpgsqlParser.StatementListContext whenStmtList = ctx.whenClauseList().whenClause(i).statementList();
-            int whenStartLine = getActualLineNumber(ctx.whenClauseList().whenClause(i));
+            PlpgsqlParser.WhenClauseContext when = ctx.whenClauseList().whenClause(i);
+            PlpgsqlParser.StatementListContext whenStmtList = when.statementList();
+            int whenStartLine = getActualLineNumber(when);
             int whenEndLine = getActualEndLineNumber(whenStmtList);
-            
+
             Node whenNode = new Node("WHEN", whenStartLine, caseNode);
             whenNode.endLine = whenEndLine;
-            
+            // WHEN 판정식 원문 보존 (spec 016 FR-003)
+            whenNode.expression = ParserUtils.getExactSourceText(when.expression());
+
             currentBlockNode = whenNode;
             visitStatementList(whenStmtList);
         }

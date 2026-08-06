@@ -36,6 +36,10 @@ public final class AntlrParseHarness {
         Node getRoot();
 
         void setFileInfo(String fileName, String filePath);
+
+        /** Walk가 끝난 뒤 언어 grammar가 요구하는 소유권·범위를 확정한다. */
+        default void finalizeAst() {
+        }
     }
 
     /** 공용 배선의 결과 — coverage 계산 등 언어별 마무리를 위해 parser/tree/listener 를 노출. */
@@ -70,6 +74,7 @@ public final class AntlrParseHarness {
         L listener = listenerFactory.apply(tokens, tracker);
         listener.setFileInfo(fileName, filePath);
         new ParseTreeWalker().walk(listener, tree);
+        listener.finalizeAst();
         AstCoordinates.rebaseChildren(listener.getRoot(), lineOffset);
 
         String astJson = listener.getRoot().toJson();

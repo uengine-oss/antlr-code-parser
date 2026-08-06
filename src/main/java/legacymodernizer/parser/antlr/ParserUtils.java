@@ -65,6 +65,31 @@ public class ParserUtils {
         }
     }
 
+    /**
+     * CharStream 인덱스로 원본 소스 구간을 문자 그대로 추출한다.
+     *
+     * 토큰 스트림 결합(getText)은 lexer 가 skip 한 공백을 잃는다(Java WS 실측:
+     * `x + 1` → `x+1`). 소스 원문 보존이 계약인 구조 statement 의 expression
+     * 필드(spec 016 FR-003)는 이 경로만 사용한다.
+     */
+    public static String getExactSourceText(ParserRuleContext ctx) {
+        return ctx == null ? null : getExactSourceText(ctx, ctx);
+    }
+
+    /** 두 컨텍스트 구간(first.start ~ last.stop)의 원본 소스 문자 그대로. */
+    public static String getExactSourceText(ParserRuleContext first, ParserRuleContext last) {
+        if (first == null || last == null) return null;
+        Token start = first.getStart();
+        Token stop = last.getStop();
+        if (start == null || stop == null) return null;
+        CharStream input = start.getInputStream();
+        if (input == null) return null;
+        int startIdx = start.getStartIndex();
+        int stopIdx = Math.min(stop.getStopIndex(), input.size() - 1);
+        if (startIdx < 0 || startIdx > stopIdx) return null;
+        return input.getText(new Interval(startIdx, stopIdx));
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // 주석 토큰 판별 (다중 언어 공용)
     // ═══════════════════════════════════════════════════════════════════

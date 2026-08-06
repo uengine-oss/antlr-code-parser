@@ -344,6 +344,10 @@ public class PythonAstListener extends PythonParserBaseListener
         // assign_part가 없으면 순수 표현식 → 무시
         if (assignPart == null) return;
 
+        // routine 안 대입 statement 는 ASSIGNMENT leaf 로도 emit (spec 016) —
+        // 선언 의미(VARIABLE/FIELD)와 별개의 문장 효과 사실이다.
+        emitRoutineAssignment(ctx, assignPart);
+
         boolean hasAssign = assignPart.ASSIGN() != null && !assignPart.ASSIGN().isEmpty();
         boolean hasColon = assignPart.COLON() != null;
 
@@ -392,6 +396,44 @@ public class PythonAstListener extends PythonParserBaseListener
             openAssignedNode(modType, varName, ctx.getStart().getLine(),
                     typeAnnotation, initializerText);
         }
+    }
+
+    /**
+     * routine 안 statement-level 대입을 ASSIGNMENT leaf 로 emit 한다 (spec 016).
+     * target/operator/expression 은 소스 원문 그대로 보존한다(FR-003). 연쇄 대입
+     * (`a = b = 1`)은 문장 하나가 대표하고 우변 원문이 나머지를 보존한다.
+     * 값 없는 annotation(`x: int`)은 대입이 아니므로 노드가 아니다.
+     */
+    private void emitRoutineAssignment(
+            PythonParser.Expr_stmtContext ctx, PythonParser.Assign_partContext assignPart) {
+        if (!isInsideRoutine() || ctx.testlist_star_expr() == null) return;
+
+        String operator = null;
+        ParserRuleContext rhsStart = null;
+        if (assignPart.op != null) {
+            // augmented (`+=` 등)
+            operator = assignPart.op.getText();
+            rhsStart = assignPart.yield_expr() != null
+                    ? assignPart.yield_expr()
+                    : assignPart.testlist();
+        } else if (assignPart.COLON() != null) {
+            // annassign — 값이 있을 때만 대입이다 (`x: int = 5`)
+            if (assignPart.ASSIGN() == null || assignPart.ASSIGN().isEmpty()) return;
+            operator = "=";
+            rhsStart = assignPart.testlist();
+        } else if (assignPart.ASSIGN() != null && !assignPart.ASSIGN().isEmpty()) {
+            operator = "=";
+            rhsStart = !assignPart.testlist_star_expr().isEmpty()
+                    ? assignPart.testlist_star_expr(0)
+                    : assignPart.yield_expr();
+        }
+        if (operator == null || rhsStart == null) return;
+
+        Node node = h.addLeafStatement(
+                "ASSIGNMENT", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+        node.target = ParserUtils.getExactSourceText(ctx.testlist_star_expr());
+        node.operator = operator;
+        node.expression = ParserUtils.getExactSourceText(rhsStart, assignPart);
     }
 
     /** 3분기(self 필드·클래스 필드·모듈 변수) 공통: 노드 생성 + 어노테이션·initValue·타입 추론. */
@@ -536,7 +578,10 @@ public class PythonAstListener extends PythonParserBaseListener
 
     @Override
     public void enterIf_stmt(PythonParser.If_stmtContext ctx) {
-        if (isInsideRoutine()) h.enterStatement("IF", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        // 조건식 원문 보존 (spec 016 FR-003) — 이하 elif/while/for 동일.
+        h.enterStatement("IF", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.test());
     }
 
     @Override
@@ -546,7 +591,9 @@ public class PythonAstListener extends PythonParserBaseListener
 
     @Override
     public void enterElif_clause(PythonParser.Elif_clauseContext ctx) {
-        if (isInsideRoutine()) h.enterStatement("ELSE", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        h.enterStatement("ELSE", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.test());
     }
 
     @Override
@@ -570,7 +617,9 @@ public class PythonAstListener extends PythonParserBaseListener
 
     @Override
     public void enterWhile_stmt(PythonParser.While_stmtContext ctx) {
-        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        h.enterStatement("LOOP", ctx.getStart().getLine())
+                .expression = ParserUtils.getExactSourceText(ctx.test());
     }
 
     @Override
@@ -580,7 +629,12 @@ public class PythonAstListener extends PythonParserBaseListener
 
     @Override
     public void enterFor_stmt(PythonParser.For_stmtContext ctx) {
-        if (isInsideRoutine()) h.enterStatement("LOOP", ctx.getStart().getLine());
+        if (!isInsideRoutine()) return;
+        Node node = h.enterStatement("LOOP", ctx.getStart().getLine());
+        // `for <exprlist> in <testlist>` — 반복 지배식 전체를 조건으로 보존.
+        if (ctx.exprlist() != null && ctx.testlist() != null) {
+            node.expression = ParserUtils.getExactSourceText(ctx.exprlist(), ctx.testlist());
+        }
     }
 
     @Override
@@ -606,5 +660,68 @@ public class PythonAstListener extends PythonParserBaseListener
     @Override
     public void exitExcept_clause(PythonParser.Except_clauseContext ctx) {
         if (isInsideRoutine()) h.exitStatementWithFullComment("CATCH", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterWith_stmt(PythonParser.With_stmtContext ctx) {
+        // 자원 블록(컨텍스트 매니저) — 획득/해제 의미가 함수 내부 분석에서 소실되지
+        // 않도록 emit. analyzer 소비(분기 역할)는 첫 Python corpus red 테스트와 함께 확정.
+        if (isInsideRoutine()) h.enterStatement("WITH", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitWith_stmt(PythonParser.With_stmtContext ctx) {
+        if (isInsideRoutine()) h.exitStatementWithFullComment("WITH", ctx.getStop().getLine(), ctx);
+    }
+
+    // ========================================
+    // 구조 statement — return/raise/break/continue (spec 016)
+    // ========================================
+    // leaf(스택 비진입) emit — 표현식 안의 METHOD_CALL 등 기존 자식은 종전 부모에
+    // 그대로 붙어 기존 노드 수·부모가 보존된다(FR-009). 표현식 원문은 expression
+    // 필드로 보존한다(FR-003). raise 는 return 과 다른 노드다(FR-006).
+
+    @Override
+    public void enterReturn_stmt(PythonParser.Return_stmtContext ctx) {
+        if (!isInsideRoutine()) return;
+        Node node = h.addLeafStatement(
+                "RETURN", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+        node.expression = ParserUtils.getExactSourceText(ctx.testlist());
+    }
+
+    @Override
+    public void enterRaise_stmt(PythonParser.Raise_stmtContext ctx) {
+        if (!isInsideRoutine()) return;
+        Node node = h.addLeafStatement(
+                "RAISE", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+        // RAISE test (COMMA test)* (FROM test)? — 첫 test 부터 문장 끝까지가 예외식이다.
+        if (!ctx.test().isEmpty()) {
+            node.expression = ParserUtils.getExactSourceText(ctx.test(0), ctx);
+        }
+    }
+
+    @Override
+    public void enterYield_stmt(PythonParser.Yield_stmtContext ctx) {
+        // 생산 statement — 함수가 값을 하나씩 내보내는 generator 의미의 사실.
+        if (!isInsideRoutine()) return;
+        Node node = h.addLeafStatement(
+                "YIELD", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+        if (ctx.yield_expr() != null && ctx.yield_expr().yield_arg() != null) {
+            node.expression = ParserUtils.getExactSourceText(ctx.yield_expr().yield_arg());
+        }
+    }
+
+    @Override
+    public void enterBreak_stmt(PythonParser.Break_stmtContext ctx) {
+        if (isInsideRoutine()) {
+            h.addLeafStatement("BREAK", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+        }
+    }
+
+    @Override
+    public void enterContinue_stmt(PythonParser.Continue_stmtContext ctx) {
+        if (isInsideRoutine()) {
+            h.addLeafStatement("CONTINUE", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+        }
     }
 }

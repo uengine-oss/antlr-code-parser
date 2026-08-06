@@ -44,3 +44,6 @@ p_*
 .claude
 # 런타임 업로드 데이터 (런마다 변동)
 data/
+
+# Tooling Index (codegraph 로컬 코드 인덱스 — 재생성 가능)
+.codegraph/

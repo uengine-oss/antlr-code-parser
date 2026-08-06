@@ -33,6 +33,7 @@ class CControlFlowAstTest {
         CAstListener listener = new CAstListener(tokens, null);
         listener.setFileInfo("sample.c", "sample.c");
         new ParseTreeWalker().walk(listener, tree);
+        listener.finalizeAst();
         return listener.getRoot();
     }
 
@@ -170,6 +171,34 @@ class CControlFlowAstTest {
         assertTrue(count(sw, "CASE") >= 2, "case 1 + default → CASE 2개 이상");
         assertNotNull(findFirst(sw, "FUNCTION_CALL", "one"), "case 아래 one 호출");
         assertNotNull(findFirst(sw, "FUNCTION_CALL", "other"), "default 아래 other 호출");
+    }
+
+    @Test
+    void caseOwnsEveryStatementUntilNextLabelAndStackedLabelsAreSiblings() {
+        Node root = parse(
+                "void dispatch(int code) {\n" +
+                "  switch (code) {\n" +
+                "    case 1:\n" +
+                "      first();\n" +
+                "      second();\n" +
+                "      break;\n" +
+                "    case 2:\n" +
+                "    default:\n" +
+                "      fallback();\n" +
+                "      break;\n" +
+                "  }\n" +
+                "}\n");
+        Node sw = findFirst(root, "SWITCH", null);
+        assertNotNull(sw);
+        List<Node> cases = new ArrayList<>();
+        for (Node child : sw.children) if ("CASE".equals(child.type)) cases.add(child);
+        assertEquals(3, cases.size(), "case 1, case 2, default는 SWITCH의 직접 자식");
+        assertNotNull(findFirst(cases.get(0), "FUNCTION_CALL", "first"));
+        assertNotNull(findFirst(cases.get(0), "FUNCTION_CALL", "second"));
+        assertNotNull(findFirst(cases.get(2), "FUNCTION_CALL", "fallback"));
+        assertEquals(6, cases.get(0).endLine, "다음 label 직전까지 첫 CASE 범위");
+        assertEquals(7, cases.get(1).endLine, "stacked label의 빈 fallthrough 범위");
+        assertEquals(11, cases.get(2).endLine, "마지막 CASE는 SWITCH 끝까지");
     }
 
     @Test

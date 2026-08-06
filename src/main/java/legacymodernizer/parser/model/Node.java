@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
     "signature", "modifiers", "annotations", "returnType", "parameters", "genericType",
     "extendsType", "implementsTypes",
     "variableType", "initValue",
+    "target", "operator", "expression",
     "schema", "moduleName",
     "fileName", "filePath", "packageName",
     "comment",
@@ -62,6 +63,21 @@ public class Node {
     public String variableType;
     /** 변수 선언 시 초기화 표현식 텍스트 (예: "tagsn", "DBMS_UTILITY.GET_TIME", "'N'"). 없으면 null. */
     public String initValue;
+
+    // ========================================
+    // 구조 statement 표현식 (spec 016)
+    // ========================================
+    /**
+     * grammar 가 그 statement 에 소유시킨 표현식의 원문 텍스트.
+     * RETURN/THROW/RAISE 는 반환·예외식, ASSIGNMENT 는 우변, 제어문(IF/LOOP/CASE)은
+     * 조건식이다. 값 없는 return 은 RETURN 노드로 남고 이 필드만 null 이다 (FR-004).
+     * downstream(analyzer)이 소스를 다시 파싱하지 않기 위한 명시 계약 필드 (FR-003).
+     */
+    public String expression;
+    /** ASSIGNMENT 의 좌변(lvalue) 원문. 다른 노드에서는 null (FR-003). */
+    public String target;
+    /** ASSIGNMENT 의 대입 연산자 원문 (`=`, `+=`, `:=` …). 다른 노드에서는 null. */
+    public String operator;
 
     // ========================================
     // 스키마 관련 (PL/SQL, PostgreSQL)

@@ -31,11 +31,14 @@ import legacymodernizer.parser.parsing.languages.LanguageModule;
 class AstJsonGoldenContractTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
+    // spec 016: 구조 statement 의 expression 필드 추가 — analyzer step2(load_ast)가
+    // 영향받는 계약 변경이며 golden 은 같은 변경에서 재생성했다 (parser 헌법 VI).
     private static final List<String> PROPERTY_ORDER = List.of(
             "type", "name", "signature", "modifiers", "annotations", "returnType",
             "parameters", "genericType", "extendsType", "implementsTypes", "variableType",
-            "initValue", "schema", "moduleName", "fileName", "filePath", "packageName",
-            "comment", "startLine", "endLine", "children");
+            "initValue", "target", "operator", "expression", "schema", "moduleName",
+            "fileName", "filePath", "packageName", "comment", "startLine", "endLine",
+            "children");
     private static final Map<String, String> FIXTURES = new LinkedHashMap<>();
 
     static {
