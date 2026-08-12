@@ -455,8 +455,9 @@ public class JavaAstListener extends Java20ParserBaseListener
     @Override
     public void enterDoStatement(Java20Parser.DoStatementContext ctx) {
         if (!isInsideRoutine()) return;
-        h.enterStatement("LOOP", ctx.getStart().getLine())
-                .expression = ParserUtils.getExactSourceText(ctx.expression());
+        Node node = h.enterStatement("LOOP", ctx.getStart().getLine());
+        node.expression = ParserUtils.getExactSourceText(ctx.expression());
+        node.conditionTiming = "post";
     }
 
     @Override

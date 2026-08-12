@@ -424,6 +424,7 @@ public class CAstListener extends CParserBaseListener
 
     @Override
     public void enterPostfixExpression(CParser.PostfixExpressionContext ctx) {
+        emitStatementLevelPostfixUpdate(ctx);
         // postfixExpression: (primaryExpression | ...) ( '[' ... | '(' argumentExpressionList? ')' | ... )*
         // 함수 호출 패턴: Identifier '(' ... ')'
         if (ctx.primaryExpression() == null) return;
@@ -471,6 +472,53 @@ public class CAstListener extends CParserBaseListener
         h.exitStatementWithFullComment("FUNCTION_CALL", ctx.getStop().getLine(), ctx);
     }
 
+    /**
+     * A standalone postfix increment/decrement is a state-changing statement, not a
+     * mere expression.  Preserve the grammar-proven update as the same canonical
+     * ASSIGNMENT shape used by compound assignments.  Updates in a for header,
+     * condition, argument, or larger expression are deliberately excluded because
+     * their value/ordering belongs to that enclosing expression.
+     */
+    private void emitStatementLevelPostfixUpdate(CParser.PostfixExpressionContext ctx) {
+        if (!isInsideFunction() || !spansWholeExpressionStatement(ctx)) return;
+        String operator = ctx.getChild(ctx.getChildCount() - 1).getText();
+        if (!"++".equals(operator) && !"--".equals(operator)) return;
+        String source = ParserUtils.getExactSourceText(ctx);
+        Node node = h.addLeafStatement(
+                "ASSIGNMENT", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+        node.target = source.substring(0, source.length() - operator.length()).trim();
+        node.operator = "++".equals(operator) ? "+=" : "-=";
+        node.expression = "1";
+    }
+
+    @Override
+    public void enterUnaryExpression(CParser.UnaryExpressionContext ctx) {
+        if (!isInsideFunction() || !spansWholeExpressionStatement(ctx)) return;
+        String operator = ctx.getChild(0).getText();
+        if (!"++".equals(operator) && !"--".equals(operator)) return;
+        Node node = h.addLeafStatement(
+                "ASSIGNMENT", null, ctx.getStart().getLine(), ctx.getStop().getLine());
+        node.target = ParserUtils.getExactSourceText(ctx.unaryExpression());
+        node.operator = "++".equals(operator) ? "+=" : "-=";
+        node.expression = "1";
+    }
+
+    private static boolean spansWholeExpressionStatement(ParserRuleContext ctx) {
+        ParserRuleContext cursor = ctx;
+        while (cursor.getParent() instanceof ParserRuleContext) {
+            ParserRuleContext parent = (ParserRuleContext) cursor.getParent();
+            if (parent instanceof CParser.ExpressionStatementContext) {
+                CParser.ExpressionContext expression =
+                        ((CParser.ExpressionStatementContext) parent).expression();
+                return expression != null
+                        && expression.getStart().getTokenIndex() == ctx.getStart().getTokenIndex()
+                        && expression.getStop().getTokenIndex() == ctx.getStop().getTokenIndex();
+            }
+            cursor = parent;
+        }
+        return false;
+    }
+
     // ========================================
     // 제어 흐름 의미 AST (spec 007): IF / ELSE / LOOP / SWITCH / CASE
     //
@@ -508,6 +556,9 @@ public class CAstListener extends CParserBaseListener
         } else if (ctx.forCondition() != null) {
             node.expression = ParserUtils.getExactSourceText(forTestClause(ctx.forCondition()));
         }
+        if (ctx.Do() != null) {
+            node.conditionTiming = "post";
+        }
     }
 
     /** forCondition 의 첫 ';' 와 둘째 ';' 사이 test 절 — 없으면 null. */
@@ -536,8 +587,16 @@ public class CAstListener extends CParserBaseListener
     @Override
     public void enterLabeledStatement(CParser.LabeledStatementContext ctx) {
         if (!isInsideFunction()) return;
-        // case X: / default: → CASE. goto 레이블(Identifier ':')은 제어분기가 아니므로 제외.
-        if (ctx.Case() == null && ctx.Default() == null) return;
+        // A named label is not a conditional branch, but it is a deterministic
+        // control-flow coordinate and must survive for downstream GOTO ownership.
+        if (ctx.Case() == null && ctx.Default() == null) {
+            if (ctx.Identifier() != null && ctx.Colon() != null) {
+                h.addLeafStatement(
+                        "LABEL", ctx.Identifier().getText(),
+                        ctx.getStart().getLine(), ctx.getStart().getLine());
+            }
+            return;
+        }
         Node node = h.enterStatement("CASE", ctx.getStart().getLine());
         // 라벨 상수 원문 보존 (spec 016 FR-003). default 는 expression null.
         node.expression = ParserUtils.getExactSourceText(ctx.constantExpression());

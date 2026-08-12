@@ -83,7 +83,7 @@
         "upstreamCommit": null,
         "files": [
           {"path": "antlr-grammars/PlSqlLexer.g4", "sha256": "8e2af4e4f288165c27f6ed5c73d97418ccea0df869ada88dd3c3203649dbed1b"},
-          {"path": "antlr-grammars/PlSqlParser.g4", "sha256": "6526fc375b8f55c00649e95ef4d7b469a044fb580ec714a9d28f5c0b1d166b68"}
+          {"path": "antlr-grammars/PlSqlParser.g4", "sha256": "dd71186ea8469c107b6bbf4a6393a224bf689e66c8484ab1760d780e56411b9b"}
         ]
       },
       "recoveryRuleSets": ["common-safe", "oracle"]
@@ -112,5 +112,5 @@
       "recoveryRuleSets": ["common-safe", "postgresql"]
     }
   ],
-  "catalogSha256": "30702d58073125ae900c10d2275f8c10f3e8cfed00875627e9ceb922e2a73108"
+  "catalogSha256": "9e929f28ae71125991dbad9986d56a365c86f93dcc95289862557fb4cc8fb5f2"
 }

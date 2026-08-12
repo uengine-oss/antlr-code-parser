@@ -36,7 +36,9 @@ class AstJsonGoldenContractTest {
     private static final List<String> PROPERTY_ORDER = List.of(
             "type", "name", "signature", "modifiers", "annotations", "returnType",
             "parameters", "genericType", "extendsType", "implementsTypes", "variableType",
-            "initValue", "target", "operator", "expression", "schema", "moduleName",
+            "initValue", "target", "operator", "expression", "dataObjectEvidenceVersion",
+            "dataObjectReferences",
+            "qualifiedColumnReferences", "schema", "moduleName",
             "fileName", "filePath", "packageName", "comment", "startLine", "endLine",
             "children");
     private static final Map<String, String> FIXTURES = new LinkedHashMap<>();

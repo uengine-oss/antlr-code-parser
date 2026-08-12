@@ -1,5 +1,6 @@
 package legacymodernizer.parser.antlr;
 
+import java.util.Objects;
 import java.util.Stack;
 
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -98,12 +99,34 @@ public class ListenerHelper {
         Node node = nodeStack.pop();
         node.endLine = line;
         if (node.children != null && !node.children.isEmpty()) {
-            node.children.removeIf(child -> child.startLine == node.startLine && child.endLine == node.endLine);
+            node.children.removeIf(child -> isRedundantSameRangeMirror(node, child));
         }
         if (ctx != null) {
             node.comment = ParserUtils.getLeadingComment(ctx, tokens);
         }
         return node;
+    }
+
+    /**
+     * Remove only an empty grammar mirror, never a same-line nested statement.
+     *
+     * <p>Line ranges are not statement identities. Nested SELECTs can legitimately share
+     * one physical line while owning different tables and qualified columns. The previous
+     * range-only predicate deleted those children and silently lost parser-owned evidence.
+     */
+    private boolean isRedundantSameRangeMirror(Node parent, Node child) {
+        return child.startLine == parent.startLine
+                && child.endLine == parent.endLine
+                && Objects.equals(child.type, parent.type)
+                && Objects.equals(child.name, parent.name)
+                && Objects.equals(child.expression, parent.expression)
+                && Objects.equals(child.target, parent.target)
+                && Objects.equals(child.operator, parent.operator)
+                && child.children.isEmpty()
+                && child.dataObjectReferences == null
+                && child.qualifiedColumnReferences == null
+                && parent.dataObjectReferences == null
+                && parent.qualifiedColumnReferences == null;
     }
 
     /**

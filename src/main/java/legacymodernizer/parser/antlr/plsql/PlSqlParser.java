@@ -206114,8 +206114,8 @@ public class PlSqlParser extends PlSqlParserBase {
 	public static class Merge_statementContext extends ParserRuleContext {
 		public TerminalNode MERGE() { return getToken(PlSqlParser.MERGE, 0); }
 		public TerminalNode INTO() { return getToken(PlSqlParser.INTO, 0); }
-		public Tableview_nameContext tableview_name() {
-			return getRuleContext(Tableview_nameContext.class,0);
+		public Dml_table_expression_clauseContext dml_table_expression_clause() {
+			return getRuleContext(Dml_table_expression_clauseContext.class,0);
 		}
 		public TerminalNode USING() { return getToken(PlSqlParser.USING, 0); }
 		public Selected_tableviewContext selected_tableview() {
@@ -206165,7 +206165,7 @@ public class PlSqlParser extends PlSqlParserBase {
 			setState(17834);
 			match(INTO);
 			setState(17835);
-			tableview_name();
+			dml_table_expression_clause();
 			setState(17837);
 			_errHandler.sync(this);
 			switch ( getInterpreter().adaptivePredict(_input,2469,_ctx) ) {
@@ -287642,7 +287642,7 @@ public class PlSqlParser extends PlSqlParserBase {
 		"\u45a1\u0001\u0000\u0000\u0000\u45a7\u45a2\u0001\u0000\u0000\u0000\u45a7"+
 		"\u45a6\u0001\u0000\u0000\u0000\u45a8\u07ed\u0001\u0000\u0000\u0000\u45a9"+
 		"\u45aa\u0005\u03b0\u0000\u0000\u45aa\u45ab\u0005\u0309\u0000\u0000\u45ab"+
-		"\u45ad\u0003\u0920\u0490\u0000\u45ac\u45ae\u0003\u08d8\u046c\u0000\u45ad"+
+		"\u45ad\u0003\u080c\u0406\u0000\u45ac\u45ae\u0003\u08d8\u046c\u0000\u45ad"+
 		"\u45ac\u0001\u0000\u0000\u0000\u45ad\u45ae\u0001\u0000\u0000\u0000\u45ae"+
 		"\u45af\u0001\u0000\u0000\u0000\u45af\u45b0\u0005\u08c4\u0000\u0000\u45b0"+
 		"\u45b1\u0003\u07f8\u03fc\u0000\u45b1\u45b2\u0005\u04e9\u0000\u0000\u45b2"+

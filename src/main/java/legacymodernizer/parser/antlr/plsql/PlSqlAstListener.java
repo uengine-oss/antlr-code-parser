@@ -1,10 +1,21 @@
 package legacymodernizer.parser.antlr.plsql;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
 
 import legacymodernizer.parser.parsing.AntlrParseHarness;
+import legacymodernizer.parser.model.DataObjectReference;
 import legacymodernizer.parser.model.Node;
+import legacymodernizer.parser.model.QualifiedColumnReference;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
 import legacymodernizer.parser.service.ParseProgressTracker;
@@ -283,7 +294,15 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterQuery_block(PlSqlParser.Query_blockContext ctx) {
-        h.enterStatement("SELECT", ctx.getStart().getLine());
+        Node node = h.enterStatement("SELECT", ctx.getStart().getLine());
+        List<DataObjectReference> references = new ArrayList<>();
+        for (PlSqlParser.Table_ref_auxContext tableRef : descendants(ctx, PlSqlParser.Table_ref_auxContext.class)) {
+            if (nearestAncestor(tableRef, PlSqlParser.Query_blockContext.class) != ctx) continue;
+            PlSqlParser.Tableview_nameContext table = physicalTable(tableRef);
+            if (table == null) continue;
+            addObject(references, objectReference(table, tableRef.table_alias(), "READ"));
+        }
+        attachEvidence(node, references, qualifiedColumns(ctx, visibleQualifiers(ctx), true));
     }
 
     @Override
@@ -293,7 +312,13 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterInsert_statement(PlSqlParser.Insert_statementContext ctx) {
-        h.enterStatement("INSERT", ctx.getStart().getLine());
+        Node node = h.enterStatement("INSERT", ctx.getStart().getLine());
+        List<DataObjectReference> references = new ArrayList<>();
+        for (PlSqlParser.Insert_into_clauseContext into : descendants(ctx, PlSqlParser.Insert_into_clauseContext.class)) {
+            if (nearestAncestor(into, PlSqlParser.Insert_statementContext.class) != ctx) continue;
+            addObject(references, objectReference(into.general_table_ref(), "WRITE"));
+        }
+        attachEvidence(node, references, qualifiedColumns(ctx, qualifiers(references), false));
     }
 
     @Override
@@ -303,7 +328,10 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterUpdate_statement(PlSqlParser.Update_statementContext ctx) {
-        h.enterStatement("UPDATE", ctx.getStart().getLine());
+        Node node = h.enterStatement("UPDATE", ctx.getStart().getLine());
+        List<DataObjectReference> references = new ArrayList<>();
+        addObject(references, objectReference(ctx.general_table_ref(), "WRITE"));
+        attachEvidence(node, references, qualifiedColumns(ctx, qualifiers(references), false));
     }
 
     @Override
@@ -313,7 +341,10 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterDelete_statement(PlSqlParser.Delete_statementContext ctx) {
-        h.enterStatement("DELETE", ctx.getStart().getLine());
+        Node node = h.enterStatement("DELETE", ctx.getStart().getLine());
+        List<DataObjectReference> references = new ArrayList<>();
+        addObject(references, objectReference(ctx.general_table_ref(), "WRITE"));
+        attachEvidence(node, references, qualifiedColumns(ctx, qualifiers(references), false));
     }
 
     @Override
@@ -323,7 +354,17 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterMerge_statement(PlSqlParser.Merge_statementContext ctx) {
-        h.enterStatement("MERGE", ctx.getStart().getLine());
+        Node node = h.enterStatement("MERGE", ctx.getStart().getLine());
+        List<DataObjectReference> references = new ArrayList<>();
+        addObject(references, objectReference(
+                ctx.dml_table_expression_clause(), ctx.table_alias(), "WRITE"));
+        if (ctx.selected_tableview() != null && ctx.selected_tableview().tableview_name() != null) {
+            addObject(references, objectReference(
+                    ctx.selected_tableview().tableview_name(),
+                    ctx.selected_tableview().table_alias(),
+                    "READ"));
+        }
+        attachEvidence(node, references, qualifiedColumns(ctx, qualifiers(references), false));
     }
 
     @Override
@@ -359,6 +400,268 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
     @Override
     public void exitMerge_update_delete_part(PlSqlParser.Merge_update_delete_partContext ctx) {
         h.exitStatementWithChildDedupe("DELETE", ctx.getStop().getLine(), ctx);
+    }
+
+    private static void attachEvidence(
+            Node node,
+            List<DataObjectReference> objects,
+            List<QualifiedColumnReference> columns) {
+        node.dataObjectEvidenceVersion = 1;
+        if (!objects.isEmpty()) node.dataObjectReferences = new ArrayList<>(objects);
+        if (!columns.isEmpty()) node.qualifiedColumnReferences = new ArrayList<>(columns);
+    }
+
+    private static void addObject(List<DataObjectReference> references, DataObjectReference candidate) {
+        if (candidate == null) return;
+        String key = String.join("\u0000",
+                candidate.rawReference == null ? "" : candidate.rawReference,
+                candidate.alias == null ? "" : candidate.alias,
+                candidate.access == null ? "" : candidate.access,
+                Integer.toString(candidate.startLine));
+        for (DataObjectReference existing : references) {
+            String existingKey = String.join("\u0000",
+                    existing.rawReference == null ? "" : existing.rawReference,
+                    existing.alias == null ? "" : existing.alias,
+                    existing.access == null ? "" : existing.access,
+                    Integer.toString(existing.startLine));
+            if (existingKey.equals(key)) return;
+        }
+        references.add(candidate);
+    }
+
+    private static DataObjectReference objectReference(
+            PlSqlParser.General_table_refContext ctx, String access) {
+        if (ctx == null || ctx.dml_table_expression_clause() == null) return null;
+        return objectReference(ctx.dml_table_expression_clause(), ctx.table_alias(), access);
+    }
+
+    private static DataObjectReference objectReference(
+            PlSqlParser.Dml_table_expression_clauseContext dml,
+            PlSqlParser.Table_aliasContext alias,
+            String access) {
+        if (dml == null) return null;
+        if (dml.tableview_name() != null) {
+            return objectReference(dml.tableview_name(), alias, access);
+        }
+        if (dml.select_statement() == null) return null;
+
+        // Oracle permits an updatable inline view as a DML target. The physical write target is
+        // syntax-decidable only when the outer target query block contains one physical object.
+        // A join needs key-preservation/schema semantics, so fail closed instead of marking every
+        // table as written.
+        List<PlSqlParser.Query_blockContext> blocks =
+                descendants(dml.select_statement(), PlSqlParser.Query_blockContext.class);
+        if (blocks.isEmpty()) return null;
+        PlSqlParser.Query_blockContext outer = blocks.get(0);
+        List<DataObjectReference> physical = new ArrayList<>();
+        for (PlSqlParser.Table_ref_auxContext tableRef
+                : descendants(outer, PlSqlParser.Table_ref_auxContext.class)) {
+            if (nearestAncestor(tableRef, PlSqlParser.Query_blockContext.class) != outer) continue;
+            PlSqlParser.Tableview_nameContext table = physicalTable(tableRef);
+            if (table != null) addObject(physical, objectReference(table, null, access));
+        }
+        if (physical.size() != 1) return null;
+        DataObjectReference reference = physical.get(0);
+        if (alias != null) reference.alias = alias.getText();
+        return reference;
+    }
+
+    private static DataObjectReference objectReference(
+            PlSqlParser.Tableview_nameContext table,
+            PlSqlParser.Table_aliasContext alias,
+            String access) {
+        if (table == null || table.identifier() == null) return null;
+        DataObjectReference reference = new DataObjectReference();
+        reference.rawReference = ParserUtils.getExactSourceText(table);
+        if (table.id_expression() == null) {
+            reference.name = table.identifier().getText();
+        } else {
+            reference.schema = table.identifier().getText();
+            reference.name = table.id_expression().getText();
+        }
+        if (isQuoted(reference.schema)) reference.schemaQuoted = true;
+        if (isQuoted(reference.name)) reference.nameQuoted = true;
+        if (table.link_name() != null) reference.databaseLink = table.link_name().getText();
+        if (alias != null) reference.alias = alias.getText();
+        reference.access = access;
+        reference.startLine = table.getStart().getLine();
+        return reference;
+    }
+
+    private static PlSqlParser.Tableview_nameContext physicalTable(
+            PlSqlParser.Table_ref_auxContext owner) {
+        for (PlSqlParser.Dml_table_expression_clauseContext candidate
+                : descendants(owner, PlSqlParser.Dml_table_expression_clauseContext.class)) {
+            if (nearestAncestor(candidate, PlSqlParser.Table_ref_auxContext.class) != owner) continue;
+            if (candidate.tableview_name() != null) return candidate.tableview_name();
+        }
+        return null;
+    }
+
+    /** Visible physical aliases include the current query and correlated outer query scopes. */
+    private static Set<String> visibleQualifiers(PlSqlParser.Query_blockContext ctx) {
+        Set<String> result = new HashSet<>();
+        for (PlSqlParser.Query_blockContext scope = ctx; scope != null;
+                scope = nearestAncestor(scope, PlSqlParser.Query_blockContext.class)) {
+            List<DataObjectReference> references = new ArrayList<>();
+            for (PlSqlParser.Table_ref_auxContext tableRef
+                    : descendants(scope, PlSqlParser.Table_ref_auxContext.class)) {
+                if (nearestAncestor(tableRef, PlSqlParser.Query_blockContext.class) != scope) continue;
+                PlSqlParser.Tableview_nameContext table = physicalTable(tableRef);
+                if (table != null) addObject(references, objectReference(table, tableRef.table_alias(), "READ"));
+            }
+            result.addAll(qualifiers(references));
+        }
+        // A SELECT nested in UPDATE/DELETE/MERGE can contain a correlated reference to the
+        // enclosing DML target even though that target is not owned by a Query_block. Preserve
+        // the explicit qualifier on the nested SELECT; the Analyzer will leave it unbound to
+        // the local SELECT objects instead of guessing ownership.
+        for (ParseTree current = ctx.getParent(); current != null; current = current.getParent()) {
+            List<DataObjectReference> references = new ArrayList<>();
+            if (current instanceof PlSqlParser.Update_statementContext) {
+                PlSqlParser.Update_statementContext update =
+                        (PlSqlParser.Update_statementContext) current;
+                addObject(references, objectReference(update.general_table_ref(), "WRITE"));
+            } else if (current instanceof PlSqlParser.Delete_statementContext) {
+                PlSqlParser.Delete_statementContext delete =
+                        (PlSqlParser.Delete_statementContext) current;
+                addObject(references, objectReference(delete.general_table_ref(), "WRITE"));
+            } else if (current instanceof PlSqlParser.Merge_statementContext) {
+                PlSqlParser.Merge_statementContext merge =
+                        (PlSqlParser.Merge_statementContext) current;
+                addObject(references, objectReference(
+                        merge.dml_table_expression_clause(), merge.table_alias(), "WRITE"));
+            }
+            result.addAll(qualifiers(references));
+        }
+        return result;
+    }
+
+    private static Set<String> qualifiers(List<DataObjectReference> references) {
+        Set<String> result = new HashSet<>();
+        for (DataObjectReference reference : references) {
+            if (reference.alias != null) result.add(canonical(reference.alias));
+            if (reference.name != null) result.add(canonical(reference.name));
+        }
+        return result;
+    }
+
+    private static List<QualifiedColumnReference> qualifiedColumns(
+            ParserRuleContext owner, Set<String> visible, boolean queryOwned) {
+        List<QualifiedColumnReference> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (PlSqlParser.General_elementContext element
+                : descendants(owner, PlSqlParser.General_elementContext.class)) {
+            PlSqlParser.Query_blockContext nearestQuery = nearestAncestor(
+                    element, PlSqlParser.Query_blockContext.class);
+            if (queryOwned) {
+                if (nearestQuery != owner) continue;
+            } else if (nearestQuery != null) {
+                continue;
+            }
+            List<PlSqlParser.General_element_partContext> parts = flattenedParts(element);
+            if (parts.size() < 2) continue;
+            PlSqlParser.General_element_partContext last = parts.get(parts.size() - 1);
+            if (last.id_expression() == null || !last.function_argument().isEmpty()) continue;
+            List<String> names = new ArrayList<>();
+            boolean usable = true;
+            for (PlSqlParser.General_element_partContext part : parts) {
+                if (part.id_expression() == null) {
+                    usable = false;
+                    break;
+                }
+                names.add(part.id_expression().getText());
+            }
+            if (!usable) continue;
+            String qualifier = String.join(".", names.subList(0, names.size() - 1));
+            String localQualifier = names.get(names.size() - 2);
+            if (!visible.contains(canonical(qualifier))
+                    && !visible.contains(canonical(localQualifier))) continue;
+            String raw = ParserUtils.getExactSourceText(element);
+            String key = raw + "\u0000" + element.getStart().getLine();
+            if (!seen.add(key)) continue;
+            QualifiedColumnReference reference = new QualifiedColumnReference();
+            reference.rawReference = raw;
+            reference.qualifier = qualifier;
+            reference.name = names.get(names.size() - 1);
+            if (isQuoted(reference.name)) reference.nameQuoted = true;
+            reference.startLine = element.getStart().getLine();
+            result.add(reference);
+        }
+        return result;
+    }
+
+    private static List<PlSqlParser.General_element_partContext> flattenedParts(
+            PlSqlParser.General_elementContext ctx) {
+        List<PlSqlParser.General_element_partContext> result = new ArrayList<>();
+        if (ctx.general_element() != null) result.addAll(flattenedParts(ctx.general_element()));
+        result.addAll(ctx.general_element_part());
+        return result;
+    }
+
+    @Override
+    public void enterGeneral_element_part(PlSqlParser.General_element_partContext ctx) {
+        if (ctx.link_name() == null || ctx.function_argument().isEmpty()) return;
+        h.enterStatement("CALL", remoteRoutineName(ctx), ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitGeneral_element_part(PlSqlParser.General_element_partContext ctx) {
+        if (ctx.link_name() == null || ctx.function_argument().isEmpty()) return;
+        h.exitStatementWithChildDedupe("CALL", ctx.getStop().getLine(), ctx);
+    }
+
+    private static String remoteRoutineName(PlSqlParser.General_element_partContext ctx) {
+        PlSqlParser.General_elementContext element = nearestAncestor(
+                ctx, PlSqlParser.General_elementContext.class);
+        List<String> names = new ArrayList<>();
+        if (element != null) {
+            for (PlSqlParser.General_element_partContext part : flattenedParts(element)) {
+                if (part.id_expression() != null) names.add(part.id_expression().getText());
+                if (part == ctx) break;
+            }
+        }
+        if (names.isEmpty() && ctx.id_expression() != null) {
+            names.add(ctx.id_expression().getText());
+        }
+        return String.join(".", names) + "@" + ctx.link_name().getText();
+    }
+
+    private static String canonical(String value) {
+        if (value == null) return "";
+        String trimmed = value.trim();
+        if (trimmed.length() >= 2 && trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
+            return "Q:" + trimmed.substring(1, trimmed.length() - 1).replace("\"\"", "\"");
+        }
+        return "U:" + trimmed.toUpperCase(Locale.ROOT);
+    }
+
+    private static boolean isQuoted(String value) {
+        String trimmed = value == null ? "" : value.trim();
+        return trimmed.length() >= 2 && trimmed.startsWith("\"") && trimmed.endsWith("\"");
+    }
+
+    private static <T extends ParserRuleContext> T nearestAncestor(
+            ParseTree node, Class<T> type) {
+        for (ParseTree current = node.getParent(); current != null; current = current.getParent()) {
+            if (type.isInstance(current)) return type.cast(current);
+        }
+        return null;
+    }
+
+    private static <T extends ParserRuleContext> List<T> descendants(ParseTree root, Class<T> type) {
+        List<T> result = new ArrayList<>();
+        collectDescendants(root, type, result);
+        return result;
+    }
+
+    private static <T extends ParserRuleContext> void collectDescendants(
+            ParseTree root, Class<T> type, List<T> result) {
+        for (int i = 0; i < root.getChildCount(); i++) {
+            ParseTree child = root.getChild(i);
+            if (type.isInstance(child)) result.add(type.cast(child));
+            collectDescendants(child, type, result);
+        }
     }
 
     // ========================================
@@ -450,6 +753,95 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
         // BEGIN..END 블록에 EXCEPTION 절이 있으면 peek = EXCEPTION → pop.
         // EXCEPTION 절이 없으면 peek 미스매치 → no-op.
         h.exitStatementWithChildDedupe("EXCEPTION", ctx.getStop().getLine(), null);
+        recoverImplicitTableFunctionReturns(ctx);
+    }
+
+    /**
+     * Recover a valueless table-function {@code RETURN;} swallowed as a SELECT alias.
+     *
+     * <p>Some legacy Oracle-compatible sources terminate a {@code RETURN TABLE} query as
+     * {@code SELECT ... FROM object RETURN;} without a separate semicolon before
+     * {@code RETURN}. The permissive grammar accepts RETURN as a non-reserved table alias,
+     * so the query consumes the token and no executable RETURN node is emitted. Recovery is
+     * limited to an active table function, an exact {@code RETURN ;} token pair inside its
+     * body, and a missing RETURN node at that physical line.
+     */
+    private void recoverImplicitTableFunctionReturns(PlSqlParser.BodyContext ctx) {
+        Node function = activeTableFunction();
+        if (function == null) return;
+
+        List<Token> tokens = h.getTokens().getTokens();
+        int start = ctx.getStart().getTokenIndex();
+        int stop = ctx.getStop().getTokenIndex();
+        for (int index = start; index <= stop && index < tokens.size(); index++) {
+            Token token = tokens.get(index);
+            if (token.getType() != PlSqlLexer.RETURN) continue;
+            Token next = nextDefaultToken(tokens, index + 1, stop);
+            if (next == null || !";".equals(next.getText())) continue;
+            int line = token.getLine();
+            if (containsNodeAtLine(function, "RETURN", line)) continue;
+
+            Token previous = previousDefaultToken(tokens, index - 1, start);
+            int queryEndLine = previous == null ? line : previous.getLine();
+            trimAbsorbedReturn(function, line, queryEndLine);
+            Node recovered = new Node("RETURN", null, line, function);
+            recovered.endLine = line;
+        }
+    }
+
+    private Node activeTableFunction() {
+        for (int index = h.getNodeStack().size() - 1; index >= 0; index--) {
+            Node candidate = h.getNodeStack().get(index);
+            if ("FUNCTION".equals(candidate.type)) {
+                return "TABLE".equalsIgnoreCase(candidate.returnType) ? candidate : null;
+            }
+        }
+        return null;
+    }
+
+    private static Token nextDefaultToken(List<Token> tokens, int start, int stop) {
+        for (int index = start; index <= stop && index < tokens.size(); index++) {
+            Token token = tokens.get(index);
+            if (token.getChannel() == Token.DEFAULT_CHANNEL) return token;
+        }
+        return null;
+    }
+
+    private static Token previousDefaultToken(List<Token> tokens, int start, int stop) {
+        for (int index = start; index >= stop && index >= 0; index--) {
+            Token token = tokens.get(index);
+            if (token.getChannel() == Token.DEFAULT_CHANNEL) return token;
+        }
+        return null;
+    }
+
+    private static boolean containsNodeAtLine(Node node, String type, int line) {
+        if (type.equals(node.type) && node.startLine == line) return true;
+        for (Node child : node.children) {
+            if (containsNodeAtLine(child, type, line)) return true;
+        }
+        return false;
+    }
+
+    private static void trimAbsorbedReturn(Node node, int returnLine, int queryEndLine) {
+        if (node.startLine < returnLine && node.endLine >= returnLine
+                && isQueryNode(node.type)) {
+            node.endLine = Math.max(node.startLine, queryEndLine);
+            if (node.dataObjectReferences != null) {
+                for (DataObjectReference reference : node.dataObjectReferences) {
+                    if ("RETURN".equalsIgnoreCase(reference.alias)) reference.alias = null;
+                }
+            }
+        }
+        for (Node child : node.children) {
+            trimAbsorbedReturn(child, returnLine, queryEndLine);
+        }
+    }
+
+    private static boolean isQueryNode(String type) {
+        return "SELECT".equals(type) || "UNION".equals(type)
+                || "UNION_ALL".equals(type) || "INTERSECT".equals(type)
+                || "MINUS".equals(type) || "SET_OPERATION".equals(type);
     }
 
     @Override
@@ -554,7 +946,14 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterExit_statement(PlSqlParser.Exit_statementContext ctx) {
-        h.enterStatement("EXIT", ctx.getStart().getLine());
+        // 조건식 원문 보존 (spec 016 FR-003) — `EXIT WHEN <조건>` 의 조건은 커서 루프의
+        // 실제 탈출 판정이다. 조건 없는 `LOOP` 은 자기 조건이 없으므로, 이걸 버리면
+        // 반복 종료 조건이 AST 어디에도 남지 않는다(실측: rwis EXIT 5건 전부 유실).
+        // `enterElsif_part` 와 같은 계약이며, 무조건 `EXIT` 는 빈 값이 사실이다.
+        Node node = h.enterStatement("EXIT", ctx.getStart().getLine());
+        if (ctx.condition() != null) {
+            node.expression = ParserUtils.getExactSourceText(ctx.condition());
+        }
     }
 
     @Override
@@ -625,6 +1024,16 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
     @Override
     public void exitCommit_statement(PlSqlParser.Commit_statementContext ctx) {
         h.exitStatementWithChildDedupe("COMMIT", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterRollback_statement(PlSqlParser.Rollback_statementContext ctx) {
+        h.enterStatement("ROLLBACK", ctx.getStart().getLine());
+    }
+
+    @Override
+    public void exitRollback_statement(PlSqlParser.Rollback_statementContext ctx) {
+        h.exitStatementWithChildDedupe("ROLLBACK", ctx.getStop().getLine(), ctx);
     }
 
 }

@@ -34,6 +34,7 @@ build/
 
 ### ect ###
 result
+_runs/
 
 ### Local config ###
 src/main/resources/application.properties

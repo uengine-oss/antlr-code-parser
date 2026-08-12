@@ -20,7 +20,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
     "signature", "modifiers", "annotations", "returnType", "parameters", "genericType",
     "extendsType", "implementsTypes",
     "variableType", "initValue",
-    "target", "operator", "expression",
+    "target", "operator", "expression", "conditionTiming",
+    "dataObjectEvidenceVersion", "dataObjectReferences", "qualifiedColumnReferences",
     "schema", "moduleName",
     "fileName", "filePath", "packageName",
     "comment",
@@ -74,10 +75,25 @@ public class Node {
      * downstream(analyzer)이 소스를 다시 파싱하지 않기 위한 명시 계약 필드 (FR-003).
      */
     public String expression;
+    /**
+     * 제어 조건이 본문보다 먼저(pre)인지 뒤(post)인지 나타내는 grammar 사실.
+     * null은 기존 계약과 호환되는 pre이다. 현재 post는 C/Java do-while만 생산한다.
+     */
+    public String conditionTiming;
     /** ASSIGNMENT 의 좌변(lvalue) 원문. 다른 노드에서는 null (FR-003). */
     public String target;
     /** ASSIGNMENT 의 대입 연산자 원문 (`=`, `+=`, `:=` …). 다른 노드에서는 null. */
     public String operator;
+
+    // ========================================
+    // 데이터 객체 구문 증거 (PL/SQL spec 017)
+    // ========================================
+    /** Presence distinguishes the grammar contract from legacy ASTs that require replay fallback. */
+    public Integer dataObjectEvidenceVersion;
+    /** Grammar-owned physical object references for this DML node. Empty remains absent. */
+    public ArrayList<DataObjectReference> dataObjectReferences;
+    /** Explicit qualifier.column references owned by this DML node. Empty remains absent. */
+    public ArrayList<QualifiedColumnReference> qualifiedColumnReferences;
 
     // ========================================
     // 스키마 관련 (PL/SQL, PostgreSQL)

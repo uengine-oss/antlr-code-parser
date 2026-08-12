@@ -1,6 +1,7 @@
 package legacymodernizer.parser.antlr;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -182,6 +183,10 @@ class StructuralStatementAstContractTest {
         List<Node> gotos = all(root, "GOTO");
         assertEquals(1, gotos.size(), "goto 1건");
         assertEquals("done", gotos.get(0).name, "goto 대상 라벨은 name 으로 보존");
+        List<Node> labels = all(root, "LABEL");
+        assertEquals(1, labels.size(), "goto 대상 LABEL 1건");
+        assertEquals("done", labels.get(0).name, "LABEL 선언 이름 보존");
+        assertEquals(8, labels.get(0).startLine, "LABEL 선언 좌표 보존");
         assertTrue(hasAncestorOfType(all(root, "BREAK").get(0), "LOOP"),
                 "loop 안 break 는 LOOP 자손");
         // switch 의 case 종결 break 회귀: 기존 CASE 소유권과 충돌하지 않아야 한다.
@@ -196,6 +201,37 @@ class StructuralStatementAstContractTest {
         for (Node breakNode : all(switchRoot, "BREAK")) {
             assertTrue(hasAncestorOfType(breakNode, "CASE"), "case 본문 break 는 CASE 자손");
         }
+    }
+
+    @Test
+    void cStandaloneUpdatesBecomeAssignmentsButHeaderAndNestedUpdatesDoNot() {
+        Node root = parseC(
+                "void f(int n) {\n" +
+                "  int i = 0;\n" +
+                "  i++;\n" +
+                "  --n;\n" +
+                "  for (i = 0; i < n; i++) {\n" +
+                "    consume(i++);\n" +
+                "  }\n" +
+                "}\n");
+        List<Node> assignments = all(root, "ASSIGNMENT");
+        assertEquals(3, assignments.size(),
+                "initializer and two standalone updates only");
+
+        Node postfix = firstAtLine(root, "ASSIGNMENT", 3);
+        assertNotNull(postfix);
+        assertEquals("i", postfix.target);
+        assertEquals("+=", postfix.operator);
+        assertEquals("1", postfix.expression);
+
+        Node prefix = firstAtLine(root, "ASSIGNMENT", 4);
+        assertNotNull(prefix);
+        assertEquals("n", prefix.target);
+        assertEquals("-=", prefix.operator);
+        assertEquals("1", prefix.expression);
+
+        assertNull(firstAtLine(root, "ASSIGNMENT", 6),
+                "argument update belongs to the enclosing call expression");
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -479,6 +515,27 @@ class StructuralStatementAstContractTest {
         assertEquals("p_id > 0", normalized(firstAtLine(plsqlRoot, "IF", 5).expression));
     }
 
+    @Test
+    void doWhileConditionIsExplicitlyPostTested() {
+        Node cRoot = parseC(
+                "void f(int n) {\n" +
+                "  do { n--; } while (n > 0);\n" +
+                "}\n");
+        Node cLoop = firstAtLine(cRoot, "LOOP", 2);
+        assertEquals("n > 0", normalized(cLoop.expression));
+        assertEquals("post", cLoop.conditionTiming);
+
+        Node javaRoot = parseJava(
+                "class Sample {\n" +
+                "  void f(int n) {\n" +
+                "    do { n--; } while (n > 0);\n" +
+                "  }\n" +
+                "}\n");
+        Node javaLoop = firstAtLine(javaRoot, "LOOP", 3);
+        assertEquals("n > 0", normalized(javaLoop.expression));
+        assertEquals("post", javaLoop.conditionTiming);
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // PL/SQL — RETURN 노드는 이미 존재; 표현식 필드가 계약 (FR-003)
     // ═══════════════════════════════════════════════════════════════════
@@ -506,5 +563,120 @@ class StructuralStatementAstContractTest {
         Node trailing = firstAtLine(root, "RETURN", 8);
         assertNotNull(trailing);
         assertEquals("'NG'", normalized(trailing.expression));
+    }
+
+    @Test
+    void plsqlTableFunctionKeepsValuelessReturn() {
+        Node root = parsePlSql(
+                "CREATE OR REPLACE FUNCTION rows_for(p_id NUMBER)\n" +
+                "RETURN TABLE IS\n" +
+                "BEGIN\n" +
+                "  SELECT p_id AS ID FROM DUAL;\n" +
+                "  RETURN;\n" +
+                "END;\n" +
+                "/\n");
+        Node trailing = firstAtLine(root, "RETURN", 5);
+        assertNotNull(trailing, "table function의 값 없는 RETURN도 실행 statement다");
+        assertNull(trailing.expression);
+    }
+
+    @Test
+    void plsqlTableFunctionKeepsReturnAfterUnionWithScalarSubqueries() {
+        Node root = parsePlSql(
+                "CREATE OR REPLACE FUNCTION rows_for(p_id NUMBER)\n" +
+                "RETURN TABLE IS\n" +
+                "BEGIN\n" +
+                "  SELECT p_id AS ID, (SELECT 1 FROM DUAL) AS V1 FROM DUAL\n" +
+                "  UNION ALL\n" +
+                "  SELECT p_id AS ID, (SELECT 2 FROM DUAL) AS V1 FROM DUAL\n" +
+                "  RETURN;\n" +
+                "END;\n" +
+                "/\n");
+        Node trailing = firstAtLine(root, "RETURN", 7);
+        assertNotNull(trailing,
+                "UNION SELECT 뒤의 값 없는 RETURN도 SELECT 범위에 흡수되지 않는다");
+        assertNull(trailing.expression);
+        Node union = all(root, "UNION_ALL").get(0);
+        assertEquals(6, union.endLine, "RETURN 좌표를 UNION/SELECT 범위에서 분리한다");
+        assertFalse(all(root, "SELECT").stream()
+                .flatMap(node -> node.dataObjectReferences == null
+                        ? java.util.stream.Stream.empty()
+                        : node.dataObjectReferences.stream())
+                .anyMatch(reference -> "RETURN".equalsIgnoreCase(reference.alias)),
+                "RETURN을 DUAL의 table alias 근거로 남기지 않는다");
+    }
+
+    /**
+     * spec 118 §1.4 — {@code EXIT WHEN <조건>} 의 조건식 원문 보존 (FR-003).
+     *
+     * <p>조건 없는 {@code LOOP} 은 자기 조건이 없으므로 반복 종료 판정이 오직 여기에만
+     * 있다. 이 조건을 버리면 AST 어디에도 남지 않는다 — 2026-08-07 rwis 실측에서
+     * {@code EXIT WHEN c%NOTFOUND} 5건이 전부 빈 expression 이었고, 그 결과 analyzer 가
+     * 커서 루프의 종료 조건을 만들 근거를 잃었다. {@code enterElsif_part} 는 같은 계약을
+     * 이미 지키고 있었다 — 한쪽만 지킨 상태였다.
+     */
+    @Test
+    void plsqlExitWhenCarriesConditionExpression() {
+        Node root = parsePlSql(
+                "CREATE OR REPLACE PROCEDURE drain(p_id NUMBER)\n" +   // 1
+                "IS\n" +                                               // 2
+                "  CURSOR c IS SELECT 1 AS v FROM DUAL;\n" +           // 3
+                "  r c%ROWTYPE;\n" +                                   // 4
+                "BEGIN\n" +                                            // 5
+                "  OPEN c;\n" +                                        // 6
+                "  LOOP\n" +                                           // 7
+                "    FETCH c INTO r;\n" +                              // 8
+                "    EXIT WHEN c%NOTFOUND;\n" +                        // 9
+                "  END LOOP;\n" +                                      // 10
+                "  CLOSE c;\n" +                                       // 11
+                "END;\n" +                                             // 12
+                "/\n");
+        List<Node> exits = all(root, "EXIT");
+        assertEquals(1, exits.size(), "EXIT 1건 (missing 0)");
+        Node conditional = firstAtLine(root, "EXIT", 9);
+        assertNotNull(conditional, "조건부 EXIT 노드");
+        assertEquals("c%NOTFOUND", normalized(conditional.expression),
+                "WHEN 조건은 expression 필드로 보존 (FR-003)");
+        assertTrue(hasAncestorOfType(conditional, "LOOP"), "loop 안 EXIT 는 LOOP 자손");
+    }
+
+    /** 무조건 {@code EXIT} 는 조건이 없는 것이 사실이므로 expression 이 null 이다. */
+    @Test
+    void plsqlUnconditionalExitHasNoExpression() {
+        Node root = parsePlSql(
+                "CREATE OR REPLACE PROCEDURE once\n" +                 // 1
+                "IS\n" +                                               // 2
+                "BEGIN\n" +                                            // 3
+                "  LOOP\n" +                                           // 4
+                "    EXIT;\n" +                                        // 5
+                "  END LOOP;\n" +                                      // 6
+                "END;\n" +                                             // 7
+                "/\n");
+        Node unconditional = firstAtLine(root, "EXIT", 5);
+        assertNotNull(unconditional, "무조건 EXIT 도 노드로 남는다");
+        assertNull(unconditional.expression, "조건이 없다는 사실을 null 로 표현한다");
+    }
+
+    @Test
+    void plsqlTransactionControlKeepsCommitAndRollbackAsSiblingStatements() {
+        Node root = parsePlSql(
+                "CREATE OR REPLACE PROCEDURE finish_work(p_ok NUMBER)\n" + // 1
+                "IS\n" +                                                    // 2
+                "BEGIN\n" +                                                 // 3
+                "  IF p_ok = 1 THEN\n" +                                    // 4
+                "    COMMIT;\n" +                                           // 5
+                "  ELSE\n" +                                                // 6
+                "    ROLLBACK;\n" +                                         // 7
+                "  END IF;\n" +                                             // 8
+                "END;\n" +                                                  // 9
+                "/\n");
+        List<Node> commits = all(root, "COMMIT");
+        List<Node> rollbacks = all(root, "ROLLBACK");
+        assertEquals(1, commits.size(), "COMMIT 1건 (missing 0)");
+        assertEquals(1, rollbacks.size(), "ROLLBACK 1건 (missing 0)");
+        assertEquals(5, commits.get(0).startLine);
+        assertEquals(7, rollbacks.get(0).startLine);
+        assertTrue(hasAncestorOfType(commits.get(0), "IF"));
+        assertTrue(hasAncestorOfType(rollbacks.get(0), "ELSE"));
     }
 }

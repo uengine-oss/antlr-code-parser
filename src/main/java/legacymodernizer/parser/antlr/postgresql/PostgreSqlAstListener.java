@@ -1,13 +1,19 @@
 package legacymodernizer.parser.antlr.postgresql;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
 import legacymodernizer.parser.parsing.AntlrParseHarness;
+import legacymodernizer.parser.model.DataObjectReference;
 import legacymodernizer.parser.model.Node;
+import legacymodernizer.parser.model.QualifiedColumnReference;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlAstVisitor;
@@ -29,7 +35,6 @@ import lombok.extern.slf4j.Slf4j;
 public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
         implements AntlrParseHarness.AstListener {
     private final ListenerHelper h;
-    private boolean insideInsert = false;
     private boolean insideExplain = false;
     private final List<ParseDiagnostic> nestedDiagnostics = new ArrayList<>();
     private int nestedRecoveries;
@@ -643,32 +648,50 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
     // ========================================
 
     @Override
-    public void enterSelectstmt(PostgreSQLParser.SelectstmtContext ctx) {
-        if (insideInsert || insideExplain) return;
-        h.enterStatement("SELECT", ctx.getStart().getLine());
+    public void enterSelect_no_parens(PostgreSQLParser.Select_no_parensContext ctx) {
+        if (insideExplain) return;
+        Node node = h.enterStatement("SELECT", ctx.getStart().getLine());
+        List<DataObjectReference> references = selectReferences(ctx);
+        attachEvidence(node, references, qualifiedColumns(ctx, visibleQualifiers(ctx), true));
     }
 
     @Override
-    public void exitSelectstmt(PostgreSQLParser.SelectstmtContext ctx) {
-        if (insideInsert || insideExplain) return;
+    public void exitSelect_no_parens(PostgreSQLParser.Select_no_parensContext ctx) {
+        if (insideExplain) return;
         h.exitStatement("SELECT", ctx.getStop().getLine(), ctx);
     }
 
     @Override
     public void enterInsertstmt(PostgreSQLParser.InsertstmtContext ctx) {
-        insideInsert = true;
-        h.enterStatement("INSERT", ctx.getStart().getLine());
+        Node node = h.enterStatement("INSERT", ctx.getStart().getLine());
+        List<DataObjectReference> references = new ArrayList<>();
+        if (ctx.insert_target() != null) {
+            addObject(references, objectReference(
+                    ctx.insert_target().qualified_name(),
+                    ctx.insert_target().colid() == null ? null : ctx.insert_target().colid().getText(),
+                    "WRITE"));
+        }
+        attachEvidence(node, references, qualifiedColumns(ctx, qualifiers(references), false));
     }
 
     @Override
     public void exitInsertstmt(PostgreSQLParser.InsertstmtContext ctx) {
         h.exitStatement("INSERT", ctx.getStop().getLine(), ctx);
-        insideInsert = false;
     }
 
     @Override
     public void enterUpdatestmt(PostgreSQLParser.UpdatestmtContext ctx) {
-        h.enterStatement("UPDATE", ctx.getStart().getLine());
+        Node node = h.enterStatement("UPDATE", ctx.getStart().getLine());
+        List<DataObjectReference> references = new ArrayList<>();
+        if (ctx.relation_expr_opt_alias() != null) {
+            addObject(references, objectReference(
+                    ctx.relation_expr_opt_alias().relation_expr().qualified_name(),
+                    ctx.relation_expr_opt_alias().colid() == null
+                            ? null : ctx.relation_expr_opt_alias().colid().getText(),
+                    "WRITE"));
+        }
+        addDirectTableRefs(ctx, references, "READ");
+        attachEvidence(node, references, qualifiedColumns(ctx, qualifiers(references), false));
     }
 
     @Override
@@ -678,7 +701,17 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
 
     @Override
     public void enterDeletestmt(PostgreSQLParser.DeletestmtContext ctx) {
-        h.enterStatement("DELETE", ctx.getStart().getLine());
+        Node node = h.enterStatement("DELETE", ctx.getStart().getLine());
+        List<DataObjectReference> references = new ArrayList<>();
+        if (ctx.relation_expr_opt_alias() != null) {
+            addObject(references, objectReference(
+                    ctx.relation_expr_opt_alias().relation_expr().qualified_name(),
+                    ctx.relation_expr_opt_alias().colid() == null
+                            ? null : ctx.relation_expr_opt_alias().colid().getText(),
+                    "WRITE"));
+        }
+        addDirectTableRefs(ctx, references, "READ");
+        attachEvidence(node, references, qualifiedColumns(ctx, qualifiers(references), false));
     }
 
     @Override
@@ -688,12 +721,289 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
 
     @Override
     public void enterMergestmt(PostgreSQLParser.MergestmtContext ctx) {
-        h.enterStatement("MERGE", ctx.getStart().getLine());
+        Node node = h.enterStatement("MERGE", ctx.getStart().getLine());
+        List<DataObjectReference> references = new ArrayList<>();
+        List<PostgreSQLParser.Qualified_nameContext> names = ctx.qualified_name();
+        List<PostgreSQLParser.Alias_clauseContext> aliases = ctx.alias_clause();
+        int usingToken = ctx.USING().getSymbol().getTokenIndex();
+        String targetAlias = aliases.stream()
+                .filter(alias -> alias.getStart().getTokenIndex() < usingToken)
+                .map(PostgreSqlAstListener::aliasText).findFirst().orElse(null);
+        String sourceAlias = aliases.stream()
+                .filter(alias -> alias.getStart().getTokenIndex() > usingToken)
+                .map(PostgreSqlAstListener::aliasText).findFirst().orElse(null);
+        if (!names.isEmpty()) {
+            addObject(references, objectReference(names.get(0), targetAlias, "WRITE"));
+        }
+        if (names.size() > 1) {
+            addObject(references, objectReference(names.get(1), sourceAlias, "READ"));
+        }
+        attachEvidence(node, references, qualifiedColumns(ctx, qualifiers(references), false));
     }
 
     @Override
     public void exitMergestmt(PostgreSQLParser.MergestmtContext ctx) {
         h.exitStatement("MERGE", ctx.getStop().getLine(), ctx);
+    }
+
+    private static void attachEvidence(
+            Node node,
+            List<DataObjectReference> objects,
+            List<QualifiedColumnReference> columns) {
+        node.dataObjectEvidenceVersion = 1;
+        if (!objects.isEmpty()) node.dataObjectReferences = new ArrayList<>(objects);
+        if (!columns.isEmpty()) node.qualifiedColumnReferences = new ArrayList<>(columns);
+    }
+
+    private static List<DataObjectReference> selectReferences(
+            PostgreSQLParser.Select_no_parensContext ctx) {
+        List<DataObjectReference> references = new ArrayList<>();
+        Set<String> cteNames = visibleCteNames(ctx);
+        for (PostgreSQLParser.Table_refContext tableRef
+                : descendants(ctx, PostgreSQLParser.Table_refContext.class)) {
+            if (nearestAncestor(tableRef, PostgreSQLParser.Select_no_parensContext.class) != ctx) continue;
+            if (tableRef.relation_expr() == null
+                    || tableRef.relation_expr().qualified_name() == null) continue;
+            PostgreSQLParser.Qualified_nameContext name = tableRef.relation_expr().qualified_name();
+            if (isCteReference(name, cteNames)) continue;
+            addObject(references, objectReference(
+                    name, tableRef.alias_clause() == null ? null : aliasText(tableRef.alias_clause()),
+                    "READ"));
+        }
+        return references;
+    }
+
+    private static void addDirectTableRefs(
+            ParserRuleContext owner,
+            List<DataObjectReference> references,
+            String access) {
+        Set<String> cteNames = ownedCteNames(owner);
+        for (PostgreSQLParser.Table_refContext tableRef
+                : descendants(owner, PostgreSQLParser.Table_refContext.class)) {
+            if (nearestAncestor(tableRef, PostgreSQLParser.Select_no_parensContext.class) != null) continue;
+            if (tableRef.relation_expr() == null
+                    || tableRef.relation_expr().qualified_name() == null) continue;
+            PostgreSQLParser.Qualified_nameContext name = tableRef.relation_expr().qualified_name();
+            if (isCteReference(name, cteNames)) continue;
+            addObject(references, objectReference(
+                    name, tableRef.alias_clause() == null ? null : aliasText(tableRef.alias_clause()),
+                    access));
+        }
+    }
+
+    private static DataObjectReference objectReference(
+            PostgreSQLParser.Qualified_nameContext ctx, String alias, String access) {
+        if (ctx == null) return null;
+        List<String> parts = qualifiedNameParts(ctx);
+        if (parts.isEmpty()) return null;
+        DataObjectReference reference = new DataObjectReference();
+        reference.rawReference = ParserUtils.getExactSourceText(ctx);
+        reference.name = parts.get(parts.size() - 1);
+        if (isQuoted(reference.name)) reference.nameQuoted = true;
+        if (parts.size() > 1) {
+            reference.schema = String.join(".", parts.subList(0, parts.size() - 1));
+            if (parts.subList(0, parts.size() - 1).stream().anyMatch(PostgreSqlAstListener::isQuoted)) {
+                reference.schemaQuoted = true;
+            }
+        }
+        reference.alias = alias;
+        reference.access = access;
+        reference.startLine = ctx.getStart().getLine();
+        return reference;
+    }
+
+    private static List<String> qualifiedNameParts(
+            PostgreSQLParser.Qualified_nameContext ctx) {
+        List<String> result = new ArrayList<>();
+        if (ctx == null || ctx.colid() == null) return result;
+        result.add(ctx.colid().getText());
+        if (ctx.indirection() != null) {
+            for (PostgreSQLParser.Indirection_elContext item
+                    : ctx.indirection().indirection_el()) {
+                if (item.attr_name() == null) return List.of();
+                result.add(item.attr_name().getText());
+            }
+        }
+        return result;
+    }
+
+    private static List<String> columnParts(PostgreSQLParser.ColumnrefContext ctx) {
+        List<String> result = new ArrayList<>();
+        if (ctx == null || ctx.colid() == null) return result;
+        result.add(ctx.colid().getText());
+        if (ctx.indirection() != null) {
+            for (PostgreSQLParser.Indirection_elContext item
+                    : ctx.indirection().indirection_el()) {
+                if (item.attr_name() == null) return List.of();
+                result.add(item.attr_name().getText());
+            }
+        }
+        return result;
+    }
+
+    private static String aliasText(PostgreSQLParser.Alias_clauseContext ctx) {
+        return ctx == null || ctx.colid() == null ? null : ctx.colid().getText();
+    }
+
+    private static void addObject(
+            List<DataObjectReference> references, DataObjectReference candidate) {
+        if (candidate == null) return;
+        String key = String.join("\u0000",
+                candidate.rawReference == null ? "" : candidate.rawReference,
+                candidate.alias == null ? "" : candidate.alias,
+                candidate.access == null ? "" : candidate.access,
+                Integer.toString(candidate.startLine));
+        for (DataObjectReference existing : references) {
+            String existingKey = String.join("\u0000",
+                    existing.rawReference == null ? "" : existing.rawReference,
+                    existing.alias == null ? "" : existing.alias,
+                    existing.access == null ? "" : existing.access,
+                    Integer.toString(existing.startLine));
+            if (existingKey.equals(key)) return;
+        }
+        references.add(candidate);
+    }
+
+    private static Set<String> visibleQualifiers(PostgreSQLParser.Select_no_parensContext ctx) {
+        Set<String> result = new HashSet<>();
+        for (PostgreSQLParser.Select_no_parensContext scope = ctx; scope != null;
+                scope = nearestAncestor(scope, PostgreSQLParser.Select_no_parensContext.class)) {
+            result.addAll(qualifiers(selectReferences(scope)));
+        }
+        for (ParseTree current = ctx.getParent(); current != null; current = current.getParent()) {
+            List<DataObjectReference> references = new ArrayList<>();
+            if (current instanceof PostgreSQLParser.UpdatestmtContext) {
+                PostgreSQLParser.Relation_expr_opt_aliasContext target =
+                        ((PostgreSQLParser.UpdatestmtContext) current).relation_expr_opt_alias();
+                if (target != null) addObject(references, objectReference(
+                        target.relation_expr().qualified_name(),
+                        target.colid() == null ? null : target.colid().getText(), "WRITE"));
+            } else if (current instanceof PostgreSQLParser.DeletestmtContext) {
+                PostgreSQLParser.Relation_expr_opt_aliasContext target =
+                        ((PostgreSQLParser.DeletestmtContext) current).relation_expr_opt_alias();
+                if (target != null) addObject(references, objectReference(
+                        target.relation_expr().qualified_name(),
+                        target.colid() == null ? null : target.colid().getText(), "WRITE"));
+            } else if (current instanceof PostgreSQLParser.MergestmtContext) {
+                PostgreSQLParser.MergestmtContext merge =
+                        (PostgreSQLParser.MergestmtContext) current;
+                if (!merge.qualified_name().isEmpty()) {
+                    addObject(references, objectReference(
+                            merge.qualified_name(0), null, "WRITE"));
+                }
+            }
+            result.addAll(qualifiers(references));
+        }
+        return result;
+    }
+
+    private static Set<String> qualifiers(List<DataObjectReference> references) {
+        Set<String> result = new HashSet<>();
+        for (DataObjectReference reference : references) {
+            if (reference.alias != null) result.add(canonical(reference.alias));
+            if (reference.name != null) result.add(canonical(reference.name));
+        }
+        return result;
+    }
+
+    private static List<QualifiedColumnReference> qualifiedColumns(
+            ParserRuleContext owner, Set<String> visible, boolean queryOwned) {
+        List<QualifiedColumnReference> result = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+        for (PostgreSQLParser.ColumnrefContext column
+                : descendants(owner, PostgreSQLParser.ColumnrefContext.class)) {
+            PostgreSQLParser.Select_no_parensContext nearestQuery = nearestAncestor(
+                    column, PostgreSQLParser.Select_no_parensContext.class);
+            if (queryOwned) {
+                if (nearestQuery != owner) continue;
+            } else if (nearestQuery != null) {
+                continue;
+            }
+            List<String> parts = columnParts(column);
+            if (parts.size() < 2) continue;
+            String qualifier = String.join(".", parts.subList(0, parts.size() - 1));
+            String localQualifier = parts.get(parts.size() - 2);
+            if (!visible.contains(canonical(qualifier))
+                    && !visible.contains(canonical(localQualifier))) continue;
+            String raw = ParserUtils.getExactSourceText(column);
+            String key = raw + "\u0000" + column.getStart().getLine();
+            if (!seen.add(key)) continue;
+            QualifiedColumnReference reference = new QualifiedColumnReference();
+            reference.rawReference = raw;
+            reference.qualifier = qualifier;
+            reference.name = parts.get(parts.size() - 1);
+            if (isQuoted(reference.name)) reference.nameQuoted = true;
+            reference.startLine = column.getStart().getLine();
+            result.add(reference);
+        }
+        return result;
+    }
+
+    private static Set<String> visibleCteNames(PostgreSQLParser.Select_no_parensContext ctx) {
+        Set<String> result = new HashSet<>();
+        for (PostgreSQLParser.Select_no_parensContext scope = ctx; scope != null;
+                scope = nearestAncestor(scope, PostgreSQLParser.Select_no_parensContext.class)) {
+            for (PostgreSQLParser.Common_table_exprContext cte
+                    : descendants(scope, PostgreSQLParser.Common_table_exprContext.class)) {
+                if (nearestAncestor(cte, PostgreSQLParser.Select_no_parensContext.class) == scope) {
+                    result.add(canonical(cte.name().getText()));
+                }
+            }
+        }
+        return result;
+    }
+
+    private static Set<String> ownedCteNames(ParserRuleContext owner) {
+        Set<String> result = new HashSet<>();
+        for (PostgreSQLParser.Common_table_exprContext cte
+                : descendants(owner, PostgreSQLParser.Common_table_exprContext.class)) {
+            result.add(canonical(cte.name().getText()));
+        }
+        return result;
+    }
+
+    private static boolean isCteReference(
+            PostgreSQLParser.Qualified_nameContext name, Set<String> cteNames) {
+        List<String> parts = qualifiedNameParts(name);
+        return parts.size() == 1 && cteNames.contains(canonical(parts.get(0)));
+    }
+
+    private static String canonical(String value) {
+        if (value == null) return "";
+        String trimmed = value.trim();
+        if (trimmed.length() >= 2 && trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
+            return "Q:" + trimmed.substring(1, trimmed.length() - 1).replace("\"\"", "\"");
+        }
+        return "U:" + trimmed.toLowerCase(Locale.ROOT);
+    }
+
+    private static boolean isQuoted(String value) {
+        String trimmed = value == null ? "" : value.trim();
+        return trimmed.length() >= 2 && trimmed.startsWith("\"") && trimmed.endsWith("\"");
+    }
+
+    private static <T extends ParserRuleContext> T nearestAncestor(
+            ParseTree node, Class<T> type) {
+        for (ParseTree current = node.getParent(); current != null; current = current.getParent()) {
+            if (type.isInstance(current)) return type.cast(current);
+        }
+        return null;
+    }
+
+    private static <T extends ParserRuleContext> List<T> descendants(
+            ParseTree root, Class<T> type) {
+        List<T> result = new ArrayList<>();
+        collectDescendants(root, type, result);
+        return result;
+    }
+
+    private static <T extends ParserRuleContext> void collectDescendants(
+            ParseTree root, Class<T> type, List<T> result) {
+        for (int i = 0; i < root.getChildCount(); i++) {
+            ParseTree child = root.getChild(i);
+            if (type.isInstance(child)) result.add(type.cast(child));
+            collectDescendants(child, type, result);
+        }
     }
 
     @Override
