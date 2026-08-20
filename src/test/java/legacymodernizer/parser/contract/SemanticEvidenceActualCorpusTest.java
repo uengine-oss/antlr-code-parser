@@ -81,6 +81,9 @@ class SemanticEvidenceActualCorpusTest {
         long activeCalls = 0;
         long inactiveCalls = 0;
         long conditionalCalls = 0;
+        long namedCalls = 0;
+        long constructorCalls = 0;
+        long expressionCalls = 0;
         long conditionalRegions = 0;
         long diagnostics = 0;
         long recoveries = 0;
@@ -116,6 +119,12 @@ class SemanticEvidenceActualCorpusTest {
                     verifyCallSubranges(source, fact, sourcePath);
                     calls.add(fact);
                     callFacts++;
+                    switch (fact.path("payload").path("calleeKind").asText()) {
+                        case "named" -> namedCalls++;
+                        case "constructor" -> constructorCalls++;
+                        case "expression" -> expressionCalls++;
+                        default -> throw new AssertionError("invalid callee kind: " + fact);
+                    }
                     orderedCallIds.add(factId);
                     switch (presence(evidence, fact).path("status").asText()) {
                         case "active" -> activeCalls++;
@@ -183,6 +192,8 @@ class SemanticEvidenceActualCorpusTest {
 
         assertEquals(callFacts, activeCalls + inactiveCalls + conditionalCalls,
                 "call presence partition is incomplete");
+        assertEquals(callFacts, namedCalls + constructorCalls + expressionCalls,
+                "callee syntax partition is incomplete");
         assertFalse(orderedCallIds.isEmpty(), "actual corpus emitted no call facts");
         assertEquals(orderedFactIds.size(), globalFactIds.size(), "fact ID set accounting mismatch");
 
@@ -197,6 +208,9 @@ class SemanticEvidenceActualCorpusTest {
         report.put("activeCalls", activeCalls);
         report.put("inactiveCalls", inactiveCalls);
         report.put("conditionalOrUnknownCalls", conditionalCalls);
+        report.put("namedCalls", namedCalls);
+        report.put("constructorCalls", constructorCalls);
+        report.put("expressionCalls", expressionCalls);
         report.put("conditionalRegions", conditionalRegions);
         report.put("diagnostics", diagnostics);
         report.put("antlrRecoveries", recoveries);
@@ -251,6 +265,16 @@ class SemanticEvidenceActualCorpusTest {
         JsonNode payload = call.path("payload");
         String callee = slice(source, payload.path("calleeRange"));
         assertFalse(callee.isBlank(), "empty callee range in " + path);
+        String calleeKind = payload.path("calleeKind").asText();
+        assertTrue(Set.of("named", "constructor", "expression").contains(calleeKind),
+                "invalid callee kind in " + path + ": " + call);
+        if ("expression".equals(calleeKind)) {
+            assertTrue(payload.path("terminalName").isNull(),
+                    "expression callee claimed a terminal name in " + path);
+        } else {
+            assertFalse(payload.path("terminalName").asText().isBlank(),
+                    "named callee omitted terminal name in " + path);
+        }
         assertFalse(payload.has("callExpression"), "call source text was duplicated in " + path);
         assertFalse(payload.has("calleeExpression"), "callee source text was duplicated in " + path);
         int previousEnd = callStart;

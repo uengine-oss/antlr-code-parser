@@ -540,6 +540,7 @@ public class PythonAstListener extends PythonParserBaseListener
             Node call = h.enterStatement("FUNCTION_CALL", callName, expression.getStart().getLine());
             callEvidence.add(CallEvidenceCandidate.fromTokens("trailer",
                     expression.getStart(), ctx.getStop(), expression.getStart(), calleeStop,
+                    callName == null ? "expression" : "named", callName,
                     ctx.arguments().arglist() == null
                             ? List.of() : ctx.arguments().arglist().argument()));
             // 대문자 시작 = 생성자 호출(ClassName(...)) — 역할 분리로 NEW_INSTANCE 도 함께 emit

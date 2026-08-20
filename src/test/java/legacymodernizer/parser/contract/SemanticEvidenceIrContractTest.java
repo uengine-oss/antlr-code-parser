@@ -84,11 +84,23 @@ class SemanticEvidenceIrContractTest {
     @Test
     void callFactsUseFullGrammarExpressionsAndUnicodeCodePointRanges() throws Exception {
         ParserWorkspace workspace = workspace();
+        String cSource = "void run(void) { service->handler(1); (*callback)(2); }\n";
+        JsonNode cRoot = parse(workspace, new Fixture(new CLanguageModule(workspace),
+                "ranges/sample.c", cSource));
+        JsonNode cNamed = callByCallee(cRoot, cSource, "service->handler");
+        assertEquals("named", cNamed.path("payload").path("calleeKind").asText());
+        assertEquals("handler", cNamed.path("payload").path("terminalName").asText());
+        JsonNode cExpression = callByCallee(cRoot, cSource, "(*callback)");
+        assertEquals("expression", cExpression.path("payload").path("calleeKind").asText());
+        assertTrue(cExpression.path("payload").path("terminalName").isNull());
+
         String javaSource = "class Sample { void run() { String marker = \"😀\";\n"
                 + "  service.repo().find(\n    nested(1), 2);\n} }\n";
         JsonNode javaRoot = parse(workspace, new Fixture(new JavaLanguageModule(workspace),
                 "ranges/Sample.java", javaSource));
         JsonNode javaCall = callByCallee(javaRoot, javaSource, "service.repo().find");
+        assertEquals("named", javaCall.path("payload").path("calleeKind").asText());
+        assertEquals("find", javaCall.path("payload").path("terminalName").asText());
         assertEquals("service.repo().find(\n    nested(1), 2)",
                 slice(javaSource, javaCall.path("range")));
         assertEquals(List.of("nested(1)", "2"), argumentExpressions(javaSource, javaCall));
@@ -100,6 +112,8 @@ class SemanticEvidenceIrContractTest {
         JsonNode anonymousJavaRoot = parse(workspace, new Fixture(new JavaLanguageModule(workspace),
                 "ranges/Anonymous.java", anonymousJava));
         JsonNode constructor = callByCallee(anonymousJavaRoot, anonymousJava, "new Runnable");
+        assertEquals("constructor", constructor.path("payload").path("calleeKind").asText());
+        assertEquals("Runnable", constructor.path("payload").path("terminalName").asText());
         assertEquals("new Runnable()", slice(anonymousJava, constructor.path("range")),
                 "anonymous class body is not part of the constructor call range");
         assertExactSlice(anonymousJava, constructor);
@@ -109,6 +123,8 @@ class SemanticEvidenceIrContractTest {
         JsonNode pythonRoot = parse(workspace, new Fixture(new PythonLanguageModule(workspace),
                 "ranges/sample.py", pythonSource));
         JsonNode pythonCall = callByCallee(pythonRoot, pythonSource, "service.repo().find");
+        assertEquals("named", pythonCall.path("payload").path("calleeKind").asText());
+        assertEquals("find", pythonCall.path("payload").path("terminalName").asText());
         assertEquals("service.repo().find(\n        nested(1), 2)",
                 slice(pythonSource, pythonCall.path("range")));
         assertEquals(List.of("nested(1)", "2"), argumentExpressions(pythonSource, pythonCall));
@@ -121,6 +137,8 @@ class SemanticEvidenceIrContractTest {
                         "ranges/anonymous.py", anonymousPython));
         JsonNode anonymousCall = callByCallee(
                 anonymousPythonRoot, anonymousPython, "(lambda x: x)");
+        assertEquals("expression", anonymousCall.path("payload").path("calleeKind").asText());
+        assertTrue(anonymousCall.path("payload").path("terminalName").isNull());
         assertEquals("(lambda x: x)(1)",
                 slice(anonymousPython, anonymousCall.path("range")));
         assertExactSlice(anonymousPython, anonymousCall);

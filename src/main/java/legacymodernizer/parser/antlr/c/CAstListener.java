@@ -506,10 +506,25 @@ public class CAstListener extends CParserBaseListener
                     || !")".equals(close.getText())) {
                 throw new IllegalStateException("postfix call has no closing parenthesis");
             }
+            String terminalName = callTerminalName(context, children, index);
             callEvidence.add(CallEvidenceCandidate.fromTokens("postfixExpression",
                     context.getStart(), close.getSymbol(), context.getStart(), calleeStop,
+                    terminalName == null ? "expression" : "named", terminalName,
                     arguments));
         }
+    }
+
+    private static String callTerminalName(CParser.PostfixExpressionContext context,
+                                           List<ParseTree> children, int openIndex) {
+        if (openIndex >= 2) {
+            String operator = children.get(openIndex - 2).getText();
+            if (".".equals(operator) || "->".equals(operator)) {
+                return children.get(openIndex - 1).getText();
+            }
+        }
+        return openIndex == 1 && context.primaryExpression() != null
+                && context.primaryExpression().Identifier() != null
+                        ? context.primaryExpression().Identifier().getText() : null;
     }
 
     @Override

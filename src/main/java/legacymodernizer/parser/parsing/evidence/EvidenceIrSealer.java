@@ -227,6 +227,9 @@ public final class EvidenceIrSealer {
 
         ObjectNode payload = fact.putObject("payload");
         payload.set("calleeRange", index.rangeJson(candidate.calleeRange()));
+        payload.put("calleeKind", candidate.calleeKind());
+        if (candidate.terminalName() == null) payload.putNull("terminalName");
+        else payload.put("terminalName", candidate.terminalName());
         ArrayNode arguments = payload.putArray("argumentRanges");
         for (SourceRangeCandidate argument : candidate.argumentRanges()) {
             arguments.add(index.rangeJson(argument));

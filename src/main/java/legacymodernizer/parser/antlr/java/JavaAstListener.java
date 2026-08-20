@@ -318,6 +318,7 @@ public class JavaAstListener extends Java20ParserBaseListener
         Token calleeStop = childBeforeDirectTerminal(ctx, "(");
         callEvidence.add(CallEvidenceCandidate.fromTokens("methodInvocation",
                 ctx.getStart(), ctx.getStop(), ctx.getStart(), calleeStop,
+                name == null ? "expression" : "named", name,
                 ctx.argumentList() == null ? List.of() : ctx.argumentList().expression()));
     }
     
@@ -349,10 +350,16 @@ public class JavaAstListener extends Java20ParserBaseListener
     public void enterUnqualifiedClassInstanceCreationExpression(
             Java20Parser.UnqualifiedClassInstanceCreationExpressionContext context) {
         Token calleeStop = childBeforeDirectTerminal(context, "(");
+        List<Java20Parser.IdentifierContext> typeNames =
+                context.classOrInterfaceTypeToInstantiate() == null ? List.of()
+                        : context.classOrInterfaceTypeToInstantiate().identifier();
+        String terminalName = typeNames.isEmpty()
+                ? null : typeNames.get(typeNames.size() - 1).getText();
         callEvidence.add(CallEvidenceCandidate.fromTokens(
                 "unqualifiedClassInstanceCreationExpression",
                 context.getStart(), directTerminal(context, ")"),
                 context.getStart(), calleeStop,
+                terminalName == null ? "expression" : "constructor", terminalName,
                 context.argumentList() == null ? List.of() : context.argumentList().expression()));
     }
 
