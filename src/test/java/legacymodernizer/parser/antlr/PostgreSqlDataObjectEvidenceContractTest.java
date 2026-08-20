@@ -133,4 +133,21 @@ class PostgreSqlDataObjectEvidenceContractTest {
         assertTrue(nested.toJson().contains("\"rawReference\":\"s.id\""));
         assertTrue(nested.toJson().contains("\"rawReference\":\"t.id\""));
     }
+
+    @Test
+    void threePartPhysicalIdentityPreservesCatalogSchemaAndQuotedComponents() {
+        Node select = all(parse("""
+                SELECT o.id
+                  FROM "Warehouse"."App"."Orders" o;
+                """), "SELECT").get(0);
+
+        String json = select.toJson();
+        assertTrue(json.contains("\"dataObjectEvidenceVersion\":4"), json);
+        assertTrue(json.contains("\"catalog\":\"\\\"Warehouse\\\"\""), json);
+        assertTrue(json.contains("\"catalogQuoted\":true"), json);
+        assertTrue(json.contains("\"schema\":\"\\\"App\\\"\""), json);
+        assertTrue(json.contains("\"schemaQuoted\":true"), json);
+        assertTrue(json.contains("\"name\":\"\\\"Orders\\\"\""), json);
+        assertTrue(json.contains("\"nameQuoted\":true"), json);
+    }
 }

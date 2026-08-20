@@ -46,10 +46,14 @@ table insight와 최종 table description에서 `VAL`이 `RDIB2EN_TB` 소유로 
 - FR-013: evidence v3는 Oracle database link를 문자열만으로 축약하지 않고 grammar 순서대로
   `databaseLinkComponents(role, name, nameQuoted)`에 보존한다. role은 `database`, `domain`,
   `connection_qualifier`이며 quoted component의 내부 대소문자는 canonical identity다.
+- FR-014: PostgreSQL evidence v4는 grammar `qualified_name`의 3-part physical identity를
+  `catalog/catalogQuoted`, `schema/schemaQuoted`, `name/nameQuoted`로 각각 보존한다. 여러 prefix를
+  schema 문자열 하나로 합치지 않으며 3개를 넘는 physical object component는 조용히 축약하지 않는다.
 
 ## 4. 비범위
 
-- Catalog object ID 결정, synonym 해소, search_path/current schema 적용
+- Catalog object ID 결정, synonym 해소, search_path/current schema 적용. 단 grammar가 직접 제공하는
+  SQL catalog identifier component의 exact 생산은 FR-014 범위다.
 - alias 없는 컬럼의 테이블 소유권 추론
 - 동적 SQL 문자열 파싱
 - 샘플 조회와 업무 의미 생성

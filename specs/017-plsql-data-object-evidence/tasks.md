@@ -9,3 +9,6 @@
 - [ ] P017-07 실제 보존 corpus replay 검증 — analyzer 재실행 상한 0이라 미실행
 - [x] P017-08 spec 131 C-028 evidence v2 unqualified identifier listener 계약과 Analyzer consumer
   연결 — owner/nested/function/alias/repeated occurrence 계약, 전체 157 tests·failure/error 0·skipped 8
+- [x] P017-09 spec 131 C-044 PostgreSQL evidence v4 catalog/schema/table component와 개별 quoted bit
+  listener 생산 — 3-part를 schema 문자열로 합치지 않고 3개 초과 physical component fail-closed,
+  전체 159 tests·failure/error 0·skipped 8

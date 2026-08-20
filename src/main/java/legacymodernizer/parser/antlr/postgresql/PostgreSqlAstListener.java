@@ -750,7 +750,7 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
             Node node,
             List<DataObjectReference> objects,
             List<QualifiedColumnReference> columns) {
-        node.dataObjectEvidenceVersion = 1;
+        node.dataObjectEvidenceVersion = 4;
         if (!objects.isEmpty()) node.dataObjectReferences = new ArrayList<>(objects);
         if (!columns.isEmpty()) node.qualifiedColumnReferences = new ArrayList<>(columns);
     }
@@ -800,11 +800,18 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
         reference.rawReference = ParserUtils.getExactSourceText(ctx);
         reference.name = parts.get(parts.size() - 1);
         if (isQuoted(reference.name)) reference.nameQuoted = true;
-        if (parts.size() > 1) {
-            reference.schema = String.join(".", parts.subList(0, parts.size() - 1));
-            if (parts.subList(0, parts.size() - 1).stream().anyMatch(PostgreSqlAstListener::isQuoted)) {
-                reference.schemaQuoted = true;
-            }
+        if (parts.size() > 3) {
+            throw new IllegalStateException(
+                    "physical data-object name has more than catalog/schema/table components: "
+                    + reference.rawReference);
+        }
+        if (parts.size() >= 2) {
+            reference.schema = parts.get(parts.size() - 2);
+            if (isQuoted(reference.schema)) reference.schemaQuoted = true;
+        }
+        if (parts.size() == 3) {
+            reference.catalog = parts.get(0);
+            if (isQuoted(reference.catalog)) reference.catalogQuoted = true;
         }
         reference.alias = alias;
         reference.access = access;
