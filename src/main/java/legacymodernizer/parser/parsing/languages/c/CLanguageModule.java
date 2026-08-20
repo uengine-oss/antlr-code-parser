@@ -23,6 +23,8 @@ import legacymodernizer.parser.recovery.quality.DeclarationCoverageCounter;
 import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.SourceTextCodec;
 import legacymodernizer.parser.parsing.evidence.EvidenceIrSealer;
+import legacymodernizer.parser.parsing.evidence.ConfiguredPreprocessingEvidence;
+import legacymodernizer.parser.parsing.build.ProjectCompilationCatalog;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.service.ParseProgressTracker;
@@ -38,6 +40,7 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
     /** 소스 파일들에서 수집한 사용자 정의 타입 이름 */
     private Set<String> collectedTypeNames = new HashSet<>();
     private final CSourceUnitLocator unitLocator = new CSourceUnitLocator();
+    private ProjectCompilationCatalog compilationCatalog;
 
     public CLanguageModule(ParserWorkspace parserWorkspace) {
         super(parserWorkspace);
@@ -47,15 +50,21 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
     @Override
     public void prepareProjectContext() {
         collectTypeNamesFromSource();
+        compilationCatalog = ProjectCompilationCatalog.discover(parserWorkspace.sourceDir());
     }
 
     @Override
     public RawParseResult parseFile(File file, ParseProgressTracker tracker) throws Exception {
         log.debug("[C] 파싱: {}", file.getName());
         byte[] sourceBytes = Files.readAllBytes(file.toPath());
+        String sourceId = evidenceSourceId(file, sourceBytes);
+        ProjectCompilationCatalog catalog = compilationCatalog();
+        var buildContext = catalog.resolve(file.toPath(),
+                parserWorkspace.sourceOrigin(file.toPath()));
         return parseContent(sourceBytes, SourceTextCodec.decode(sourceBytes),
                 file.getName(), computeRelativePath(file), 0, tracker,
-                evidenceSourceId(file, sourceBytes));
+                sourceId, ConfiguredPreprocessingEvidence.withoutTrace(
+                        sourceId, buildContext));
     }
 
     @Override
@@ -63,14 +72,16 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
         byte[] sourceBytes = request.sourceText().getBytes(StandardCharsets.UTF_8);
         return parseContent(sourceBytes, new SourceTextCodec.DecodedText(
                 request.sourceText(), StandardCharsets.UTF_8.name(), false),
-                request.fileName(), request.filePath(), request.originalLineOffset(), tracker, null);
+                request.fileName(), request.filePath(), request.originalLineOffset(), tracker,
+                null, null);
     }
 
     private RawParseResult parseContent(byte[] sourceBytes, SourceTextCodec.DecodedText decoded,
                                         String fileName,
                                         String filePath, int lineOffset,
                                         ParseProgressTracker tracker,
-                                        String evidenceSourceId) {
+                                        String evidenceSourceId,
+                                        ConfiguredPreprocessingEvidence configuredPreprocessing) {
         long started = System.nanoTime();
         String source = decoded.text();
         String workingSource = source;
@@ -89,7 +100,8 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
         String astJson = evidenceSourceId != null
                 ? EvidenceIrSealer.sealExact(run.listener().getRoot(), sourceBytes, decoded,
                         evidenceSourceId, parseStatus(run), run.listener().callEvidenceCandidates(),
-                        run.listener().conditionalCompilationEvidence(), macroEvidence)
+                        run.listener().conditionalCompilationEvidence(), macroEvidence,
+                        configuredPreprocessing)
                 : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
                 Set.of("functionDefinition"), astJson, Set.of("FUNCTION"));
@@ -100,6 +112,13 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
 
     private static String parseStatus(AntlrParseHarness.Harnessed<?, ?> run) {
         return run.recoveries() == 0 && run.diagnostics().isEmpty() ? "exact" : "partial";
+    }
+
+    private ProjectCompilationCatalog compilationCatalog() {
+        if (compilationCatalog == null) {
+            compilationCatalog = ProjectCompilationCatalog.discover(parserWorkspace.sourceDir());
+        }
+        return compilationCatalog;
     }
 
     @Override

@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -60,7 +61,7 @@ public final class EvidenceIrSealer {
                                    List<CallEvidenceCandidate> calls,
                                    ConditionalCompilationEvidence conditional) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, null);
+                conditional, true, null, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -71,7 +72,19 @@ public final class EvidenceIrSealer {
                                    ConditionalCompilationEvidence conditional,
                                    MacroEvidenceExtraction macros) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, macros);
+                conditional, true, macros, null);
+    }
+
+    public static String sealExact(Node root, byte[] rawSource,
+                                   SourceTextCodec.DecodedText decoded,
+                                   String sourceId,
+                                   String parseStatus,
+                                   List<CallEvidenceCandidate> calls,
+                                   ConditionalCompilationEvidence conditional,
+                                   MacroEvidenceExtraction macros,
+                                   ConfiguredPreprocessingEvidence configuredPreprocessing) {
+        return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
+                conditional, true, macros, configuredPreprocessing);
     }
 
     private static String seal(Node root, byte[] rawSource,
@@ -81,7 +94,8 @@ public final class EvidenceIrSealer {
                                List<CallEvidenceCandidate> calls,
                                ConditionalCompilationEvidence conditional,
                                boolean callSupported,
-                               MacroEvidenceExtraction macros) {
+                               MacroEvidenceExtraction macros,
+                               ConfiguredPreprocessingEvidence configuredPreprocessing) {
         try {
             String source = decoded.text();
             CodePointIndex index = new CodePointIndex(source);
@@ -117,6 +131,9 @@ public final class EvidenceIrSealer {
                 generator.writeStringField("parseStatus", unresolvedRegions > 0
                         && "exact".equals(effectiveParseStatus)
                                 ? "partial" : effectiveParseStatus);
+                if (configuredPreprocessing != null) {
+                    writeConfiguredPreprocessing(generator, configuredPreprocessing);
+                }
 
                 generator.writeArrayFieldStart("facts");
                 for (CallEvidenceCandidate call : emittedCalls) {
@@ -223,7 +240,55 @@ public final class EvidenceIrSealer {
                                    ConditionalCompilationEvidence conditional,
                                    boolean callSupported) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, callSupported, null);
+                conditional, callSupported, null, null);
+    }
+
+    private static void writeConfiguredPreprocessing(
+            JsonGenerator generator,
+            ConfiguredPreprocessingEvidence configured) throws Exception {
+        generator.writeObjectFieldStart("configuredPreprocessing");
+        generator.writeStringField("version", configured.version());
+        generator.writeStringField("status", configured.status());
+        generator.writeStringField("trust", configured.trust());
+
+        var build = configured.build();
+        generator.writeObjectFieldStart("build");
+        generator.writeStringField("status",
+                build.status().name().toLowerCase(Locale.ROOT));
+        generator.writeNumberField("population", build.population());
+        generator.writeNumberField("emitted", build.emitted());
+        generator.writeNumberField("explicitlyUnresolved", build.explicitlyUnresolved());
+        writeStringArray(generator, "commandOccurrenceIds", build.commandOccurrenceIds());
+        writeStringArray(generator, "emittedCommandOccurrenceIds",
+                build.emittedCommandOccurrenceIds());
+        writeStringArray(generator, "unresolvedCommandOccurrenceIds",
+                build.unresolvedCommandOccurrenceIds());
+        writeStringArray(generator, "unresolvedEvidenceIds",
+                build.unresolvedEvidenceIds());
+        writeStringArray(generator, "reasons", build.unresolvedReasons());
+        generator.writeEndObject();
+
+        var trace = configured.trace();
+        generator.writeObjectFieldStart("trace");
+        generator.writeStringField("status", trace.status());
+        generator.writeNumberField("population", trace.population());
+        generator.writeNumberField("emitted", trace.emitted());
+        generator.writeNumberField("explicitlyUnresolved", trace.explicitlyUnresolved());
+        writeStringArray(generator, "evidenceIds", trace.evidenceIds());
+        writeStringArray(generator, "emittedEvidenceIds", trace.emittedEvidenceIds());
+        writeStringArray(generator, "unresolvedEvidenceIds", trace.unresolvedEvidenceIds());
+        writeStringArray(generator, "reasons", trace.reasons());
+        generator.writeEndObject();
+        generator.writeEndObject();
+    }
+
+    private static void writeStringArray(JsonGenerator generator, String field,
+                                         List<String> values) throws Exception {
+        generator.writeArrayFieldStart(field);
+        for (String value : values) {
+            generator.writeString(value);
+        }
+        generator.writeEndArray();
     }
 
     private static ObjectNode sealCall(CallEvidenceCandidate candidate,

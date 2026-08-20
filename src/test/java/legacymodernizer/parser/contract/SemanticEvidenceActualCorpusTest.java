@@ -91,6 +91,7 @@ class SemanticEvidenceActualCorpusTest {
         List<String> orderedFactIds = new ArrayList<>();
         List<String> orderedCallIds = new ArrayList<>();
         List<String> orderedMacroIds = new ArrayList<>();
+        List<String> orderedPreprocessingIds = new ArrayList<>();
         Map<String, ObjectNode> sealedSelection = new LinkedHashMap<>();
         ArrayNode files = JSON.createArrayNode();
         long legacyCalls = 0;
@@ -129,6 +130,37 @@ class SemanticEvidenceActualCorpusTest {
             assertEquals(source, evidence.path("decodedText").asText(),
                     "sealed decoded source mismatch in " + sourcePath);
             verifyCompleteness(evidence, sourcePath);
+            JsonNode configuredPreprocessing = evidence.path("configuredPreprocessing");
+            assertEquals("1.0.0", configuredPreprocessing.path("version").asText());
+            assertEquals("unresolved", configuredPreprocessing.path("status").asText());
+            assertEquals("unresolved", configuredPreprocessing.path("trust").asText());
+            JsonNode build = configuredPreprocessing.path("build");
+            assertEquals("unresolved", build.path("status").asText());
+            assertEquals(1, build.path("population").asInt());
+            assertEquals(0, build.path("emitted").asInt());
+            assertEquals(1, build.path("explicitlyUnresolved").asInt());
+            assertTrue(build.path("commandOccurrenceIds").isEmpty());
+            assertEquals(List.of("insufficient_compilation_database"),
+                    strings(build.path("reasons")));
+            JsonNode trace = configuredPreprocessing.path("trace");
+            assertEquals("unresolved", trace.path("status").asText());
+            assertEquals(1, trace.path("population").asInt());
+            assertEquals(0, trace.path("emitted").asInt());
+            assertEquals(1, trace.path("explicitlyUnresolved").asInt());
+            assertEquals(List.of("insufficient_preprocessing_build_context"),
+                    strings(trace.path("reasons")));
+            for (JsonNode evidenceId : build.path("unresolvedEvidenceIds")) {
+                String id = evidenceId.asText();
+                assertEquals(64, id.length(), "invalid build evidence ID in " + sourcePath);
+                assertTrue(globalFactIds.add(id), "duplicate canonical evidence ID: " + id);
+                orderedPreprocessingIds.add(id);
+            }
+            for (JsonNode evidenceId : trace.path("evidenceIds")) {
+                String id = evidenceId.asText();
+                assertEquals(64, id.length(), "invalid trace evidence ID in " + sourcePath);
+                assertTrue(globalFactIds.add(id), "duplicate canonical evidence ID: " + id);
+                orderedPreprocessingIds.add(id);
+            }
             if (exportRoot != null) {
                 exportAnalyzerFixture(exportRoot, sourceBytes, first, evidence);
             }
@@ -282,7 +314,10 @@ class SemanticEvidenceActualCorpusTest {
                 "macro syntax partition is incomplete");
         assertEquals(macroFacts, activeMacros + inactiveMacros + conditionalMacros,
                 "macro presence partition is incomplete");
-        assertEquals(orderedFactIds.size(), globalFactIds.size(), "fact ID set accounting mismatch");
+        assertEquals(46, orderedPreprocessingIds.size(),
+                "configured preprocessing evidence population changed");
+        assertEquals(orderedFactIds.size() + orderedPreprocessingIds.size(),
+                globalFactIds.size(), "global fact/evidence ID set accounting mismatch");
 
         ObjectNode report = JSON.createObjectNode();
         report.put("contractVersion", "1.0.0");
@@ -311,6 +346,12 @@ class SemanticEvidenceActualCorpusTest {
         report.put("factIdLedgerSha256", ledgerHash(orderedFactIds));
         report.put("callFactIdLedgerSha256", ledgerHash(orderedCallIds));
         report.put("macroFactIdLedgerSha256", ledgerHash(orderedMacroIds));
+        report.put("configuredPreprocessingSourcePopulation", sources.size());
+        report.put("configuredPreprocessingStatus", "unresolved");
+        report.put("configuredPreprocessingTrust", "unresolved");
+        report.put("configuredPreprocessingEvidenceIds", orderedPreprocessingIds.size());
+        report.put("configuredPreprocessingEvidenceIdLedgerSha256",
+                ledgerHash(orderedPreprocessingIds));
         report.put("wallMillisTwoPass", (System.nanoTime() - started) / 1_000_000L);
         report.put("peakHeapBytes", ManagementFactory.getMemoryPoolMXBeans().stream()
                 .filter(pool -> pool.getType() == MemoryType.HEAP)
@@ -545,6 +586,12 @@ class SemanticEvidenceActualCorpusTest {
         assertTrue(reference >= 0 && reference < presences.size(),
                 "invalid presenceRef: " + fact);
         return presences.get(reference);
+    }
+
+    private static List<String> strings(JsonNode values) {
+        List<String> result = new ArrayList<>();
+        values.forEach(value -> result.add(value.asText()));
+        return result;
     }
 
     private static String ledgerHash(List<String> ids) {

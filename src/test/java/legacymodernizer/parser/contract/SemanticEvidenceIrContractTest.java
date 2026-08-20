@@ -78,6 +78,30 @@ class SemanticEvidenceIrContractTest {
             assertTrue(evidence.path("grammarRules").isArray());
             assertTrue(evidence.path("presences").isArray());
             assertTrue(evidence.path("completeness").isArray());
+            if ("c".equals(entry.getKey())) {
+                JsonNode configured = evidence.path("configuredPreprocessing");
+                assertEquals("1.0.0", configured.path("version").asText());
+                assertEquals("unresolved", configured.path("status").asText());
+                assertEquals("unresolved", configured.path("trust").asText());
+                assertEquals("unresolved", configured.path("build").path("status").asText());
+                assertEquals(1, configured.path("build").path("population").asInt());
+                assertEquals(0, configured.path("build").path("emitted").asInt());
+                assertEquals(1, configured.path("build")
+                        .path("explicitlyUnresolved").asInt());
+                assertEquals(1, configured.path("build")
+                        .path("unresolvedEvidenceIds").size());
+                assertEquals(List.of("insufficient_compilation_database"),
+                        stringValues(configured.path("build").path("reasons")));
+                assertEquals("unresolved", configured.path("trace").path("status").asText());
+                assertEquals(1, configured.path("trace").path("evidenceIds").size());
+                assertEquals(0, configured.path("trace").path("emittedEvidenceIds").size());
+                assertEquals(1, configured.path("trace").path("unresolvedEvidenceIds").size());
+                assertEquals(List.of("insufficient_preprocessing_build_context"),
+                        stringValues(configured.path("trace").path("reasons")));
+            } else {
+                assertTrue(evidence.path("configuredPreprocessing").isMissingNode(),
+                        entry.getKey() + " must not inherit C preprocessing semantics");
+            }
         }
     }
 
