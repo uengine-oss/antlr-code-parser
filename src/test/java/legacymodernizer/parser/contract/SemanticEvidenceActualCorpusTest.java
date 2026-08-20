@@ -9,6 +9,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryType;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -43,6 +44,7 @@ class SemanticEvidenceActualCorpusTest {
     void actualCorpusIsRangeExactReplayStableAndFullyAccounted() throws Exception {
         String configuredCorpus = System.getProperty("parser.evidence.corpus", "");
         String configuredReport = System.getProperty("parser.evidence.report", "");
+        String configuredExport = System.getProperty("parser.evidence.export", "");
         Assumptions.assumeTrue(!configuredCorpus.isBlank() && !configuredReport.isBlank(),
                 "Set parser.evidence.corpus and parser.evidence.report for actual validation");
 
@@ -53,6 +55,20 @@ class SemanticEvidenceActualCorpusTest {
         assertTrue(normalizedReport.contains(
                         "/specs/131-cross-node-semantic-grounding/_runs/framework/"),
                 "actual evidence must stay inside spec 131 _runs/framework: " + reportPath);
+        Path exportRoot = configuredExport.isBlank() ? null
+                : Path.of(configuredExport).toAbsolutePath().normalize();
+        if (exportRoot != null) {
+            String normalizedExport = exportRoot.toString().replace('\\', '/');
+            assertTrue(normalizedExport.contains(
+                            "/specs/131-cross-node-semantic-grounding/_runs/framework/"),
+                    "actual export must stay inside spec 131 _runs/framework: " + exportRoot);
+            if (Files.exists(exportRoot)) {
+                try (var walk = Files.walk(exportRoot)) {
+                    assertFalse(walk.anyMatch(Files::isRegularFile),
+                            "actual export refuses to overwrite files: " + exportRoot);
+                }
+            }
+        }
 
         ParserWorkspace workspace = new ParserWorkspace(new SourceIntakeClassifier());
         workspace.intakeFromPath(corpus);
@@ -105,6 +121,9 @@ class SemanticEvidenceActualCorpusTest {
             assertEquals(source, evidence.path("decodedText").asText(),
                     "sealed decoded source mismatch in " + sourcePath);
             verifyCompleteness(evidence, sourcePath);
+            if (exportRoot != null) {
+                exportAnalyzerFixture(exportRoot, sourceBytes, first, evidence);
+            }
 
             List<JsonNode> calls = new ArrayList<>();
             List<JsonNode> regions = new ArrayList<>();
@@ -227,6 +246,43 @@ class SemanticEvidenceActualCorpusTest {
         Files.createDirectories(reportPath.getParent());
         new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT)
                 .writeValue(reportPath.toFile(), report);
+    }
+
+    private static void exportAnalyzerFixture(Path root, byte[] sourceBytes,
+                                               RawParseResult parsed,
+                                               JsonNode evidence) throws Exception {
+        String sourceId = evidence.path("sourceId").asText();
+        assertFalse(sourceId.isBlank(), "cannot export blank sourceId");
+        Path sourcePath = root.resolve("source").resolve(sourceId).normalize();
+        Path astPath = root.resolve("analysis").resolve(sourceId + ".json").normalize();
+        Path diagnosticPath = root.resolve("diagnostics")
+                .resolve(sourceId + ".parse.json").normalize();
+        for (Path path : List.of(sourcePath, astPath, diagnosticPath)) {
+            assertTrue(path.startsWith(root), "export path escaped run root: " + path);
+            Files.createDirectories(path.getParent());
+        }
+        Files.write(sourcePath, sourceBytes, StandardOpenOption.CREATE_NEW);
+        Files.writeString(astPath, parsed.astJson(), StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE_NEW);
+
+        ObjectNode diagnostic = JSON.createObjectNode();
+        diagnostic.put("schemaVersion", "1.1.0");
+        diagnostic.put("sourcePath", sourceId);
+        diagnostic.put("sourceSha256", parsed.sourceSha256());
+        diagnostic.put("language", parsed.language());
+        diagnostic.put("status", "EXACT");
+        ObjectNode firstPass = diagnostic.putObject("firstPass");
+        firstPass.put("antlrRecoveries", parsed.antlrRecoveries());
+        ObjectNode coverage = firstPass.putObject("coverage");
+        coverage.put("knownAndComplete", parsed.coverage().isKnownAndComplete());
+        coverage.putArray("missingDeclarations");
+        ObjectNode summary = diagnostic.putObject("summary");
+        summary.put("lexerErrors", parsed.diagnostics().stream()
+                .filter(item -> "LEXER".equals(item.phase().name())).count());
+        summary.put("parserErrors", parsed.diagnostics().stream()
+                .filter(item -> "PARSER".equals(item.phase().name())).count());
+        Files.writeString(diagnosticPath, JSON.writeValueAsString(diagnostic),
+                StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW);
     }
 
     private static void verifyCompleteness(JsonNode evidence, Path source) {
