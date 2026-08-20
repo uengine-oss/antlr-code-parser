@@ -8,6 +8,7 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import legacymodernizer.parser.parsing.AntlrParseHarness;
+import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -31,6 +32,7 @@ public class PythonAstListener extends PythonParserBaseListener
 
     private final ListenerHelper h;
     private List<String> pendingDecorators = new ArrayList<>();
+    private final List<CallEvidenceCandidate> callEvidence = new ArrayList<>();
 
     public PythonAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
         this.h = new ListenerHelper(tokens, tracker);
@@ -42,6 +44,11 @@ public class PythonAstListener extends PythonParserBaseListener
 
     public void setFileInfo(String fileName, String filePath) {
         h.setFileInfo(fileName, filePath);
+    }
+
+    @Override
+    public List<CallEvidenceCandidate> callEvidenceCandidates() {
+        return List.copyOf(callEvidence);
     }
 
     @Override
@@ -525,10 +532,19 @@ public class PythonAstListener extends PythonParserBaseListener
             callName = extractAtomNameFromParent(ctx);
         }
 
-        if (callName != null) {
-            Node call = h.enterStatement("FUNCTION_CALL", callName, ctx.getStart().getLine());
+        {
+            PythonParser.ExprContext expression = (PythonParser.ExprContext) ctx.getParent();
+            Token calleeStop = ctx.name() != null
+                    ? ctx.name().getStop()
+                    : tokenBeforeTrailer(expression, ctx);
+            Node call = h.enterStatement("FUNCTION_CALL", callName, expression.getStart().getLine());
+            callEvidence.add(CallEvidenceCandidate.fromTokens("trailer",
+                    expression.getStart(), ctx.getStop(), expression.getStart(), calleeStop,
+                    ctx.arguments().arglist() == null
+                            ? List.of() : ctx.arguments().arglist().argument()));
             // 대문자 시작 = 생성자 호출(ClassName(...)) — 역할 분리로 NEW_INSTANCE 도 함께 emit
-            if (!callName.isEmpty() && Character.isUpperCase(callName.charAt(0))) {
+            if (callName != null && !callName.isEmpty()
+                    && Character.isUpperCase(callName.charAt(0))) {
                 Node ni = new Node("NEW_INSTANCE", callName, ctx.getStart().getLine(), call.parent);
                 ni.endLine = ctx.getStop().getLine();
             }
@@ -556,6 +572,14 @@ public class PythonAstListener extends PythonParserBaseListener
             }
         }
         return null;
+    }
+
+    private static Token tokenBeforeTrailer(PythonParser.ExprContext expression,
+                                            PythonParser.TrailerContext current) {
+        List<PythonParser.TrailerContext> trailers = expression.trailer();
+        int index = trailers.indexOf(current);
+        if (index < 0) throw new IllegalStateException("trailer is detached from expression");
+        return index == 0 ? expression.atom().getStop() : trailers.get(index - 1).getStop();
     }
 
     // ========================================

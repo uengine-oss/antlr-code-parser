@@ -7,15 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.intake.SourceIntakeClassifier;
@@ -31,8 +27,6 @@ import legacymodernizer.parser.service.ParseProgressTracker;
 
 class ShopmallRecoverySemanticTest {
 
-    private static final ObjectMapper JSON = new ObjectMapper();
-
     @BeforeAll
     static void requireIsolatedDataRoot() {
         assertTrue(System.getProperty("parser.data.root", "").replace('\\', '/')
@@ -40,7 +34,7 @@ class ShopmallRecoverySemanticTest {
     }
 
     @Test
-    void recoversMalformedPromotionCopyWithoutChangingItsSemanticProjection() throws Exception {
+    void leavesUnknownConditionalPromotionPartialInsteadOfGuessingABranch() throws Exception {
         String sourceProperty = System.getProperty("parser.shopmall.source");
         Assumptions.assumeTrue(sourceProperty != null && !sourceProperty.isBlank());
         Path original = Path.of(sourceProperty).toAbsolutePath().normalize()
@@ -83,33 +77,14 @@ class ShopmallRecoverySemanticTest {
                 workspace.sourceDir(), firstPass, firstDecision,
                 new ParseProgressTracker(null, malformedFile.getFileName().toString()));
 
-        assertEquals(QualityStatus.RECOVERED_VALIDATED, outcome.decision().status(),
+        assertEquals(QualityStatus.PARTIAL, outcome.decision().status(),
                 outcome.units().toString());
-        assertEquals(semanticProjection(baseline.astJson()), semanticProjection(outcome.astJson()));
-        assertTrue(outcome.units().stream().flatMap(unit -> unit.attempts().stream())
-                .anyMatch(attempt -> "CONTEXT_RECONSTRUCTION".equals(attempt.stage())
-                        && "c.alternate-preprocessor-branches.v1".equals(attempt.ruleId())));
+        assertEquals(1, outcome.unresolvedUnits());
+        assertFalse(outcome.units().stream().flatMap(unit -> unit.attempts().stream())
+                .anyMatch(attempt -> "c.alternate-preprocessor-branches.v1"
+                        .equals(attempt.ruleId())));
         assertEquals(malformedHash, Hashes.sha256(Files.readAllBytes(malformedFile)));
         assertEquals(originalHash, Hashes.sha256(Files.readAllBytes(original)));
     }
 
-    private static List<String> semanticProjection(String astJson) throws Exception {
-        List<String> projection = new ArrayList<>();
-        project(JSON.readTree(astJson), "", projection);
-        return projection;
-    }
-
-    private static void project(JsonNode node, String owner, List<String> projection) {
-        String type = node.path("type").asText();
-        String name = node.path("name").asText();
-        String nextOwner = owner;
-        if ("FUNCTION".equals(type)) nextOwner = name;
-        if (List.of("FUNCTION", "FUNCTION_CALL", "IF", "LOOP", "SWITCH", "CASE", "ELSE")
-                .contains(type)) {
-            projection.add(nextOwner + "|" + type + "|" + name);
-        }
-        String childOwner = nextOwner;
-        node.path("children").forEach(child -> project(child, childOwner, projection));
-    }
 }
-

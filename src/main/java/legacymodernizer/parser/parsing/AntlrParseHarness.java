@@ -15,6 +15,8 @@ import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
 import legacymodernizer.parser.model.Node;
+import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence;
 import legacymodernizer.parser.recovery.diagnostics.CollectingAntlrErrorListener;
 import legacymodernizer.parser.recovery.diagnostics.CountingErrorStrategy;
 import legacymodernizer.parser.recovery.diagnostics.DiagnosticPhase;
@@ -39,6 +41,15 @@ public final class AntlrParseHarness {
 
         /** Walk가 끝난 뒤 언어 grammar가 요구하는 소유권·범위를 확정한다. */
         default void finalizeAst() {
+        }
+
+        /** Grammar-owned syntax boundaries to be sealed against the full decoded source. */
+        default List<CallEvidenceCandidate> callEvidenceCandidates() {
+            return List.of();
+        }
+
+        default ConditionalCompilationEvidence conditionalCompilationEvidence() {
+            return ConditionalCompilationEvidence.NONE;
         }
     }
 

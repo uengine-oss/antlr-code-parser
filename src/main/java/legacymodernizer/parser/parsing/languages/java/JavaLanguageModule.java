@@ -20,6 +20,7 @@ import legacymodernizer.parser.recovery.boundaries.UnitParseContext;
 import legacymodernizer.parser.recovery.quality.DeclarationCoverageCounter;
 import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.SourceTextCodec;
+import legacymodernizer.parser.parsing.evidence.EvidenceIrSealer;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.service.ParseProgressTracker;
@@ -39,31 +40,43 @@ public class JavaLanguageModule extends AntlrLanguageModuleSupport {
     public RawParseResult parseFile(File file, ParseProgressTracker tracker) throws Exception {
         log.debug("[Java] parsing: {}", file.getName());
         byte[] bytes = Files.readAllBytes(file.toPath());
-        return parseContent(bytes, SourceTextCodec.decode(bytes).text(), file.getName(),
-                computeRelativePath(file), 0, tracker);
+        return parseContent(bytes, SourceTextCodec.decode(bytes), file.getName(),
+                computeRelativePath(file), 0, tracker, evidenceSourceId(file, bytes));
     }
 
     @Override
     public RawParseResult parseUnit(UnitParseRequest request, ParseProgressTracker tracker) throws Exception {
         byte[] bytes = request.sourceText().getBytes(StandardCharsets.UTF_8);
-        return parseContent(bytes, request.sourceText(), request.fileName(), request.filePath(),
-                request.originalLineOffset(), tracker);
+        return parseContent(bytes, new SourceTextCodec.DecodedText(
+                request.sourceText(), StandardCharsets.UTF_8.name(), false),
+                request.fileName(), request.filePath(), request.originalLineOffset(), tracker, null);
     }
 
-    private RawParseResult parseContent(byte[] sourceBytes, String source, String fileName,
+    private RawParseResult parseContent(byte[] sourceBytes, SourceTextCodec.DecodedText decoded,
+                                        String fileName,
                                         String filePath, int lineOffset,
-                                        ParseProgressTracker tracker) throws Exception {
+                                        ParseProgressTracker tracker,
+                                        String evidenceSourceId) throws Exception {
         long started = System.nanoTime();
+        String source = decoded.text();
         var run = AntlrParseHarness.run(source, fileName, filePath, lineOffset, tracker,
                 Java20Lexer::new, Java20Parser::new, Java20Parser::start_, JavaAstListener::new);
+        String astJson = evidenceSourceId != null
+                ? EvidenceIrSealer.sealExact(run.listener().getRoot(), sourceBytes, decoded,
+                        evidenceSourceId, parseStatus(run), run.listener().callEvidenceCandidates())
+                : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
                 Set.of("normalClassDeclaration", "normalInterfaceDeclaration",
                         "methodDeclaration", "interfaceMethodDeclaration"),
                 JavaLanguageModule::isEmittedDeclaration,
-                run.astJson(), Set.of("CLASS", "INTERFACE", "METHOD"));
+                astJson, Set.of("CLASS", "INTERFACE", "METHOD"));
         return new RawParseResult("java", "Java20", "start_", Hashes.sha256(sourceBytes),
-                run.astJson(), run.diagnostics(), run.recoveries(), coverage,
+                astJson, run.diagnostics(), run.recoveries(), coverage,
                 (System.nanoTime() - started) / 1_000_000L);
+    }
+
+    private static String parseStatus(AntlrParseHarness.Harnessed<?, ?> run) {
+        return run.recoveries() == 0 && run.diagnostics().isEmpty() ? "exact" : "partial";
     }
 
     @Override

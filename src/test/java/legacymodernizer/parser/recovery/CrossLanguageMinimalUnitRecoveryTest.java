@@ -73,7 +73,7 @@ class CrossLanguageMinimalUnitRecoveryTest {
     }
 
     @Test
-    void retriesCFunctionWithAlternatePreprocessorBranchContext() throws Exception {
+    void leavesCFunctionPartialInsteadOfGuessingPreprocessorBranch() throws Exception {
         String source = "int helper(void) { return 1; }\n"
                 + "int main(void) {\n"
                 + "#ifdef PLATFORM_WITH_EXTERNAL_TYPE\n"
@@ -100,14 +100,15 @@ class CrossLanguageMinimalUnitRecoveryTest {
                 new RecoveryRuleRegistry(List.of())).recover(
                 module, file, workspace.sourceDir(), firstPass, firstDecision, tracker);
 
-        assertEquals(QualityStatus.RECOVERED_VALIDATED, outcome.decision().status(),
+        assertEquals(QualityStatus.PARTIAL, outcome.decision().status(),
                 outcome.units().toString());
-        assertEquals(List.of("helper", "main"), children(outcome.astJson()).stream()
+        assertEquals(1, outcome.unresolvedUnits());
+        assertEquals(List.of("helper"), children(outcome.astJson()).stream()
                 .filter(child -> "FUNCTION".equals(child.path("type").asText()))
                 .map(child -> child.path("name").asText()).toList());
-        assertTrue(outcome.units().stream().flatMap(unit -> unit.attempts().stream())
-                .anyMatch(attempt -> "CONTEXT_RECONSTRUCTION".equals(attempt.stage())
-                        && "c.alternate-preprocessor-branches.v1".equals(attempt.ruleId())));
+        assertFalse(outcome.units().stream().flatMap(unit -> unit.attempts().stream())
+                .anyMatch(attempt -> "c.alternate-preprocessor-branches.v1"
+                        .equals(attempt.ruleId())));
         assertEquals(originalSha256, Hashes.sha256(Files.readAllBytes(file)));
     }
 

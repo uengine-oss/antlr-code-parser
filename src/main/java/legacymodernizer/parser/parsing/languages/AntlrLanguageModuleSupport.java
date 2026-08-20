@@ -4,6 +4,7 @@ import java.io.File;
 import java.nio.file.Path;
 
 import legacymodernizer.parser.intake.ParserWorkspace;
+import legacymodernizer.parser.recovery.workingcopy.Hashes;
 
 /**
  * 언어별 파싱 전략의 공통 베이스.
@@ -36,5 +37,15 @@ public abstract class AntlrLanguageModuleSupport implements LanguageModule {
             // 서로 다른 루트(드라이브) 경로는 relativize 불가 — 파일명으로 폴백.
             return fileName;
         }
+    }
+
+    /** Machine-independent identity for every public full-file parse. */
+    protected String evidenceSourceId(File file, byte[] sourceBytes) {
+        Path sourceRoot = parserWorkspace.sourceDir().toAbsolutePath().normalize();
+        Path candidate = file.toPath().toAbsolutePath().normalize();
+        if (candidate.startsWith(sourceRoot)) {
+            return sourceRoot.relativize(candidate).toString().replace('\\', '/');
+        }
+        return "unscoped/" + Hashes.sha256(sourceBytes) + "/" + file.getName();
     }
 }

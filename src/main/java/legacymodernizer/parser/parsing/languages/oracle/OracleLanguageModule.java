@@ -19,6 +19,8 @@ import legacymodernizer.parser.recovery.diagnostics.ParseDiagnostic;
 import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.RawParseResult;
 import legacymodernizer.parser.parsing.SourceTextCodec;
+import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence;
+import legacymodernizer.parser.parsing.evidence.EvidenceIrSealer;
 import legacymodernizer.parser.parsing.languages.AffinityMarkers;
 import legacymodernizer.parser.parsing.languages.AntlrLanguageModuleSupport;
 import legacymodernizer.parser.recovery.boundaries.SourceUnit;
@@ -57,8 +59,9 @@ public class OracleLanguageModule extends AntlrLanguageModuleSupport {
     @Override
     public RawParseResult parseFile(File file, ParseProgressTracker tracker) throws Exception {
         byte[] sourceBytes = Files.readAllBytes(file.toPath());
-        return parseContent(sourceBytes, SourceTextCodec.decode(sourceBytes).text(),
-                file.getName(), computeRelativePath(file), 0, tracker);
+        return parseContent(sourceBytes, SourceTextCodec.decode(sourceBytes),
+                file.getName(), computeRelativePath(file), 0, tracker,
+                evidenceSourceId(file, sourceBytes));
     }
 
     @Override
@@ -70,24 +73,37 @@ public class OracleLanguageModule extends AntlrLanguageModuleSupport {
     public RawParseResult parseUnit(UnitParseRequest request, ParseProgressTracker tracker) throws Exception {
         byte[] bytes = request.sourceText().getBytes(StandardCharsets.UTF_8);
         int lineOffset = request.originalLineOffset();
-        return parseContent(bytes, request.sourceText(), request.fileName(), request.filePath(),
-                lineOffset, tracker);
+        return parseContent(bytes, new SourceTextCodec.DecodedText(
+                request.sourceText(), StandardCharsets.UTF_8.name(), false),
+                request.fileName(), request.filePath(), lineOffset, tracker, null);
     }
 
-    private RawParseResult parseContent(byte[] sourceBytes, String source, String fileName,
+    private RawParseResult parseContent(byte[] sourceBytes, SourceTextCodec.DecodedText decoded,
+                                        String fileName,
                                         String filePath, int lineOffset,
-                                        ParseProgressTracker tracker) throws Exception {
+                                        ParseProgressTracker tracker,
+                                        String evidenceSourceId) throws Exception {
         long started = System.nanoTime();
+        String source = decoded.text();
         var run = AntlrParseHarness.run(source, fileName, filePath, lineOffset, tracker,
                 chars -> new PlSqlLexer(new CaseChangingCharStream(chars, true)),
                 PlSqlParser::new, PlSqlParser::sql_script, PlSqlAstListener::new);
+        String astJson = evidenceSourceId != null
+                ? EvidenceIrSealer.sealExact(run.listener().getRoot(), sourceBytes, decoded,
+                        evidenceSourceId, parseStatus(run), List.of(),
+                        ConditionalCompilationEvidence.NONE, false)
+                : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
                 Set.of("create_procedure_body", "create_function_body", "create_trigger",
                         "procedure_body", "function_body"),
-                run.astJson(), Set.of("PROCEDURE", "FUNCTION", "TRIGGER"));
+                astJson, Set.of("PROCEDURE", "FUNCTION", "TRIGGER"));
         return new RawParseResult("oracle", "PlSql", "sql_script", Hashes.sha256(sourceBytes),
-                run.astJson(), run.diagnostics(), run.recoveries(), coverage,
+                astJson, run.diagnostics(), run.recoveries(), coverage,
                 (System.nanoTime() - started) / 1_000_000L);
+    }
+
+    private static String parseStatus(AntlrParseHarness.Harnessed<?, ?> run) {
+        return run.recoveries() == 0 && run.diagnostics().isEmpty() ? "exact" : "partial";
     }
 
     @Override

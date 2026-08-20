@@ -92,9 +92,8 @@ class CProFrameMacroCallTest {
 
     @Test
     void mpfmdbioCallSiteIsLocatable() {
-        // C FUNCTION_CALL 은 이름+라인 범위만 담는다(인자 텍스트는 AST 계약 밖 —
-        // SQL_KEY 는 analyzer 가 원문 정규식으로 읽는다). 도달성 계산이 의존하는
-        // 계약은 "호출 이름과 위치가 래퍼 함수 아래에 방출된다"까지다.
+        // Legacy FUNCTION_CALL은 이름+라인 호환성만 검증한다. exact callee/argument
+        // 범위의 정본은 FILE.evidence이며 Analyzer가 원문을 재파싱해서는 안 된다.
         Node root = parse(SRC);
         Node wrapper = findFirst(root, "FUNCTION", "b100_dbio_comm_cd_dtl_canyn");
         assertNotNull(wrapper, "래퍼 함수 정의가 FUNCTION 으로 방출돼야 한다");

@@ -23,6 +23,8 @@ import legacymodernizer.parser.recovery.quality.DeclarationCoverageCounter;
 import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.AstCoordinates;
 import legacymodernizer.parser.parsing.SourceTextCodec;
+import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence;
+import legacymodernizer.parser.parsing.evidence.EvidenceIrSealer;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.service.ParseProgressTracker;
@@ -57,21 +59,25 @@ public class PostgreSqlLanguageModule extends AntlrLanguageModuleSupport {
     public RawParseResult parseFile(File file, ParseProgressTracker tracker) throws Exception {
         log.debug("[PostgreSQL] parsing: {}", file.getName());
         byte[] bytes = Files.readAllBytes(file.toPath());
-        return parseContent(bytes, SourceTextCodec.decode(bytes).text(), file.getName(),
-                computeRelativePath(file), 0, tracker);
+        return parseContent(bytes, SourceTextCodec.decode(bytes), file.getName(),
+                computeRelativePath(file), 0, tracker, evidenceSourceId(file, bytes));
     }
 
     @Override
     public RawParseResult parseUnit(UnitParseRequest request, ParseProgressTracker tracker) throws Exception {
         byte[] bytes = request.sourceText().getBytes(StandardCharsets.UTF_8);
-        return parseContent(bytes, request.sourceText(), request.fileName(), request.filePath(),
-                request.originalLineOffset(), tracker);
+        return parseContent(bytes, new SourceTextCodec.DecodedText(
+                request.sourceText(), StandardCharsets.UTF_8.name(), false),
+                request.fileName(), request.filePath(), request.originalLineOffset(), tracker, null);
     }
 
-    private RawParseResult parseContent(byte[] sourceBytes, String source, String fileName,
+    private RawParseResult parseContent(byte[] sourceBytes, SourceTextCodec.DecodedText decoded,
+                                        String fileName,
                                         String filePath, int lineOffset,
-                                        ParseProgressTracker tracker) throws Exception {
+                                        ParseProgressTracker tracker,
+                                        String evidenceSourceId) throws Exception {
         long started = System.nanoTime();
+        String source = decoded.text();
         var run = AntlrParseHarness.run(source, fileName, filePath, lineOffset, tracker,
                 PostgreSQLLexer::new, PostgreSQLParser::new, PostgreSQLParser::root,
                 PostgreSqlAstListener::new);
@@ -80,12 +86,18 @@ public class PostgreSqlLanguageModule extends AntlrLanguageModuleSupport {
         run.listener().getNestedDiagnostics().stream()
                 .map(diagnostic -> AstCoordinates.rebase(diagnostic, lineOffset))
                 .forEach(diagnostics::add);
+        int recoveries = run.recoveries() + run.listener().getNestedRecoveries();
+        String astJson = evidenceSourceId != null
+                ? EvidenceIrSealer.sealExact(run.listener().getRoot(), sourceBytes, decoded,
+                        evidenceSourceId,
+                        recoveries == 0 && diagnostics.isEmpty() ? "exact" : "partial",
+                        List.of(), ConditionalCompilationEvidence.NONE, false)
+                : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
-                Set.of("createfunctionstmt", "createtrigstmt"), run.astJson(),
+                Set.of("createfunctionstmt", "createtrigstmt"), astJson,
                 Set.of("PROCEDURE", "TRIGGER"));
         return new RawParseResult("postgresql", "PostgreSQL", "root", Hashes.sha256(sourceBytes),
-                run.astJson(), diagnostics,
-                run.recoveries() + run.listener().getNestedRecoveries(), coverage,
+                astJson, diagnostics, recoveries, coverage,
                 (System.nanoTime() - started) / 1_000_000L);
     }
 

@@ -6,8 +6,12 @@ import java.util.function.Predicate;
 
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import legacymodernizer.parser.parsing.AntlrParseHarness;
+import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -21,6 +25,7 @@ public class JavaAstListener extends Java20ParserBaseListener
         implements AntlrParseHarness.AstListener {
 
     private final ListenerHelper h;
+    private final List<CallEvidenceCandidate> callEvidence = new ArrayList<>();
 
     public JavaAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
         this.h = new ListenerHelper(tokens, tracker);
@@ -28,6 +33,7 @@ public class JavaAstListener extends Java20ParserBaseListener
 
     public Node getRoot() { return h.getRoot(); }
     public void setFileInfo(String fileName, String filePath) { h.setFileInfo(fileName, filePath); }
+    @Override public List<CallEvidenceCandidate> callEvidenceCandidates() { return List.copyOf(callEvidence); }
 
     @Override
     public void enterEveryRule(ParserRuleContext ctx) { h.checkProgress(ctx); }
@@ -309,6 +315,10 @@ public class JavaAstListener extends Java20ParserBaseListener
             name = ctx.identifier().getText();
         }
         h.enterStatement("FUNCTION_CALL", name, ctx.getStart().getLine());
+        Token calleeStop = childBeforeDirectTerminal(ctx, "(");
+        callEvidence.add(CallEvidenceCandidate.fromTokens("methodInvocation",
+                ctx.getStart(), ctx.getStop(), ctx.getStart(), calleeStop,
+                ctx.argumentList() == null ? List.of() : ctx.argumentList().expression()));
     }
     
     @Override
@@ -333,6 +343,42 @@ public class JavaAstListener extends Java20ParserBaseListener
         Node ni = h.enterStatement("NEW_INSTANCE", name, ctx.getStart().getLine());
         Node call = new Node("FUNCTION_CALL", name, ctx.getStart().getLine(), ni.parent);
         call.endLine = ctx.getStop().getLine();
+    }
+
+    @Override
+    public void enterUnqualifiedClassInstanceCreationExpression(
+            Java20Parser.UnqualifiedClassInstanceCreationExpressionContext context) {
+        Token calleeStop = childBeforeDirectTerminal(context, "(");
+        callEvidence.add(CallEvidenceCandidate.fromTokens(
+                "unqualifiedClassInstanceCreationExpression",
+                context.getStart(), directTerminal(context, ")"),
+                context.getStart(), calleeStop,
+                context.argumentList() == null ? List.of() : context.argumentList().expression()));
+    }
+
+    private static Token childBeforeDirectTerminal(ParserRuleContext context, String text) {
+        List<ParseTree> children = context.children == null ? List.of() : context.children;
+        for (int index = 1; index < children.size(); index++) {
+            ParseTree child = children.get(index);
+            if (child instanceof TerminalNode terminal && text.equals(terminal.getText())) {
+                ParseTree previous = children.get(index - 1);
+                if (previous instanceof TerminalNode previousTerminal) return previousTerminal.getSymbol();
+                if (previous instanceof ParserRuleContext previousContext) return previousContext.getStop();
+            }
+        }
+        throw new IllegalStateException("missing direct terminal " + text + " in "
+                + context.getClass().getSimpleName());
+    }
+
+    private static Token directTerminal(ParserRuleContext context, String text) {
+        List<ParseTree> children = context.children == null ? List.of() : context.children;
+        for (ParseTree child : children) {
+            if (child instanceof TerminalNode terminal && text.equals(terminal.getText())) {
+                return terminal.getSymbol();
+            }
+        }
+        throw new IllegalStateException("missing direct terminal " + text + " in "
+                + context.getClass().getSimpleName());
     }
     
     @Override

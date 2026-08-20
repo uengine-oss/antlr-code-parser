@@ -8,8 +8,13 @@ import java.util.regex.Pattern;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 import legacymodernizer.parser.parsing.AntlrParseHarness;
+import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence;
+import legacymodernizer.parser.parsing.languages.c.CConditionalCompilationAnalyzer;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -29,6 +34,8 @@ public class CAstListener extends CParserBaseListener
         implements AntlrParseHarness.AstListener {
 
     private final ListenerHelper h;
+    private final List<CallEvidenceCandidate> callEvidence = new ArrayList<>();
+    private final ConditionalCompilationEvidence conditionalEvidence;
 
     /**
      * typedef struct { ... } Name; 패턴에서 Name을 임시 보관.
@@ -42,6 +49,16 @@ public class CAstListener extends CParserBaseListener
     }
 
     @Override
+    public List<CallEvidenceCandidate> callEvidenceCandidates() {
+        return List.copyOf(callEvidence);
+    }
+
+    @Override
+    public ConditionalCompilationEvidence conditionalCompilationEvidence() {
+        return conditionalEvidence;
+    }
+
+    @Override
     public void finalizeAst() {
         normalizeSwitchCases(h.getRoot());
     }
@@ -52,6 +69,7 @@ public class CAstListener extends CParserBaseListener
 
     public CAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
         this.h = new ListenerHelper(tokens, tracker);
+        this.conditionalEvidence = CConditionalCompilationAnalyzer.analyze(tokens);
         extractFileHeaderComment();
         extractIncludes();
     }
@@ -438,6 +456,7 @@ public class CAstListener extends CParserBaseListener
             }
         }
         if (!hasFunctionCall) return;
+        emitCallEvidence(ctx);
 
         // FUNCTION 노드 내부에서만 함수 호출 추출
         if (!isInsideFunction()) return;
@@ -465,6 +484,32 @@ public class CAstListener extends CParserBaseListener
 
         Node node = h.enterStatement("FUNCTION_CALL", name, ctx.getStart().getLine());
         node.endLine = ctx.getStop().getLine();
+    }
+
+    private void emitCallEvidence(CParser.PostfixExpressionContext context) {
+        List<ParseTree> children = context.children == null ? List.of() : context.children;
+        for (int index = 1; index < children.size(); index++) {
+            ParseTree child = children.get(index);
+            if (!(child instanceof TerminalNode open) || !"(".equals(open.getText())) continue;
+            ParseTree previous = children.get(index - 1);
+            Token calleeStop = previous instanceof TerminalNode terminal
+                    ? terminal.getSymbol() : ((ParserRuleContext) previous).getStop();
+            List<CParser.AssignmentExpressionContext> arguments = List.of();
+            int closeIndex = index + 1;
+            if (closeIndex < children.size()
+                    && children.get(closeIndex) instanceof CParser.ArgumentExpressionListContext list) {
+                arguments = list.assignmentExpression();
+                closeIndex++;
+            }
+            if (closeIndex >= children.size()
+                    || !(children.get(closeIndex) instanceof TerminalNode close)
+                    || !")".equals(close.getText())) {
+                throw new IllegalStateException("postfix call has no closing parenthesis");
+            }
+            callEvidence.add(CallEvidenceCandidate.fromTokens("postfixExpression",
+                    context.getStart(), close.getSymbol(), context.getStart(), calleeStop,
+                    arguments));
+        }
     }
 
     @Override

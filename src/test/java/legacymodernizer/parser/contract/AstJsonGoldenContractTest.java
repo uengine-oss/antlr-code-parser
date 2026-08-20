@@ -41,7 +41,7 @@ class AstJsonGoldenContractTest {
             "qualifiedColumnReferences", "unqualifiedIdentifierReferences",
             "schema", "moduleName",
             "fileName", "filePath", "packageName", "comment", "startLine", "endLine",
-            "children");
+            "children", "evidence");
     private static final Map<String, String> FIXTURES = new LinkedHashMap<>();
 
     static {
@@ -91,7 +91,7 @@ class AstJsonGoldenContractTest {
                     new ParseProgressTracker(null, fileName));
             assertArrayEquals(Files.readAllBytes(actual), Files.readAllBytes(repeated),
                     "Repeated AST JSON is not deterministic for " + language);
-            assertFixedNodeShape(JSON.readTree(actual.toFile()));
+            assertFixedNodeShape(JSON.readTree(actual.toFile()), true);
 
             if (Boolean.getBoolean("parser.generateGoldens")) {
                 Path generated = Path.of("target", "generated-goldens", language + ".json");
@@ -130,7 +130,7 @@ class AstJsonGoldenContractTest {
         return java.util.Arrays.copyOf(bytes, length);
     }
 
-    private static void assertFixedNodeShape(JsonNode node) {
+    private static void assertFixedNodeShape(JsonNode node, boolean fileRoot) {
         assertTrue(node.isObject(), "Every AST node must be an object");
         assertTrue(node.hasNonNull("type") && node.get("type").isTextual(), "type must be text");
         assertTrue(node.has("startLine") && node.get("startLine").isIntegralNumber(),
@@ -145,11 +145,13 @@ class AstJsonGoldenContractTest {
         int previous = -1;
         for (String field : fields) {
             assertTrue(PROPERTY_ORDER.contains(field), "Unknown Node JSON property: " + field);
+            assertTrue(fileRoot || !"evidence".equals(field),
+                    "Only the FILE root may own an evidence envelope");
             int current = PROPERTY_ORDER.indexOf(field);
             assertTrue(current > previous, "Node JSON property order changed at: " + field);
             assertTrue(!node.get(field).isNull(), "Null properties must be omitted: " + field);
             previous = current;
         }
-        node.get("children").forEach(AstJsonGoldenContractTest::assertFixedNodeShape);
+        node.get("children").forEach(child -> assertFixedNodeShape(child, false));
     }
 }

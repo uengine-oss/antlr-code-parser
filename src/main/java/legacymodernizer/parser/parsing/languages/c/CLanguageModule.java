@@ -4,7 +4,6 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -23,6 +22,7 @@ import legacymodernizer.parser.recovery.boundaries.UnitParseContext;
 import legacymodernizer.parser.recovery.quality.DeclarationCoverageCounter;
 import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.SourceTextCodec;
+import legacymodernizer.parser.parsing.evidence.EvidenceIrSealer;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.service.ParseProgressTracker;
@@ -53,22 +53,27 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
     public RawParseResult parseFile(File file, ParseProgressTracker tracker) throws Exception {
         log.debug("[C] 파싱: {}", file.getName());
         byte[] sourceBytes = Files.readAllBytes(file.toPath());
-        return parseContent(sourceBytes, SourceTextCodec.decode(sourceBytes).text(),
-                file.getName(), computeRelativePath(file), 0, tracker);
+        return parseContent(sourceBytes, SourceTextCodec.decode(sourceBytes),
+                file.getName(), computeRelativePath(file), 0, tracker,
+                evidenceSourceId(file, sourceBytes));
     }
 
     @Override
     public RawParseResult parseUnit(UnitParseRequest request, ParseProgressTracker tracker) throws Exception {
         byte[] sourceBytes = request.sourceText().getBytes(StandardCharsets.UTF_8);
-        return parseContent(sourceBytes, request.sourceText(), request.fileName(),
-                request.filePath(), request.originalLineOffset(), tracker);
+        return parseContent(sourceBytes, new SourceTextCodec.DecodedText(
+                request.sourceText(), StandardCharsets.UTF_8.name(), false),
+                request.fileName(), request.filePath(), request.originalLineOffset(), tracker, null);
     }
 
-    private RawParseResult parseContent(byte[] sourceBytes, String source, String fileName,
+    private RawParseResult parseContent(byte[] sourceBytes, SourceTextCodec.DecodedText decoded,
+                                        String fileName,
                                         String filePath, int lineOffset,
-                                        ParseProgressTracker tracker) {
+                                        ParseProgressTracker tracker,
+                                        String evidenceSourceId) {
         long started = System.nanoTime();
-        String workingSource = preprocessSource(source);
+        String source = decoded.text();
+        String workingSource = source;
         var run = AntlrParseHarness.run(workingSource, fileName, filePath, lineOffset, tracker,
                 CLexer::new,
                 tokens -> {
@@ -78,11 +83,20 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
                     return parser;
                 },
                 CParser::compilationUnit, CAstListener::new);
+        String astJson = evidenceSourceId != null
+                ? EvidenceIrSealer.sealExact(run.listener().getRoot(), sourceBytes, decoded,
+                        evidenceSourceId, parseStatus(run), run.listener().callEvidenceCandidates(),
+                        run.listener().conditionalCompilationEvidence())
+                : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
-                Set.of("functionDefinition"), run.astJson(), Set.of("FUNCTION"));
+                Set.of("functionDefinition"), astJson, Set.of("FUNCTION"));
         return new RawParseResult("c", "C", "compilationUnit", Hashes.sha256(sourceBytes),
-                run.astJson(), run.diagnostics(), run.recoveries(), coverage,
+                astJson, run.diagnostics(), run.recoveries(), coverage,
                 (System.nanoTime() - started) / 1_000_000L);
+    }
+
+    private static String parseStatus(AntlrParseHarness.Harnessed<?, ?> run) {
+        return run.recoveries() == 0 && run.diagnostics().isEmpty() ? "exact" : "partial";
     }
 
     @Override
@@ -111,47 +125,8 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
             String fileSource, SourceUnit unit, String unitSource) {
         if (fileSource == null || unit == null || unit.startOffset() <= 0) return List.of();
         String sourceWithOriginalPrefix = fileSource.substring(0, unit.startOffset()) + unitSource;
-        List<UnitParseContext> contexts = new ArrayList<>();
-        contexts.add(new UnitParseContext("c.original-prefix.v1", sourceWithOriginalPrefix,
+        return List.of(new UnitParseContext("c.original-prefix.v1", sourceWithOriginalPrefix,
                 Math.max(0, unit.startLine() - 1)));
-        String alternateBranches = selectAlternateConditionalBranches(sourceWithOriginalPrefix);
-        if (!alternateBranches.equals(sourceWithOriginalPrefix)) {
-            contexts.add(new UnitParseContext("c.alternate-preprocessor-branches.v1",
-                    alternateBranches, Math.max(0, unit.startLine() - 1)));
-        }
-        return List.copyOf(contexts);
-    }
-
-    private static String selectAlternateConditionalBranches(String source) {
-        String[] lines = source.split("\n", -1);
-        record ConditionalFrame(boolean parentActive, boolean alternateSelected) { }
-        java.util.ArrayDeque<ConditionalFrame> frames = new java.util.ArrayDeque<>();
-        StringBuilder selected = new StringBuilder(source.length());
-        boolean active = true;
-        for (int index = 0; index < lines.length; index++) {
-            String line = lines[index];
-            String trimmed = line.trim();
-            if (trimmed.startsWith("#ifdef") || trimmed.startsWith("#ifndef")
-                    || trimmed.startsWith("#if ") || trimmed.equals("#if")) {
-                frames.push(new ConditionalFrame(active, false));
-                active = false;
-                selected.append(' ');
-            } else if ((trimmed.startsWith("#else") || trimmed.startsWith("#elif"))
-                    && !frames.isEmpty()) {
-                ConditionalFrame frame = frames.pop();
-                active = frame.parentActive() && !frame.alternateSelected();
-                frames.push(new ConditionalFrame(frame.parentActive(), true));
-                selected.append(' ');
-            } else if (trimmed.startsWith("#endif") && !frames.isEmpty()) {
-                ConditionalFrame frame = frames.pop();
-                active = frame.parentActive();
-                selected.append(' ');
-            } else if (active) {
-                selected.append(line);
-            }
-            if (index + 1 < lines.length) selected.append('\n');
-        }
-        return selected.toString();
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -313,63 +288,6 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
         extractWithPattern(USAGE_QUALIFIED_PTR, cleaned);
         extractWithPattern(USAGE_CAST_PTR, cleaned);
         extractWithPattern(USAGE_T_SUFFIX, cleaned);
-    }
-
-    /**
-     * C 전처리기 처리:
-     * #ifdef / #ifndef / #else / #endif 조건부 컴파일 → 첫 번째 분기 유지.
-     * 라인 번호는 빈 줄로 대체하여 유지.
-     *
-     * 매크로 상수의 숫자 치환은 하지 않는다(spec 008) — ANTLR C 문법은 `x[LEN_SQL + 1]` 의
-     * 식별자 상수식을 정상 파싱하며, 치환은 initValue 의 심볼을 소실시켜 analyzer 의
-     * INIT_BY(정의 시 참조) 링킹을 깨뜨렸다(헤더 매크로만 치환되는 비대칭 포함).
-     */
-    private String preprocessSource(String source) {
-        // 1단계: 조건부 컴파일 처리
-        StringBuilder normalizedSource = new StringBuilder();
-        String[] lines = source.split("\n", -1);
-        int depth = 0;
-        int skipDepth = 0;
-        boolean skipping = false;
-
-        for (String line : lines) {
-            String trimmed = line.trim();
-
-            if (trimmed.startsWith("#ifdef") || trimmed.startsWith("#ifndef")
-                    || (trimmed.startsWith("#if ") || trimmed.equals("#if"))) {
-                depth++;
-                normalizedSource.append("\n");
-                continue;
-            }
-
-            if (trimmed.startsWith("#else") || trimmed.startsWith("#elif")) {
-                if (!skipping && depth > 0) {
-                    skipping = true;
-                    skipDepth = depth;
-                }
-                normalizedSource.append("\n");
-                continue;
-            }
-
-            if (trimmed.startsWith("#endif")) {
-                if (skipping && depth == skipDepth) {
-                    skipping = false;
-                    skipDepth = 0;
-                }
-                depth--;
-                if (depth < 0) depth = 0;
-                normalizedSource.append("\n");
-                continue;
-            }
-
-            if (skipping) {
-                normalizedSource.append("\n");
-            } else {
-                normalizedSource.append(line).append("\n");
-            }
-        }
-
-        return normalizedSource.toString();
     }
 
     private String readFileContent(Path path) throws Exception {
