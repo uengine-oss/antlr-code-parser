@@ -38,7 +38,8 @@ class AstJsonGoldenContractTest {
             "parameters", "genericType", "extendsType", "implementsTypes", "variableType",
             "initValue", "target", "operator", "expression", "dataObjectEvidenceVersion",
             "dataObjectReferences",
-            "qualifiedColumnReferences", "schema", "moduleName",
+            "qualifiedColumnReferences", "unqualifiedIdentifierReferences",
+            "schema", "moduleName",
             "fileName", "filePath", "packageName", "comment", "startLine", "endLine",
             "children");
     private static final Map<String, String> FIXTURES = new LinkedHashMap<>();

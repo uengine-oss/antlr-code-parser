@@ -37,6 +37,12 @@ table insight와 최종 table description에서 `VAL`이 `RDIB2EN_TB` 소유로 
   내부 대소문자를 보존해 서로 다른 alias를 교차 귀속하지 않는다.
 - FR-010: DML target을 바깥 범위로 참조하는 correlated subquery의 명시 qualifier는
   nested SELECT에서 버리지 않고 미귀속 qualified-column 증거로 보존한다.
+- FR-011: evidence v2는 SELECT/INSERT/UPDATE/DELETE/MERGE owner별로 grammar가 구분한
+  비한정 `general_element`와 `column_name` occurrence를
+  `unqualifiedIdentifierReferences(rawReference, name, nameQuoted, startLine)`로 보존한다.
+  function name, SELECT output alias, 물리 object name, qualified reference의 재귀 prefix와 nested
+  query 소유 identifier는 포함하지 않는다. 이 필드는 물리 table 소유권을 주장하지 않는다.
+- FR-012: 같은 줄의 같은 이름 occurrence도 token 시작점이 다르면 AST에 각각 exact-once 보존한다.
 
 ## 4. 비범위
 

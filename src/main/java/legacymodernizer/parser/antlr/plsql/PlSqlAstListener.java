@@ -1,6 +1,7 @@
 package legacymodernizer.parser.antlr.plsql;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -16,6 +17,7 @@ import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.model.DataObjectReference;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.model.QualifiedColumnReference;
+import legacymodernizer.parser.model.UnqualifiedIdentifierReference;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
 import legacymodernizer.parser.service.ParseProgressTracker;
@@ -302,7 +304,9 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
             if (table == null) continue;
             addObject(references, objectReference(table, tableRef.table_alias(), "READ"));
         }
-        attachEvidence(node, references, qualifiedColumns(ctx, visibleQualifiers(ctx), true));
+        attachEvidence(
+                node, references, qualifiedColumns(ctx, visibleQualifiers(ctx), true),
+                unqualifiedIdentifiers(ctx, true));
     }
 
     @Override
@@ -318,7 +322,9 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
             if (nearestAncestor(into, PlSqlParser.Insert_statementContext.class) != ctx) continue;
             addObject(references, objectReference(into.general_table_ref(), "WRITE"));
         }
-        attachEvidence(node, references, qualifiedColumns(ctx, qualifiers(references), false));
+        attachEvidence(
+                node, references, qualifiedColumns(ctx, qualifiers(references), false),
+                unqualifiedIdentifiers(ctx, false));
     }
 
     @Override
@@ -331,7 +337,9 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
         Node node = h.enterStatement("UPDATE", ctx.getStart().getLine());
         List<DataObjectReference> references = new ArrayList<>();
         addObject(references, objectReference(ctx.general_table_ref(), "WRITE"));
-        attachEvidence(node, references, qualifiedColumns(ctx, qualifiers(references), false));
+        attachEvidence(
+                node, references, qualifiedColumns(ctx, qualifiers(references), false),
+                unqualifiedIdentifiers(ctx, false));
     }
 
     @Override
@@ -344,7 +352,9 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
         Node node = h.enterStatement("DELETE", ctx.getStart().getLine());
         List<DataObjectReference> references = new ArrayList<>();
         addObject(references, objectReference(ctx.general_table_ref(), "WRITE"));
-        attachEvidence(node, references, qualifiedColumns(ctx, qualifiers(references), false));
+        attachEvidence(
+                node, references, qualifiedColumns(ctx, qualifiers(references), false),
+                unqualifiedIdentifiers(ctx, false));
     }
 
     @Override
@@ -364,7 +374,9 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
                     ctx.selected_tableview().table_alias(),
                     "READ"));
         }
-        attachEvidence(node, references, qualifiedColumns(ctx, qualifiers(references), false));
+        attachEvidence(
+                node, references, qualifiedColumns(ctx, qualifiers(references), false),
+                unqualifiedIdentifiers(ctx, false));
     }
 
     @Override
@@ -405,10 +417,14 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
     private static void attachEvidence(
             Node node,
             List<DataObjectReference> objects,
-            List<QualifiedColumnReference> columns) {
-        node.dataObjectEvidenceVersion = 1;
+            List<QualifiedColumnReference> columns,
+            List<UnqualifiedIdentifierReference> identifiers) {
+        node.dataObjectEvidenceVersion = 2;
         if (!objects.isEmpty()) node.dataObjectReferences = new ArrayList<>(objects);
         if (!columns.isEmpty()) node.qualifiedColumnReferences = new ArrayList<>(columns);
+        if (!identifiers.isEmpty()) {
+            node.unqualifiedIdentifierReferences = new ArrayList<>(identifiers);
+        }
     }
 
     private static void addObject(List<DataObjectReference> references, DataObjectReference candidate) {
@@ -589,6 +605,55 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
             result.add(reference);
         }
         return result;
+    }
+
+    private static List<UnqualifiedIdentifierReference> unqualifiedIdentifiers(
+            ParserRuleContext owner, boolean queryOwned) {
+        List<ParserRuleContext> candidates = new ArrayList<>();
+        candidates.addAll(descendants(owner, PlSqlParser.General_elementContext.class));
+        candidates.addAll(descendants(owner, PlSqlParser.Column_nameContext.class));
+        candidates.sort(Comparator.comparingInt(ctx -> ctx.getStart().getTokenIndex()));
+
+        List<UnqualifiedIdentifierReference> result = new ArrayList<>();
+        Set<Integer> seenStarts = new LinkedHashSet<>();
+        for (ParserRuleContext candidate : candidates) {
+            if (!ownedBy(candidate, owner, queryOwned)) continue;
+            String name;
+            if (candidate instanceof PlSqlParser.General_elementContext) {
+                PlSqlParser.General_elementContext element =
+                        (PlSqlParser.General_elementContext) candidate;
+                // ``A.B`` recursively contains the prefix ``A`` as a direct child. It is part
+                // of the qualified reference, not a second unqualified occurrence. A value
+                // inside a function argument is separated by expression contexts and remains.
+                if (element.getParent() instanceof PlSqlParser.General_elementContext) continue;
+                List<PlSqlParser.General_element_partContext> parts = flattenedParts(element);
+                if (parts.size() != 1) continue;
+                PlSqlParser.General_element_partContext part = parts.get(0);
+                if (part.id_expression() == null || !part.function_argument().isEmpty()) continue;
+                name = part.id_expression().getText();
+            } else {
+                PlSqlParser.Column_nameContext column =
+                        (PlSqlParser.Column_nameContext) candidate;
+                if (column.identifier() == null || !column.id_expression().isEmpty()) continue;
+                name = column.identifier().getText();
+            }
+            int start = candidate.getStart().getTokenIndex();
+            if (!seenStarts.add(start)) continue;
+            UnqualifiedIdentifierReference reference = new UnqualifiedIdentifierReference();
+            reference.rawReference = ParserUtils.getExactSourceText(candidate);
+            reference.name = name;
+            if (isQuoted(name)) reference.nameQuoted = true;
+            reference.startLine = candidate.getStart().getLine();
+            result.add(reference);
+        }
+        return result;
+    }
+
+    private static boolean ownedBy(
+            ParserRuleContext candidate, ParserRuleContext owner, boolean queryOwned) {
+        PlSqlParser.Query_blockContext nearestQuery = nearestAncestor(
+                candidate, PlSqlParser.Query_blockContext.class);
+        return queryOwned ? nearestQuery == owner : nearestQuery == null;
     }
 
     private static List<PlSqlParser.General_element_partContext> flattenedParts(

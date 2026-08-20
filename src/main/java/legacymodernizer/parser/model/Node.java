@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
     "variableType", "initValue",
     "target", "operator", "expression", "conditionTiming",
     "dataObjectEvidenceVersion", "dataObjectReferences", "qualifiedColumnReferences",
+    "unqualifiedIdentifierReferences",
     "schema", "moduleName",
     "fileName", "filePath", "packageName",
     "comment",
@@ -94,6 +95,8 @@ public class Node {
     public ArrayList<DataObjectReference> dataObjectReferences;
     /** Explicit qualifier.column references owned by this DML node. Empty remains absent. */
     public ArrayList<QualifiedColumnReference> qualifiedColumnReferences;
+    /** Grammar-owned unqualified SQL identifiers. No physical table ownership is asserted. */
+    public ArrayList<UnqualifiedIdentifierReference> unqualifiedIdentifierReferences;
 
     // ========================================
     // 스키마 관련 (PL/SQL, PostgreSQL)

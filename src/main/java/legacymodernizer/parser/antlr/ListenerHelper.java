@@ -125,8 +125,10 @@ public class ListenerHelper {
                 && child.children.isEmpty()
                 && child.dataObjectReferences == null
                 && child.qualifiedColumnReferences == null
+                && child.unqualifiedIdentifierReferences == null
                 && parent.dataObjectReferences == null
-                && parent.qualifiedColumnReferences == null;
+                && parent.qualifiedColumnReferences == null
+                && parent.unqualifiedIdentifierReferences == null;
     }
 
     /**

@@ -66,7 +66,7 @@ class PlSqlDataObjectEvidenceContractTest {
         String insertJson = insert.toJson();
         String selectJson = select.toJson();
 
-        assertTrue(insertJson.contains("\"dataObjectEvidenceVersion\":1"));
+        assertTrue(insertJson.contains("\"dataObjectEvidenceVersion\":2"));
         assertTrue(insertJson.contains("\"rawReference\":\"APP.RESULT_T@WRITE_LINK\""));
         assertTrue(insertJson.contains("\"schema\":\"APP\""));
         assertTrue(insertJson.contains("\"name\":\"RESULT_T\""));
@@ -84,6 +84,76 @@ class PlSqlDataObjectEvidenceContractTest {
                 "B.LOG_TIME", "B.VAL", "B.TAGSN")) {
             assertTrue(selectJson.contains("\"rawReference\":\"" + ref + "\""), ref);
         }
+    }
+
+    @Test
+    void preservesGrammarOwnedUnqualifiedIdentifiersWithoutFunctionOrAliasGuessing() {
+        Node root = parse("""
+                CREATE OR REPLACE PROCEDURE P(P_STATUS IN VARCHAR2) AS
+                BEGIN
+                  SELECT ORDER_ID, SUM(AMOUNT) TOTAL
+                    FROM ORDERS
+                   WHERE STATUS = P_STATUS;
+                END;
+                /
+                """);
+
+        Node select = all(root, "SELECT").get(0);
+        String json = select.toJson();
+
+        assertTrue(json.contains("\"dataObjectEvidenceVersion\":2"));
+        assertTrue(json.contains("\"unqualifiedIdentifierReferences\""));
+        assertEquals(
+                List.of("ORDER_ID", "AMOUNT", "STATUS", "P_STATUS"),
+                select.unqualifiedIdentifierReferences.stream()
+                        .map(reference -> reference.rawReference)
+                        .toList(),
+                "function names, SELECT aliases and physical object names stay out of value uses");
+    }
+
+    @Test
+    void unqualifiedIdentifiersStayWithTheirExactQueryOwnerAndOccurrence() {
+        Node root = parse("""
+                CREATE OR REPLACE PROCEDURE P AS
+                BEGIN
+                  SELECT OUTER_ID FROM OUTER_T
+                   WHERE OUTER_KEY = OUTER_KEY
+                     AND OUTER_ID IN (
+                       SELECT INNER_ID FROM INNER_T WHERE INNER_FLAG = 'Y'
+                     );
+                END;
+                /
+                """);
+
+        List<Node> selects = all(root, "SELECT");
+        selects.sort((left, right) -> Integer.compare(left.startLine, right.startLine));
+        assertEquals(
+                List.of("OUTER_ID", "OUTER_KEY", "OUTER_KEY", "OUTER_ID"),
+                selects.get(0).unqualifiedIdentifierReferences.stream()
+                        .map(reference -> reference.rawReference).toList());
+        assertEquals(
+                List.of("INNER_ID", "INNER_FLAG"),
+                selects.get(1).unqualifiedIdentifierReferences.stream()
+                        .map(reference -> reference.rawReference).toList());
+    }
+
+    @Test
+    void insertTargetColumnsAndValueIdentifiersRemainSyntaxWithoutTableOwnership() {
+        Node root = parse("""
+                CREATE OR REPLACE PROCEDURE P(P_ID IN NUMBER, P_STATUS IN VARCHAR2) AS
+                BEGIN
+                  INSERT INTO ORDERS (ORDER_ID, STATUS) VALUES (P_ID, P_STATUS);
+                END;
+                /
+                """);
+
+        Node insert = all(root, "INSERT").get(0);
+        assertEquals(
+                List.of("ORDER_ID", "STATUS", "P_ID", "P_STATUS"),
+                insert.unqualifiedIdentifierReferences.stream()
+                        .map(reference -> reference.rawReference).toList());
+        assertEquals(List.of("ORDERS"), insert.dataObjectReferences.stream()
+                .map(reference -> reference.name).toList());
     }
 
     @Test
