@@ -1,6 +1,8 @@
 package legacymodernizer.parser.parsing.languages.c;
 
 import legacymodernizer.parser.model.Node;
+import legacymodernizer.parser.parsing.evidence.ImportEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.ImportEvidenceExtraction;
 import legacymodernizer.parser.parsing.evidence.MacroEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.MacroEvidenceExtraction;
 import legacymodernizer.parser.parsing.evidence.SourceRangeCandidate;
@@ -30,6 +32,20 @@ public final class CPreprocessorLegacyAstAdapter {
             Node node = new Node("DEFINE", macro.terminalName(), startLine, root);
             node.endLine = endLine;
             node.initValue = slice(codePoints, macro.replacementRange());
+        }
+    }
+
+    public static void appendIncludes(Node root, String source,
+                                      ImportEvidenceExtraction extraction) {
+        int[] codePoints = source.codePoints().toArray();
+        int[] sourceLines = lineIndex(codePoints);
+        for (ImportEvidenceCandidate include : extraction.candidates()) {
+            int startLine = sourceLines[include.range().startOffset()];
+            int endLine = sourceLines[Math.max(
+                    include.range().startOffset(), include.range().endOffset() - 1)];
+            Node node = new Node("INCLUDE", slice(codePoints, include.targetRange()),
+                    startLine, root);
+            node.endLine = endLine;
         }
     }
 

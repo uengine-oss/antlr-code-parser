@@ -84,8 +84,8 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
                                         ConfiguredPreprocessingEvidence configuredPreprocessing) {
         long started = System.nanoTime();
         String source = decoded.text();
-        String workingSource = source;
-        var macroEvidence = CPreprocessorEvidenceExtractor.extract(source);
+        var preprocessorSyntax = CPreprocessorEvidenceExtractor.extract(source);
+        String workingSource = preprocessorSyntax.maskDirectives(source);
         var run = AntlrParseHarness.run(workingSource, fileName, filePath, lineOffset, tracker,
                 CLexer::new,
                 tokens -> {
@@ -96,11 +96,12 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
                 },
                 CParser::compilationUnit,
                 (tokens, progress) -> new CAstListener(
-                        tokens, progress, source, macroEvidence));
+                        tokens, progress, source, preprocessorSyntax));
         String astJson = evidenceSourceId != null
                 ? EvidenceIrSealer.sealExact(run.listener().getRoot(), sourceBytes, decoded,
                         evidenceSourceId, parseStatus(run), run.listener().callEvidenceCandidates(),
-                        run.listener().conditionalCompilationEvidence(), macroEvidence,
+                        run.listener().conditionalCompilationEvidence(),
+                        preprocessorSyntax.macros(), preprocessorSyntax.imports(),
                         configuredPreprocessing)
                 : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),

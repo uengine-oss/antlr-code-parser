@@ -21,12 +21,22 @@ preprocessingFile
 logicalLine
     : defineLine
     | malformedDefineLine
+    | includeLine
+    | malformedIncludeLine
+    | conditionalLine
+    | undefLine
+    | otherDirectiveLine
     | otherLine
     ;
 
 finalLogicalLine
     : defineLine
     | malformedDefineLine
+    | includeLine
+    | malformedIncludeLine
+    | conditionalLine
+    | undefLine
+    | otherDirectiveLine
     | ppToken+
     ;
 
@@ -42,6 +52,55 @@ otherLine
     : ppToken*
     ;
 
+includeLine
+    : horizontal* HASH horizontal* INCLUDE requiredHorizontal includeTarget horizontal*
+    ;
+
+malformedIncludeLine
+    : horizontal* HASH horizontal* INCLUDE ppToken*
+    ;
+
+includeTarget
+    : STRING_LITERAL                                              # QuotedIncludeTarget
+    | LESS includeAngleToken+ GREATER                             # AngleIncludeTarget
+    | computedHeaderTokens                                       # ComputedIncludeTarget
+    ;
+
+computedHeaderTokens
+    : preprocessingIdentifier (horizontal* replacementToken)*
+    ;
+
+includeAngleToken
+    : preprocessingIdentifier
+    | HASHHASH | HASH | ELLIPSIS | LPAREN | RPAREN | COMMA
+    | PP_NUMBER | CHARACTER_CONSTANT
+    | OROR | ANDAND | LSHIFT | RSHIFT | LE | GE | EQ | NE
+    | LESS | PIPE | CARET | AMP | PLUS | MINUS | STAR | SLASH
+    | PERCENT | BANG | TILDE | QUESTION | COLON | PUNCTUATOR | OTHER
+    ;
+
+conditionalLine
+    : horizontal* HASH horizontal* conditionalDirective
+    ;
+
+conditionalDirective
+    : IF requiredHorizontal conditionalExpression horizontal*    # IfDirective
+    | IFDEF requiredHorizontal preprocessingIdentifier horizontal* # IfdefDirective
+    | IFNDEF requiredHorizontal preprocessingIdentifier horizontal* # IfndefDirective
+    | ELIF requiredHorizontal conditionalExpression horizontal*  # ElifDirective
+    | ELSE horizontal*                                           # ElseDirective
+    | ENDIF horizontal*                                          # EndifDirective
+    ;
+
+undefLine
+    : horizontal* HASH horizontal* UNDEF requiredHorizontal
+      preprocessingIdentifier horizontal*
+    ;
+
+otherDirectiveLine
+    : horizontal* HASH ppToken*
+    ;
+
 defineDirective
     : DEFINE requiredHorizontal macroName LPAREN horizontal* parameterList?
       horizontal* RPAREN replacementList?                         # FunctionDefine
@@ -49,7 +108,12 @@ defineDirective
     ;
 
 macroName
+    : preprocessingIdentifier
+    ;
+
+preprocessingIdentifier
     : IDENTIFIER
+    | DEFINE | INCLUDE | IFDEF | IFNDEF | ELIF | ENDIF | IF | ELSE | UNDEF | DEFINED
     ;
 
 parameterList
@@ -60,7 +124,73 @@ parameterList
     ;
 
 macroParameter
-    : IDENTIFIER
+    : preprocessingIdentifier
+    ;
+
+conditionalExpression
+    : logicalOrExpression
+      (horizontal* QUESTION horizontal* conditionalExpression
+       horizontal* COLON horizontal* conditionalExpression)?
+    ;
+
+logicalOrExpression
+    : logicalAndExpression (horizontal* OROR horizontal* logicalAndExpression)*
+    ;
+
+logicalAndExpression
+    : inclusiveOrExpression (horizontal* ANDAND horizontal* inclusiveOrExpression)*
+    ;
+
+inclusiveOrExpression
+    : exclusiveOrExpression (horizontal* PIPE horizontal* exclusiveOrExpression)*
+    ;
+
+exclusiveOrExpression
+    : andExpression (horizontal* CARET horizontal* andExpression)*
+    ;
+
+andExpression
+    : equalityExpression (horizontal* AMP horizontal* equalityExpression)*
+    ;
+
+equalityExpression
+    : relationalExpression
+      (horizontal* (EQ | NE) horizontal* relationalExpression)*
+    ;
+
+relationalExpression
+    : shiftExpression
+      (horizontal* (LESS | LE | GREATER | GE) horizontal* shiftExpression)*
+    ;
+
+shiftExpression
+    : additiveExpression
+      (horizontal* (LSHIFT | RSHIFT) horizontal* additiveExpression)*
+    ;
+
+additiveExpression
+    : multiplicativeExpression
+      (horizontal* (PLUS | MINUS) horizontal* multiplicativeExpression)*
+    ;
+
+multiplicativeExpression
+    : unaryExpression
+      (horizontal* (STAR | SLASH | PERCENT) horizontal* unaryExpression)*
+    ;
+
+unaryExpression
+    : (PLUS | MINUS | BANG | TILDE) horizontal* unaryExpression
+    | primaryExpression
+    ;
+
+primaryExpression
+    : PP_NUMBER
+    | CHARACTER_CONSTANT
+    | DEFINED horizontal*
+      (preprocessingIdentifier
+       | LPAREN horizontal* preprocessingIdentifier horizontal* RPAREN)
+    | preprocessingIdentifier
+    | LPAREN horizontal* conditionalExpression horizontal* RPAREN
     ;
 
 objectReplacement
@@ -79,14 +209,16 @@ replacementTokens
 nonLparenReplacementToken
     : HASHHASH
     | HASH
-    | DEFINE
+    | preprocessingIdentifier
     | ELLIPSIS
     | RPAREN
     | COMMA
     | STRING_LITERAL
     | CHARACTER_CONSTANT
     | PP_NUMBER
-    | IDENTIFIER
+    | OROR | ANDAND | LSHIFT | RSHIFT | LE | GE | EQ | NE
+    | LESS | GREATER | PIPE | CARET | AMP | PLUS | MINUS | STAR | SLASH
+    | PERCENT | BANG | TILDE | QUESTION | COLON
     | PUNCTUATOR
     | OTHER
     ;

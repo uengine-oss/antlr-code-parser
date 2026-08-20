@@ -96,7 +96,8 @@ public final class LanguageCatalogValidator {
             }
             String computedChecksum = checksum(resourceCatalog);
             if (!resourceCatalog.catalogSha256().equals(computedChecksum)) {
-                throw new IllegalStateException("Language catalog checksum mismatch");
+                throw new IllegalStateException("Language catalog checksum mismatch: declared="
+                        + resourceCatalog.catalogSha256() + ", computed=" + computedChecksum);
             }
             return new LanguageCatalog(resourceCatalog.schemaVersion(),
                     resourceCatalog.catalogVersion(), resourceCatalog.parserBuild(),

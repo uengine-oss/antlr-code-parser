@@ -12,10 +12,9 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence;
-import legacymodernizer.parser.parsing.languages.c.CConditionalCompilationAnalyzer;
 import legacymodernizer.parser.parsing.languages.c.CPreprocessorEvidenceExtractor;
 import legacymodernizer.parser.parsing.languages.c.CPreprocessorLegacyAstAdapter;
-import legacymodernizer.parser.parsing.evidence.MacroEvidenceExtraction;
+import legacymodernizer.parser.parsing.languages.c.CPreprocessorSyntax;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -75,13 +74,14 @@ public class CAstListener extends CParserBaseListener
     }
 
     public CAstListener(CommonTokenStream tokens, ParseProgressTracker tracker,
-                        String source, MacroEvidenceExtraction macroEvidence) {
+                        String source, CPreprocessorSyntax preprocessorSyntax) {
         this.h = new ListenerHelper(tokens, tracker);
-        this.conditionalEvidence = CConditionalCompilationAnalyzer.analyze(tokens);
+        this.conditionalEvidence = preprocessorSyntax.conditional();
         extractFileHeaderComment();
-        extractIncludes();
+        CPreprocessorLegacyAstAdapter.appendIncludes(
+                h.getRoot(), source, preprocessorSyntax.imports());
         CPreprocessorLegacyAstAdapter.appendDefines(
-                h.getRoot(), source, macroEvidence);
+                h.getRoot(), source, preprocessorSyntax.macros());
     }
 
     /**
@@ -122,24 +122,6 @@ public class CAstListener extends CParserBaseListener
     @Override
     public void enterEveryRule(ParserRuleContext ctx) {
         h.checkProgress(ctx);
-    }
-
-    // ========================================
-    // #include 추출 (HIDDEN 채널에서)
-    // ========================================
-
-    private void extractIncludes() {
-        h.getTokens().fill();
-        for (Token token : h.getTokens().getTokens()) {
-            if (token.getType() == CLexer.Directive) {
-                String text = token.getText().trim();
-                if (text.startsWith("#include") || text.startsWith("# include")) {
-                    String includeName = text.replaceFirst("^#\\s*include\\s*", "").trim();
-                    Node node = new Node("INCLUDE", includeName, token.getLine(), h.getRoot());
-                    node.endLine = token.getLine();
-                }
-            }
-        }
     }
 
     // ========================================

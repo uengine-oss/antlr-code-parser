@@ -269,6 +269,66 @@ class SemanticEvidenceIrContractTest {
     }
 
     @Test
+    void cIncludeAndConditionalSyntaxComeFromThePreprocessorGrammar() throws Exception {
+        ParserWorkspace workspace = workspace();
+        String source = "#/**/include <local/config.h>\n"
+                + "%:include \"digraph.h\"\n"
+                + "#inc\\\nlude \"spliced.h\"\n"
+                + "void run(void) {\n"
+                + "#/**/if 0\n"
+                + "  hidden_call();\n"
+                + "#/**/else\n"
+                + "  visible_call();\n"
+                + "#/**/endif\n"
+                + "%:if 0\n"
+                + "  digraph_hidden();\n"
+                + "%:else\n"
+                + "  digraph_visible();\n"
+                + "%:endif\n"
+                + "}\n";
+        JsonNode root = parse(workspace, new Fixture(new CLanguageModule(workspace),
+                "preprocessor/directives.c", source));
+
+        assertEquals(List.of("<local/config.h>", "\"digraph.h\"", "\"spliced.h\""),
+                children(root, "INCLUDE").stream()
+                        .map(node -> node.path("name").asText())
+                        .toList(),
+                "legacy INCLUDE projection must be sourced from grammar facts");
+
+        Map<String, JsonNode> callsByName = new LinkedHashMap<>();
+        for (JsonNode call : facts(root, "call")) {
+            callsByName.put(call.path("payload").path("terminalName").asText(), call);
+        }
+        assertEquals("inactive", presence(root, callsByName.get("hidden_call"))
+                .path("status").asText());
+        assertEquals("active", presence(root, callsByName.get("visible_call"))
+                .path("status").asText());
+        assertEquals("inactive", presence(root, callsByName.get("digraph_hidden"))
+                .path("status").asText());
+        assertEquals("active", presence(root, callsByName.get("digraph_visible"))
+                .path("status").asText());
+    }
+
+    @Test
+    void malformedCIncludeIsExplicitlyUnresolvedInsteadOfSilentlyComplete() throws Exception {
+        ParserWorkspace workspace = workspace();
+        String source = "#include <valid.h>\n#include\nvoid run(void) {}\n";
+        JsonNode root = parse(workspace, new Fixture(new CLanguageModule(workspace),
+                "preprocessor/malformed-include.c", source));
+
+        assertEquals(1, facts(root, "import").size());
+        assertEquals(List.of("<valid.h>"), children(root, "INCLUDE").stream()
+                .map(node -> node.path("name").asText()).toList());
+        JsonNode completeness = completeness(root, "import");
+        assertEquals("partial", completeness.path("status").asText());
+        assertEquals(2, completeness.path("population").asInt());
+        assertEquals(1, completeness.path("emitted").asInt());
+        assertEquals(1, completeness.path("explicitlyUnresolved").asInt());
+        assertEquals("insufficient_preprocessor_directive_syntax",
+                completeness.path("reason").asText());
+    }
+
+    @Test
     void unknownConditionalCompilationNeverBecomesAFalseConcreteBuild() throws Exception {
         ParserWorkspace workspace = workspace();
         String source = "void run(void) {\n"

@@ -61,7 +61,7 @@ public final class EvidenceIrSealer {
                                    List<CallEvidenceCandidate> calls,
                                    ConditionalCompilationEvidence conditional) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, null, null);
+                conditional, true, null, null, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -72,7 +72,7 @@ public final class EvidenceIrSealer {
                                    ConditionalCompilationEvidence conditional,
                                    MacroEvidenceExtraction macros) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, macros, null);
+                conditional, true, macros, null, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -84,7 +84,20 @@ public final class EvidenceIrSealer {
                                    MacroEvidenceExtraction macros,
                                    ConfiguredPreprocessingEvidence configuredPreprocessing) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, macros, configuredPreprocessing);
+                conditional, true, macros, null, configuredPreprocessing);
+    }
+
+    public static String sealExact(Node root, byte[] rawSource,
+                                   SourceTextCodec.DecodedText decoded,
+                                   String sourceId,
+                                   String parseStatus,
+                                   List<CallEvidenceCandidate> calls,
+                                   ConditionalCompilationEvidence conditional,
+                                   MacroEvidenceExtraction macros,
+                                   ImportEvidenceExtraction imports,
+                                   ConfiguredPreprocessingEvidence configuredPreprocessing) {
+        return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
+                conditional, true, macros, imports, configuredPreprocessing);
     }
 
     private static String seal(Node root, byte[] rawSource,
@@ -95,6 +108,7 @@ public final class EvidenceIrSealer {
                                ConditionalCompilationEvidence conditional,
                                boolean callSupported,
                                MacroEvidenceExtraction macros,
+                               ImportEvidenceExtraction imports,
                                ConfiguredPreprocessingEvidence configuredPreprocessing) {
         try {
             String source = decoded.text();
@@ -141,6 +155,13 @@ public final class EvidenceIrSealer {
                             ordinals, grammarRules, presences,
                             conditional.presenceAt(call.callRange().startOffset())));
                 }
+                if (imports != null) {
+                    for (ImportEvidenceCandidate candidate : imports.candidates()) {
+                        generator.writeTree(sealImport(candidate, normalizedSourceId,
+                                decodedHash, index, ordinals, grammarRules, presences,
+                                conditional.presenceAt(candidate.range().startOffset())));
+                    }
+                }
                 if (macros != null) {
                     for (MacroEvidenceCandidate macro : macros.candidates()) {
                         generator.writeTree(sealMacro(macro, normalizedSourceId, decodedHash,
@@ -173,11 +194,15 @@ public final class EvidenceIrSealer {
                 generator.writeArrayFieldStart("completeness");
                 for (String kind : KINDS) {
                     int emitted = "call".equals(kind) ? emittedCalls.size()
+                            : "import".equals(kind) && imports != null
+                                    ? imports.candidates().size()
                             : "macro".equals(kind) && macros != null
                                     ? macros.candidates().size()
                             : "conditional_region".equals(kind) ? conditional.regions().size() : 0;
                     int unresolved = "macro".equals(kind) && macros != null
-                            ? macros.explicitlyUnresolved() : 0;
+                            ? macros.explicitlyUnresolved()
+                            : "import".equals(kind) && imports != null
+                                    ? imports.explicitlyUnresolved() : 0;
                     List<String> callReasons = new ArrayList<>();
                     if (decoded.lossy()) callReasons.add("insufficient_lossy_decode");
                     if (!"exact".equals(parseStatus)) {
@@ -193,15 +218,24 @@ public final class EvidenceIrSealer {
                         }
                         macroReasons.addAll(macros.reasons());
                     }
+                    List<String> importReasons = new ArrayList<>();
+                    if (imports != null) {
+                        if (decoded.lossy()) importReasons.add("insufficient_lossy_decode");
+                        importReasons.addAll(imports.reasons());
+                    }
                     String status = "call".equals(kind)
                             ? !callSupported ? "unsupported"
                                     : !callReasons.isEmpty() ? "partial" : "complete"
                             : "macro".equals(kind)
                                     ? macros == null ? "unsupported"
                                             : !macroReasons.isEmpty() ? "partial" : "complete"
+                            : "import".equals(kind)
+                                    ? imports == null ? "unsupported"
+                                            : !importReasons.isEmpty() ? "partial" : "complete"
                             : "conditional_region".equals(kind) ? "complete" : "unsupported";
                     List<String> reasons = "call".equals(kind)
-                            ? callReasons : "macro".equals(kind) ? macroReasons : List.of();
+                            ? callReasons : "macro".equals(kind) ? macroReasons
+                            : "import".equals(kind) ? importReasons : List.of();
                     generator.writeStartObject();
                     generator.writeStringField("kind", kind);
                     generator.writeStringField("status", status);
@@ -240,7 +274,7 @@ public final class EvidenceIrSealer {
                                    ConditionalCompilationEvidence conditional,
                                    boolean callSupported) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, callSupported, null, null);
+                conditional, callSupported, null, null, null);
     }
 
     private static void writeConfiguredPreprocessing(
@@ -356,6 +390,36 @@ public final class EvidenceIrSealer {
         fact.put("presenceRef", reference(presences, candidate.presence()));
         ObjectNode payload = fact.putObject("payload");
         payload.put("condition", candidate.condition());
+        return fact;
+    }
+
+    private static ObjectNode sealImport(ImportEvidenceCandidate candidate,
+                                         String sourceId,
+                                         String decodedHash,
+                                         CodePointIndex index,
+                                         Map<String, Integer> ordinals,
+                                         Map<String, Integer> grammarRules,
+                                         Map<Presence, Integer> presences,
+                                         Presence factPresence) {
+        index.requireValid(candidate.range());
+        index.requireValid(candidate.targetRange());
+        if (candidate.targetRange().startOffset() < candidate.range().startOffset()
+                || candidate.targetRange().endOffset() > candidate.range().endOffset()) {
+            throw new IllegalArgumentException("import target range is outside directive range");
+        }
+        String ordinalKey = "import\0" + candidate.range().startOffset()
+                + "\0" + candidate.range().endOffset();
+        int ordinal = ordinals.merge(ordinalKey, 1, Integer::sum) - 1;
+        ObjectNode fact = JSON.createObjectNode();
+        fact.put("factId", factId(sourceId, decodedHash, "import", candidate.range(), ordinal));
+        fact.put("kind", "import");
+        fact.set("range", index.rangeJson(candidate.range()));
+        fact.put("grammarRuleRef", reference(grammarRules, candidate.grammarRule()));
+        fact.put("presenceRef", reference(presences, factPresence));
+        ObjectNode payload = fact.putObject("payload");
+        payload.put("directiveKind", "include");
+        payload.put("targetKind", candidate.targetKind());
+        payload.set("targetRange", index.rangeJson(candidate.targetRange()));
         return fact;
     }
 

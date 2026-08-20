@@ -24,6 +24,42 @@ DEFINE
     : 'define'
     ;
 
+INCLUDE
+    : 'include'
+    ;
+
+IFDEF
+    : 'ifdef'
+    ;
+
+IFNDEF
+    : 'ifndef'
+    ;
+
+ELIF
+    : 'elif'
+    ;
+
+ENDIF
+    : 'endif'
+    ;
+
+IF
+    : 'if'
+    ;
+
+ELSE
+    : 'else'
+    ;
+
+UNDEF
+    : 'undef'
+    ;
+
+DEFINED
+    : 'defined'
+    ;
+
 ELLIPSIS
     : '...'
     ;
@@ -39,6 +75,29 @@ RPAREN
 COMMA
     : ','
     ;
+
+OROR : '||';
+ANDAND : '&&';
+LSHIFT : '<<';
+RSHIFT : '>>';
+LE : '<=';
+GE : '>=';
+EQ : '==';
+NE : '!=';
+LESS : '<';
+GREATER : '>';
+PIPE : '|';
+CARET : '^';
+AMP : '&';
+PLUS : '+';
+MINUS : '-';
+STAR : '*';
+SLASH : '/';
+PERCENT : '%';
+BANG : '!';
+TILDE : '~';
+QUESTION : '?';
+COLON : ':';
 
 STRING_LITERAL
     : ENCODING_PREFIX? '"' S_CHAR* '"'
@@ -77,9 +136,7 @@ NEWLINE
 
 PUNCTUATOR
     : '[' | ']' | '{' | '}' | '.' | '->' | '++' | '--'
-    | '&' | '*' | '+' | '-' | '~' | '!' | '/' | '%' | '<<' | '>>'
-    | '<' | '>' | '<=' | '>=' | '==' | '!=' | '^' | '|' | '&&' | '||'
-    | '?' | ':' | ';' | '=' | '*=' | '/=' | '%=' | '+=' | '-='
+    | ';' | '=' | '*=' | '/=' | '%=' | '+=' | '-='
     | '<<=' | '>>=' | '&=' | '^=' | '|=' | '<:' | ':>' | '<%' | '%>'
     ;
 

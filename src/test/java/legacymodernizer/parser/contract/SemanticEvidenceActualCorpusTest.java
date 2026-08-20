@@ -90,11 +90,13 @@ class SemanticEvidenceActualCorpusTest {
         Set<String> globalFactIds = new HashSet<>();
         List<String> orderedFactIds = new ArrayList<>();
         List<String> orderedCallIds = new ArrayList<>();
+        List<String> orderedImportIds = new ArrayList<>();
         List<String> orderedMacroIds = new ArrayList<>();
         List<String> orderedPreprocessingIds = new ArrayList<>();
         Map<String, ObjectNode> sealedSelection = new LinkedHashMap<>();
         ArrayNode files = JSON.createArrayNode();
         long legacyCalls = 0;
+        long legacyIncludes = 0;
         long callFacts = 0;
         long activeCalls = 0;
         long inactiveCalls = 0;
@@ -103,6 +105,11 @@ class SemanticEvidenceActualCorpusTest {
         long constructorCalls = 0;
         long expressionCalls = 0;
         long conditionalRegions = 0;
+        long importFacts = 0;
+        long quotedImports = 0;
+        long angleImports = 0;
+        long computedImports = 0;
+        long explicitlyUnresolvedImports = 0;
         long macroFacts = 0;
         long objectMacros = 0;
         long functionMacros = 0;
@@ -166,6 +173,7 @@ class SemanticEvidenceActualCorpusTest {
             }
 
             List<JsonNode> calls = new ArrayList<>();
+            List<JsonNode> imports = new ArrayList<>();
             List<JsonNode> macros = new ArrayList<>();
             List<JsonNode> regions = new ArrayList<>();
             String sourceId = evidence.path("sourceId").asText();
@@ -192,6 +200,17 @@ class SemanticEvidenceActualCorpusTest {
                         case "conditional", "unknown" -> conditionalCalls++;
                         default -> throw new AssertionError("invalid call presence: " + fact);
                     }
+                } else if ("import".equals(fact.path("kind").asText())) {
+                    verifyImportSubranges(source, fact, sourcePath);
+                    imports.add(fact);
+                    importFacts++;
+                    orderedImportIds.add(factId);
+                    switch (fact.path("payload").path("targetKind").asText()) {
+                        case "quoted" -> quotedImports++;
+                        case "angle" -> angleImports++;
+                        case "computed" -> computedImports++;
+                        default -> throw new AssertionError("invalid import target kind: " + fact);
+                    }
                 } else if ("conditional_region".equals(fact.path("kind").asText())) {
                     regions.add(fact);
                     conditionalRegions++;
@@ -217,6 +236,33 @@ class SemanticEvidenceActualCorpusTest {
             JsonNode macroCompleteness = completeness(evidence, "macro");
             explicitlyUnresolvedMacros += macroCompleteness
                     .path("explicitlyUnresolved").asLong();
+            JsonNode importCompleteness = completeness(evidence, "import");
+            explicitlyUnresolvedImports += importCompleteness
+                    .path("explicitlyUnresolved").asLong();
+
+            List<JsonNode> includeNodes = nodes(root, "INCLUDE");
+            assertEquals(imports.size(), includeNodes.size(),
+                    "grammar import facts and legacy INCLUDE projection diverged in " + sourcePath);
+            for (int i = 0; i < imports.size(); i++) {
+                JsonNode fact = imports.get(i);
+                JsonNode include = includeNodes.get(i);
+                JsonNode targetRange = fact.path("payload").path("targetRange");
+                assertEquals(slice(source, targetRange), include.path("name").asText(),
+                        "legacy INCLUDE target diverged from grammar fact in " + sourcePath);
+                assertEquals(lineOfOffset(source, rangeStart(fact.path("range"))),
+                        include.path("startLine").asInt(),
+                        "legacy INCLUDE start line diverged from grammar fact in " + sourcePath);
+                assertEquals(lineOfOffset(source, Math.max(rangeStart(fact.path("range")),
+                                rangeEnd(fact.path("range")) - 1)),
+                        include.path("endLine").asInt(),
+                        "legacy INCLUDE end line diverged from grammar fact in " + sourcePath);
+                selectImport(sealedSelection, fact, evidence, sourceId, source,
+                        "complete_import_population");
+            }
+            for (JsonNode region : regions) {
+                selectConditionalRegion(sealedSelection, region, evidence, sourceId, source,
+                        "complete_conditional_region_population");
+            }
 
             calls.sort(Comparator.comparingInt(call -> rangeStart(call.path("range"))));
             if (!calls.isEmpty()) {
@@ -287,6 +333,8 @@ class SemanticEvidenceActualCorpusTest {
 
             long fileLegacyCalls = countNodes(root, "FUNCTION_CALL");
             legacyCalls += fileLegacyCalls;
+            long fileLegacyIncludes = includeNodes.size();
+            legacyIncludes += fileLegacyIncludes;
             diagnostics += first.diagnostics().size();
             recoveries += first.antlrRecoveries();
             ObjectNode fileRow = files.addObject();
@@ -294,7 +342,11 @@ class SemanticEvidenceActualCorpusTest {
             fileRow.put("rawSourceSha256", first.sourceSha256());
             fileRow.put("parseStatus", evidence.path("parseStatus").asText());
             fileRow.put("legacyFunctionCallNodes", fileLegacyCalls);
+            fileRow.put("legacyIncludeNodes", fileLegacyIncludes);
             fileRow.put("callFacts", calls.size());
+            fileRow.put("importFacts", imports.size());
+            fileRow.put("explicitlyUnresolvedImports",
+                    importCompleteness.path("explicitlyUnresolved").asLong());
             fileRow.put("macroFacts", macros.size());
             fileRow.put("explicitlyUnresolvedMacros",
                     macroCompleteness.path("explicitlyUnresolved").asLong());
@@ -309,7 +361,12 @@ class SemanticEvidenceActualCorpusTest {
         assertEquals(callFacts, namedCalls + constructorCalls + expressionCalls,
                 "callee syntax partition is incomplete");
         assertFalse(orderedCallIds.isEmpty(), "actual corpus emitted no call facts");
+        assertFalse(orderedImportIds.isEmpty(), "actual corpus emitted no import facts");
         assertFalse(orderedMacroIds.isEmpty(), "actual corpus emitted no macro facts");
+        assertEquals(importFacts, legacyIncludes,
+                "actual grammar import population and legacy INCLUDE population diverged");
+        assertEquals(importFacts, quotedImports + angleImports + computedImports,
+                "import target syntax partition is incomplete");
         assertEquals(macroFacts, objectMacros + functionMacros,
                 "macro syntax partition is incomplete");
         assertEquals(macroFacts, activeMacros + inactiveMacros + conditionalMacros,
@@ -326,6 +383,7 @@ class SemanticEvidenceActualCorpusTest {
         report.put("sourceInventorySha256", sourceInventoryHash(workspace.sourceDir(), sources));
         report.put("deterministicReplay", true);
         report.put("legacyFunctionCallNodes", legacyCalls);
+        report.put("legacyIncludeNodes", legacyIncludes);
         report.put("callFacts", callFacts);
         report.put("activeCalls", activeCalls);
         report.put("inactiveCalls", inactiveCalls);
@@ -334,6 +392,11 @@ class SemanticEvidenceActualCorpusTest {
         report.put("constructorCalls", constructorCalls);
         report.put("expressionCalls", expressionCalls);
         report.put("conditionalRegions", conditionalRegions);
+        report.put("importFacts", importFacts);
+        report.put("quotedImports", quotedImports);
+        report.put("angleImports", angleImports);
+        report.put("computedImports", computedImports);
+        report.put("explicitlyUnresolvedImports", explicitlyUnresolvedImports);
         report.put("macroFacts", macroFacts);
         report.put("objectMacros", objectMacros);
         report.put("functionMacros", functionMacros);
@@ -345,6 +408,7 @@ class SemanticEvidenceActualCorpusTest {
         report.put("antlrRecoveries", recoveries);
         report.put("factIdLedgerSha256", ledgerHash(orderedFactIds));
         report.put("callFactIdLedgerSha256", ledgerHash(orderedCallIds));
+        report.put("importFactIdLedgerSha256", ledgerHash(orderedImportIds));
         report.put("macroFactIdLedgerSha256", ledgerHash(orderedMacroIds));
         report.put("configuredPreprocessingSourcePopulation", sources.size());
         report.put("configuredPreprocessingStatus", "unresolved");
@@ -432,6 +496,30 @@ class SemanticEvidenceActualCorpusTest {
         return count;
     }
 
+    private static List<JsonNode> nodes(JsonNode root, String type) {
+        List<JsonNode> result = new ArrayList<>();
+        collectNodes(root, type, result);
+        return result;
+    }
+
+    private static void collectNodes(JsonNode node, String type, List<JsonNode> result) {
+        if (type.equals(node.path("type").asText())) result.add(node);
+        for (JsonNode child : node.path("children")) collectNodes(child, type, result);
+    }
+
+    private static int lineOfOffset(String source, int codePointOffset) {
+        int[] codePoints = source.codePoints().toArray();
+        int line = 1;
+        for (int i = 0; i < codePointOffset && i < codePoints.length; i++) {
+            if (codePoints[i] == '\n') line++;
+            else if (codePoints[i] == '\r') {
+                line++;
+                if (i + 1 < codePointOffset && codePoints[i + 1] == '\n') i++;
+            }
+        }
+        return line;
+    }
+
     private static void verifyCallSubranges(String source, JsonNode call, Path path) {
         int callStart = rangeStart(call.path("range"));
         int callEnd = rangeEnd(call.path("range"));
@@ -487,6 +575,21 @@ class SemanticEvidenceActualCorpusTest {
                         && (payload.path("variadic").asBoolean()
                                 || !payload.path("parameterRanges").isEmpty()),
                 "object macro claimed function parameters in " + path);
+    }
+
+    private static void verifyImportSubranges(String source, JsonNode fact, Path path) {
+        int directiveStart = rangeStart(fact.path("range"));
+        int directiveEnd = rangeEnd(fact.path("range"));
+        JsonNode payload = fact.path("payload");
+        assertEquals("include", payload.path("directiveKind").asText(),
+                "invalid import directive kind in " + path);
+        assertTrue(Set.of("quoted", "angle", "computed")
+                        .contains(payload.path("targetKind").asText()),
+                "invalid import target kind in " + path + ": " + fact);
+        JsonNode targetRange = payload.path("targetRange");
+        assertSubrange(directiveStart, directiveEnd, targetRange, "import target", path);
+        assertFalse(slice(source, targetRange).isBlank(),
+                "empty import target range in " + path);
     }
 
     private static void assertSubrange(int outerStart, int outerEnd, JsonNode range,
@@ -562,6 +665,46 @@ class SemanticEvidenceActualCorpusTest {
             JsonNode replacement = fact.path("payload").path("replacementRange");
             if (replacement.isNull()) display.putNull("replacement");
             else display.put("replacement", slice(source, replacement));
+            row.set("selectionReasons", JSON.createArrayNode());
+            return row;
+        });
+        ArrayNode reasons = (ArrayNode) selected.path("selectionReasons");
+        boolean exists = false;
+        for (JsonNode existing : reasons) exists |= reason.equals(existing.asText());
+        if (!exists) reasons.add(reason);
+    }
+
+    private static void selectImport(Map<String, ObjectNode> selection, JsonNode fact,
+                                     JsonNode evidence, String sourceId, String source,
+                                     String reason) {
+        selectRangeFact(selection, fact, evidence, sourceId, reason, display -> {
+            display.put("directive", slice(source, fact.path("range")));
+            display.put("target", slice(source, fact.path("payload").path("targetRange")));
+        });
+    }
+
+    private static void selectConditionalRegion(Map<String, ObjectNode> selection, JsonNode fact,
+                                                JsonNode evidence, String sourceId, String source,
+                                                String reason) {
+        selectRangeFact(selection, fact, evidence, sourceId, reason, display ->
+                display.put("conditionalRegion", slice(source, fact.path("range"))));
+    }
+
+    private static void selectRangeFact(Map<String, ObjectNode> selection, JsonNode fact,
+                                        JsonNode evidence, String sourceId, String reason,
+                                        java.util.function.Consumer<ObjectNode> addDisplay) {
+        String id = fact.path("factId").asText();
+        ObjectNode selected = selection.computeIfAbsent(id, ignored -> {
+            ObjectNode row = JSON.createObjectNode();
+            row.put("factId", id);
+            row.put("sourceId", sourceId);
+            row.put("grammarRule", evidence.path("grammarRules")
+                    .path(fact.path("grammarRuleRef").asInt()).asText());
+            row.set("range", fact.path("range").deepCopy());
+            row.set("presence", presence(evidence, fact).deepCopy());
+            row.set("payload", fact.path("payload").deepCopy());
+            ObjectNode display = row.putObject("displayPreview");
+            addDisplay.accept(display);
             row.set("selectionReasons", JSON.createArrayNode());
             return row;
         });
