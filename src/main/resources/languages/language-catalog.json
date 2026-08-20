@@ -62,7 +62,9 @@
         "upstreamCommit": null,
         "files": [
           {"path": "antlr-grammars/CLexer.g4", "sha256": "571f7f3ff1f9717bf2d8699e24f3d5837291c51cdce5a83a908ec965e37f0856"},
-          {"path": "antlr-grammars/CParser.g4", "sha256": "2b2731c111d55f5e589a28788131a88a64f389a1e165c4f0864bec373f899dff"}
+          {"path": "antlr-grammars/CParser.g4", "sha256": "2b2731c111d55f5e589a28788131a88a64f389a1e165c4f0864bec373f899dff"},
+          {"path": "antlr-grammars/CPreprocessorLexer.g4", "sha256": "4873d161b8d1900db294a4160ba6396aa3ec3d295143f109806ce007100174fb"},
+          {"path": "antlr-grammars/CPreprocessorParser.g4", "sha256": "7f437168b70f04cc5799173d3c46c30eb7bc41549f8c7139ec346db55714eeb4"}
         ]
       },
       "recoveryRuleSets": ["common-safe", "c"]
@@ -112,5 +114,5 @@
       "recoveryRuleSets": ["common-safe", "postgresql"]
     }
   ],
-  "catalogSha256": "9e929f28ae71125991dbad9986d56a365c86f93dcc95289862557fb4cc8fb5f2"
+  "catalogSha256": "01ecbddcf29ce4b64f73a3e7408e476e40a97c4f602e7562b0a236f87b23fddc"
 }

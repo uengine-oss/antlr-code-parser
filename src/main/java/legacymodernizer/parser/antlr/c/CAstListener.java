@@ -2,8 +2,6 @@ package legacymodernizer.parser.antlr.c;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -15,6 +13,9 @@ import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence;
 import legacymodernizer.parser.parsing.languages.c.CConditionalCompilationAnalyzer;
+import legacymodernizer.parser.parsing.languages.c.CPreprocessorEvidenceExtractor;
+import legacymodernizer.parser.parsing.languages.c.CPreprocessorLegacyAstAdapter;
+import legacymodernizer.parser.parsing.evidence.MacroEvidenceExtraction;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -68,10 +69,19 @@ public class CAstListener extends CParserBaseListener
     }
 
     public CAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
+        this(tokens, tracker, tokens.getTokenSource().getInputStream().toString(),
+                CPreprocessorEvidenceExtractor.extract(
+                        tokens.getTokenSource().getInputStream().toString()));
+    }
+
+    public CAstListener(CommonTokenStream tokens, ParseProgressTracker tracker,
+                        String source, MacroEvidenceExtraction macroEvidence) {
         this.h = new ListenerHelper(tokens, tracker);
         this.conditionalEvidence = CConditionalCompilationAnalyzer.analyze(tokens);
         extractFileHeaderComment();
         extractIncludes();
+        CPreprocessorLegacyAstAdapter.appendDefines(
+                h.getRoot(), source, macroEvidence);
     }
 
     /**
@@ -127,21 +137,6 @@ public class CAstListener extends CParserBaseListener
                     String includeName = text.replaceFirst("^#\\s*include\\s*", "").trim();
                     Node node = new Node("INCLUDE", includeName, token.getLine(), h.getRoot());
                     node.endLine = token.getLine();
-                }
-                // #define 대문자 상수를 DEFINE으로 추출
-                // 값은 숫자/문자열/문자/수식/식별자 매크로 참조 모두 허용.
-                // 이름 뒤에 공백을 요구하므로 함수형 매크로 `#define FOO(x) ...`는 자동 제외됨.
-                if (text.startsWith("#define") || text.startsWith("# define")) {
-                    Matcher m = Pattern
-                        .compile("^#\\s*define\\s+([A-Z_][A-Z0-9_]*)\\s+(.+?)\\s*(?:/[/*].*)?$")
-                        .matcher(text);
-                    if (m.find()) {
-                        Node node = new Node("DEFINE", m.group(1), token.getLine(), h.getRoot());
-                        node.endLine = token.getLine();
-                        // 값(RHS) 을 initValue 에 저장 — 다른 언어 const initializer 와 동일 모델.
-                        // 트레일링 주석 (`/* */`, `//`) 은 정규식에서 제외.
-                        node.initValue = m.group(2).trim();
-                    }
                 }
             }
         }

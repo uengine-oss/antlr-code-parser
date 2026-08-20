@@ -60,7 +60,18 @@ public final class EvidenceIrSealer {
                                    List<CallEvidenceCandidate> calls,
                                    ConditionalCompilationEvidence conditional) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true);
+                conditional, true, null);
+    }
+
+    public static String sealExact(Node root, byte[] rawSource,
+                                   SourceTextCodec.DecodedText decoded,
+                                   String sourceId,
+                                   String parseStatus,
+                                   List<CallEvidenceCandidate> calls,
+                                   ConditionalCompilationEvidence conditional,
+                                   MacroEvidenceExtraction macros) {
+        return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
+                conditional, true, macros);
     }
 
     private static String seal(Node root, byte[] rawSource,
@@ -69,7 +80,8 @@ public final class EvidenceIrSealer {
                                String parseStatus,
                                List<CallEvidenceCandidate> calls,
                                ConditionalCompilationEvidence conditional,
-                               boolean callSupported) {
+                               boolean callSupported,
+                               MacroEvidenceExtraction macros) {
         try {
             String source = decoded.text();
             CodePointIndex index = new CodePointIndex(source);
@@ -112,6 +124,13 @@ public final class EvidenceIrSealer {
                             ordinals, grammarRules, presences,
                             conditional.presenceAt(call.callRange().startOffset())));
                 }
+                if (macros != null) {
+                    for (MacroEvidenceCandidate macro : macros.candidates()) {
+                        generator.writeTree(sealMacro(macro, normalizedSourceId, decodedHash,
+                                index, ordinals, grammarRules, presences,
+                                conditional.presenceAt(macro.range().startOffset())));
+                    }
+                }
                 for (ConditionalRegionCandidate region : conditional.regions()) {
                     ObjectNode sealedRegion = sealConditionalRegion(region, normalizedSourceId,
                             decodedHash, index, ordinals, grammarRules, presences);
@@ -137,8 +156,11 @@ public final class EvidenceIrSealer {
                 generator.writeArrayFieldStart("completeness");
                 for (String kind : KINDS) {
                     int emitted = "call".equals(kind) ? emittedCalls.size()
+                            : "macro".equals(kind) && macros != null
+                                    ? macros.candidates().size()
                             : "conditional_region".equals(kind) ? conditional.regions().size() : 0;
-                    int unresolved = 0;
+                    int unresolved = "macro".equals(kind) && macros != null
+                            ? macros.explicitlyUnresolved() : 0;
                     List<String> callReasons = new ArrayList<>();
                     if (decoded.lossy()) callReasons.add("insufficient_lossy_decode");
                     if (!"exact".equals(parseStatus)) {
@@ -147,17 +169,29 @@ public final class EvidenceIrSealer {
                     if (!unresolvedScopeFactIds.isEmpty()) {
                         callReasons.add("insufficient_missing_build_configuration");
                     }
+                    List<String> macroReasons = new ArrayList<>();
+                    if (macros != null) {
+                        if (decoded.lossy()) {
+                            macroReasons.add("insufficient_lossy_decode");
+                        }
+                        macroReasons.addAll(macros.reasons());
+                    }
                     String status = "call".equals(kind)
                             ? !callSupported ? "unsupported"
                                     : !callReasons.isEmpty() ? "partial" : "complete"
+                            : "macro".equals(kind)
+                                    ? macros == null ? "unsupported"
+                                            : !macroReasons.isEmpty() ? "partial" : "complete"
                             : "conditional_region".equals(kind) ? "complete" : "unsupported";
+                    List<String> reasons = "call".equals(kind)
+                            ? callReasons : "macro".equals(kind) ? macroReasons : List.of();
                     generator.writeStartObject();
                     generator.writeStringField("kind", kind);
                     generator.writeStringField("status", status);
-                    if ("call".equals(kind) && callSupported && !callReasons.isEmpty()) {
-                        generator.writeStringField("reason", callReasons.get(0));
+                    if (!reasons.isEmpty()) {
+                        generator.writeStringField("reason", reasons.get(0));
                         generator.writeArrayFieldStart("reasons");
-                        for (String reason : callReasons) generator.writeString(reason);
+                        for (String reason : reasons) generator.writeString(reason);
                         generator.writeEndArray();
                     }
                     if ("call".equals(kind) && callSupported
@@ -189,7 +223,7 @@ public final class EvidenceIrSealer {
                                    ConditionalCompilationEvidence conditional,
                                    boolean callSupported) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, callSupported);
+                conditional, callSupported, null);
     }
 
     private static ObjectNode sealCall(CallEvidenceCandidate candidate,
@@ -260,6 +294,48 @@ public final class EvidenceIrSealer {
         return fact;
     }
 
+    private static ObjectNode sealMacro(MacroEvidenceCandidate candidate,
+                                        String sourceId,
+                                        String decodedHash,
+                                        CodePointIndex index,
+                                        Map<String, Integer> ordinals,
+                                        Map<String, Integer> grammarRules,
+                                        Map<Presence, Integer> presences,
+                                        Presence factPresence) {
+        index.requireValid(candidate.range());
+        index.requireSubrange(candidate.range(), candidate.nameRange(), "macro name");
+        for (SourceRangeCandidate parameter : candidate.parameterRanges()) {
+            index.requireSubrange(candidate.range(), parameter, "macro parameter");
+        }
+        if (candidate.replacementRange() != null) {
+            index.requireSubrange(candidate.range(), candidate.replacementRange(),
+                    "macro replacement");
+        }
+
+        String ordinalKey = "macro\0" + candidate.range().startOffset()
+                + "\0" + candidate.range().endOffset();
+        int ordinal = ordinals.merge(ordinalKey, 1, Integer::sum) - 1;
+        ObjectNode fact = JSON.createObjectNode();
+        fact.put("factId", factId(sourceId, decodedHash, "macro", candidate.range(), ordinal));
+        fact.put("kind", "macro");
+        fact.set("range", index.rangeJson(candidate.range()));
+        fact.put("grammarRuleRef", reference(grammarRules, candidate.grammarRule()));
+        fact.put("presenceRef", reference(presences, factPresence));
+
+        ObjectNode payload = fact.putObject("payload");
+        payload.set("nameRange", index.rangeJson(candidate.nameRange()));
+        payload.put("macroKind", candidate.macroKind());
+        payload.put("terminalName", candidate.terminalName());
+        ArrayNode parameters = payload.putArray("parameterRanges");
+        for (SourceRangeCandidate parameter : candidate.parameterRanges()) {
+            parameters.add(index.rangeJson(parameter));
+        }
+        payload.put("variadic", candidate.variadic());
+        if (candidate.replacementRange() == null) payload.putNull("replacementRange");
+        else payload.set("replacementRange", index.rangeJson(candidate.replacementRange()));
+        return fact;
+    }
+
     private static <T> int reference(Map<T, Integer> table, T value) {
         Integer existing = table.get(value);
         if (existing != null) return existing;
@@ -314,6 +390,16 @@ public final class EvidenceIrSealer {
         private void requireValid(SourceRangeCandidate range) {
             if (range.endOffset() > codePoints.length) {
                 throw new IllegalArgumentException("range exceeds decoded source: " + range);
+            }
+        }
+
+        private void requireSubrange(SourceRangeCandidate outer,
+                                     SourceRangeCandidate inner,
+                                     String field) {
+            requireValid(inner);
+            if (inner.startOffset() < outer.startOffset()
+                    || inner.endOffset() > outer.endOffset()) {
+                throw new IllegalArgumentException(field + " range is outside fact range");
             }
         }
 

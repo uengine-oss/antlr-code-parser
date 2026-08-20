@@ -145,6 +145,106 @@ class SemanticEvidenceIrContractTest {
     }
 
     @Test
+    void cMacroFactsComeFromPreprocessorGrammarNotSourceRegex() throws Exception {
+        ParserWorkspace workspace = workspace();
+        String source = "#define OBJECT (1)\n"
+                + "#define EMPTY()\n"
+                + "#define SUM(left, right) ((left) + (right))\n"
+                + "#define LOG(format, ...) emit(format, __VA_ARGS__)\n"
+                + "#define CONTINUED(value) \\\n  consume(value)\n"
+                + "#if 0\n#define HIDDEN(value) consume(value)\n#endif\n"
+                + "void run(void) { SUM(1, 2); }\n";
+        JsonNode root = parse(workspace, new Fixture(new CLanguageModule(workspace),
+                "macro/sample.c", source));
+
+        List<JsonNode> macros = facts(root, "macro");
+        assertEquals(6, macros.size());
+        assertEquals(List.of("OBJECT", "EMPTY", "SUM", "LOG", "CONTINUED", "HIDDEN"),
+                macros.stream().map(fact -> fact.path("payload").path("terminalName").asText())
+                        .toList());
+        assertEquals(List.of("object", "function", "function", "function", "function",
+                        "function"),
+                macros.stream().map(fact -> fact.path("payload").path("macroKind").asText())
+                        .toList());
+        JsonNode log = macros.get(3);
+        List<String> parameters = new ArrayList<>();
+        log.path("payload").path("parameterRanges").forEach(range ->
+                parameters.add(slice(source, range)));
+        assertEquals(List.of("format"), parameters);
+        assertTrue(log.path("payload").path("variadic").asBoolean());
+        assertEquals("inactive", presence(root, macros.get(5)).path("status").asText());
+        macros.forEach(fact -> assertExactSlice(source, fact));
+
+        JsonNode completeness = completeness(root, "macro");
+        assertEquals("complete", completeness.path("status").asText());
+        assertEquals(6, completeness.path("population").asInt());
+        assertEquals(6, completeness.path("emitted").asInt());
+        assertEquals(0, completeness.path("explicitlyUnresolved").asInt());
+
+        String commentSeparated = "#/**/define COMMENT_SEPARATED (7)\n";
+        JsonNode commentRoot = parse(workspace, new Fixture(new CLanguageModule(workspace),
+                "macro/comment-separated.c", commentSeparated));
+        JsonNode legacyDefine = children(commentRoot, "DEFINE").stream()
+                .filter(node -> "COMMENT_SEPARATED".equals(node.path("name").asText()))
+                .findFirst().orElseThrow();
+        assertEquals("(7)", legacyDefine.path("initValue").asText(),
+                "legacy projection must consume grammar evidence, not directive text regex");
+    }
+
+    @Test
+    void cMacroGrammarPreservesWhitespaceSplicingExtensionsAndMalformedAccounting()
+            throws Exception {
+        ParserWorkspace workspace = workspace();
+        String source = "#define OBJECT_WITH_PAREN (value)\r\n"
+                + "#define COMMENT_GAP/**/(value)\r\n"
+                + "#define FUNCTION(value) value\r\n"
+                + "#define GNU_VARIADIC(arguments...) emit(arguments)\r\n"
+                + "#define CRLF_SPLICE(value) \\\r\n  emit(value)\r\n"
+                + "#define CR_SPLICE(value) \\\r  emit(value)\r"
+                + "#define EMPTY_OBJECT\r\n"
+                + "#define BLOCK_COMMENT /* first\r\n second */ replacement\r\n"
+                + "#define BEFORE_COMMENT/**/value\r\n"
+                + "%:define DIGRAPH(value) value\r\n"
+                + "#define 123 invalid\r\n"
+                + "#define UNTERMINATED(value\r\n"
+                + "#define UNTERMINATED_COMMENT /* no end";
+        JsonNode root = parse(workspace, new Fixture(new CLanguageModule(workspace),
+                "macro/edge-cases.c", source));
+
+        List<JsonNode> macros = facts(root, "macro");
+        assertEquals(List.of("OBJECT_WITH_PAREN", "COMMENT_GAP", "FUNCTION",
+                        "GNU_VARIADIC", "CRLF_SPLICE", "CR_SPLICE", "EMPTY_OBJECT",
+                        "BLOCK_COMMENT", "BEFORE_COMMENT", "DIGRAPH"),
+                macros.stream().map(fact -> fact.path("payload").path("terminalName").asText())
+                        .toList());
+        assertEquals(List.of("object", "object", "function", "function", "function",
+                        "function", "object", "object", "object", "function"),
+                macros.stream().map(fact -> fact.path("payload").path("macroKind").asText())
+                        .toList());
+        assertTrue(macros.get(3).path("payload").path("variadic").asBoolean());
+        assertEquals(List.of("arguments"), rangeSlices(source,
+                macros.get(3).path("payload").path("parameterRanges")));
+        assertEquals("emit(value)", slice(source,
+                macros.get(5).path("payload").path("replacementRange")));
+        assertTrue(macros.get(7).path("payload").path("replacementRange").isNull(),
+                "a retained newline inside a block comment ends the directive");
+        assertEquals("value", slice(source,
+                macros.get(8).path("payload").path("replacementRange")));
+        macros.forEach(fact -> assertExactSlice(source, fact));
+
+        JsonNode completeness = completeness(root, "macro");
+        assertEquals("partial", completeness.path("status").asText());
+        assertEquals("insufficient_preprocessor_directive_syntax",
+                completeness.path("reason").asText());
+        assertEquals(List.of("insufficient_preprocessor_directive_syntax",
+                        "insufficient_unterminated_preprocessor_comment"),
+                stringValues(completeness.path("reasons")));
+        assertEquals(13, completeness.path("population").asInt());
+        assertEquals(10, completeness.path("emitted").asInt());
+        assertEquals(3, completeness.path("explicitlyUnresolved").asInt());
+    }
+
+    @Test
     void unknownConditionalCompilationNeverBecomesAFalseConcreteBuild() throws Exception {
         ParserWorkspace workspace = workspace();
         String source = "void run(void) {\n"
@@ -317,6 +417,14 @@ class SemanticEvidenceIrContractTest {
         return result;
     }
 
+    private static List<JsonNode> children(JsonNode root, String type) {
+        List<JsonNode> result = new ArrayList<>();
+        root.path("children").forEach(child -> {
+            if (type.equals(child.path("type").asText())) result.add(child);
+        });
+        return result;
+    }
+
     private static JsonNode completeness(JsonNode root, String kind) {
         List<JsonNode> matches = new ArrayList<>();
         root.path("evidence").path("completeness").forEach(item -> {
@@ -330,6 +438,12 @@ class SemanticEvidenceIrContractTest {
         List<String> result = new ArrayList<>();
         call.path("payload").path("argumentRanges").forEach(range ->
                 result.add(slice(source, range)));
+        return result;
+    }
+
+    private static List<String> rangeSlices(String source, JsonNode ranges) {
+        List<String> result = new ArrayList<>();
+        ranges.forEach(range -> result.add(slice(source, range)));
         return result;
     }
 

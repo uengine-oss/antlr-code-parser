@@ -90,6 +90,7 @@ class SemanticEvidenceActualCorpusTest {
         Set<String> globalFactIds = new HashSet<>();
         List<String> orderedFactIds = new ArrayList<>();
         List<String> orderedCallIds = new ArrayList<>();
+        List<String> orderedMacroIds = new ArrayList<>();
         Map<String, ObjectNode> sealedSelection = new LinkedHashMap<>();
         ArrayNode files = JSON.createArrayNode();
         long legacyCalls = 0;
@@ -101,6 +102,13 @@ class SemanticEvidenceActualCorpusTest {
         long constructorCalls = 0;
         long expressionCalls = 0;
         long conditionalRegions = 0;
+        long macroFacts = 0;
+        long objectMacros = 0;
+        long functionMacros = 0;
+        long activeMacros = 0;
+        long inactiveMacros = 0;
+        long conditionalMacros = 0;
+        long explicitlyUnresolvedMacros = 0;
         long diagnostics = 0;
         long recoveries = 0;
 
@@ -126,6 +134,7 @@ class SemanticEvidenceActualCorpusTest {
             }
 
             List<JsonNode> calls = new ArrayList<>();
+            List<JsonNode> macros = new ArrayList<>();
             List<JsonNode> regions = new ArrayList<>();
             String sourceId = evidence.path("sourceId").asText();
             for (JsonNode fact : evidence.path("facts")) {
@@ -154,8 +163,28 @@ class SemanticEvidenceActualCorpusTest {
                 } else if ("conditional_region".equals(fact.path("kind").asText())) {
                     regions.add(fact);
                     conditionalRegions++;
+                } else if ("macro".equals(fact.path("kind").asText())) {
+                    verifyMacroSubranges(source, fact, sourcePath);
+                    macros.add(fact);
+                    macroFacts++;
+                    orderedMacroIds.add(factId);
+                    switch (fact.path("payload").path("macroKind").asText()) {
+                        case "object" -> objectMacros++;
+                        case "function" -> functionMacros++;
+                        default -> throw new AssertionError("invalid macro kind: " + fact);
+                    }
+                    switch (presence(evidence, fact).path("status").asText()) {
+                        case "active" -> activeMacros++;
+                        case "inactive" -> inactiveMacros++;
+                        case "conditional", "unknown" -> conditionalMacros++;
+                        default -> throw new AssertionError("invalid macro presence: " + fact);
+                    }
                 }
             }
+
+            JsonNode macroCompleteness = completeness(evidence, "macro");
+            explicitlyUnresolvedMacros += macroCompleteness
+                    .path("explicitlyUnresolved").asLong();
 
             calls.sort(Comparator.comparingInt(call -> rangeStart(call.path("range"))));
             if (!calls.isEmpty()) {
@@ -177,6 +206,37 @@ class SemanticEvidenceActualCorpusTest {
                 }
                 String rangeKey = call.path("range").toString();
                 callsByRange.computeIfAbsent(rangeKey, ignored -> new ArrayList<>()).add(call);
+            }
+            macros.sort(Comparator.comparingInt(macro -> rangeStart(macro.path("range"))));
+            if (!macros.isEmpty()) {
+                selectMacro(sealedSelection, macros.get(0), evidence, sourceId, source,
+                        "first_macro_in_source");
+                selectMacro(sealedSelection, macros.get(macros.size() - 1), evidence,
+                        sourceId, source, "last_macro_in_source");
+            }
+            for (JsonNode macro : macros) {
+                JsonNode payload = macro.path("payload");
+                if ("function".equals(payload.path("macroKind").asText())) {
+                    selectMacro(sealedSelection, macro, evidence, sourceId, source,
+                            "function_like_macro");
+                }
+                if (payload.path("variadic").asBoolean()) {
+                    selectMacro(sealedSelection, macro, evidence, sourceId, source,
+                            "variadic_macro");
+                }
+                if (payload.path("replacementRange").isNull()) {
+                    selectMacro(sealedSelection, macro, evidence, sourceId, source,
+                            "empty_replacement");
+                }
+                if (!"active".equals(presence(evidence, macro).path("status").asText())) {
+                    selectMacro(sealedSelection, macro, evidence, sourceId, source,
+                            "non_active_presence");
+                }
+                String directive = slice(source, macro.path("range"));
+                if (directive.contains("\n") || directive.contains("\r")) {
+                    selectMacro(sealedSelection, macro, evidence, sourceId, source,
+                            "multiline_macro");
+                }
             }
             callsByRange.values().stream().filter(group -> group.size() > 1)
                     .flatMap(List::stream)
@@ -203,6 +263,9 @@ class SemanticEvidenceActualCorpusTest {
             fileRow.put("parseStatus", evidence.path("parseStatus").asText());
             fileRow.put("legacyFunctionCallNodes", fileLegacyCalls);
             fileRow.put("callFacts", calls.size());
+            fileRow.put("macroFacts", macros.size());
+            fileRow.put("explicitlyUnresolvedMacros",
+                    macroCompleteness.path("explicitlyUnresolved").asLong());
             fileRow.put("diagnostics", first.diagnostics().size());
             fileRow.put("antlrRecoveries", first.antlrRecoveries());
             fileRow.put("firstParseElapsedMillis", first.elapsedMillis());
@@ -214,6 +277,11 @@ class SemanticEvidenceActualCorpusTest {
         assertEquals(callFacts, namedCalls + constructorCalls + expressionCalls,
                 "callee syntax partition is incomplete");
         assertFalse(orderedCallIds.isEmpty(), "actual corpus emitted no call facts");
+        assertFalse(orderedMacroIds.isEmpty(), "actual corpus emitted no macro facts");
+        assertEquals(macroFacts, objectMacros + functionMacros,
+                "macro syntax partition is incomplete");
+        assertEquals(macroFacts, activeMacros + inactiveMacros + conditionalMacros,
+                "macro presence partition is incomplete");
         assertEquals(orderedFactIds.size(), globalFactIds.size(), "fact ID set accounting mismatch");
 
         ObjectNode report = JSON.createObjectNode();
@@ -231,10 +299,18 @@ class SemanticEvidenceActualCorpusTest {
         report.put("constructorCalls", constructorCalls);
         report.put("expressionCalls", expressionCalls);
         report.put("conditionalRegions", conditionalRegions);
+        report.put("macroFacts", macroFacts);
+        report.put("objectMacros", objectMacros);
+        report.put("functionMacros", functionMacros);
+        report.put("activeMacros", activeMacros);
+        report.put("inactiveMacros", inactiveMacros);
+        report.put("conditionalOrUnknownMacros", conditionalMacros);
+        report.put("explicitlyUnresolvedMacros", explicitlyUnresolvedMacros);
         report.put("diagnostics", diagnostics);
         report.put("antlrRecoveries", recoveries);
         report.put("factIdLedgerSha256", ledgerHash(orderedFactIds));
         report.put("callFactIdLedgerSha256", ledgerHash(orderedCallIds));
+        report.put("macroFactIdLedgerSha256", ledgerHash(orderedMacroIds));
         report.put("wallMillisTwoPass", (System.nanoTime() - started) / 1_000_000L);
         report.put("peakHeapBytes", ManagementFactory.getMemoryPoolMXBeans().stream()
                 .filter(pool -> pool.getType() == MemoryType.HEAP)
@@ -343,6 +419,41 @@ class SemanticEvidenceActualCorpusTest {
         }
     }
 
+    private static void verifyMacroSubranges(String source, JsonNode macro, Path path) {
+        int macroStart = rangeStart(macro.path("range"));
+        int macroEnd = rangeEnd(macro.path("range"));
+        JsonNode payload = macro.path("payload");
+        JsonNode nameRange = payload.path("nameRange");
+        assertSubrange(macroStart, macroEnd, nameRange, "macro name", path);
+        assertEquals(slice(source, nameRange), payload.path("terminalName").asText(),
+                "macro terminal name is not its exact grammar range in " + path);
+        int previousEnd = rangeEnd(nameRange);
+        for (JsonNode parameter : payload.path("parameterRanges")) {
+            assertSubrange(macroStart, macroEnd, parameter, "macro parameter", path);
+            assertTrue(rangeStart(parameter) >= previousEnd,
+                    "macro parameter order mismatch in " + path);
+            previousEnd = rangeEnd(parameter);
+        }
+        JsonNode replacement = payload.path("replacementRange");
+        if (!replacement.isNull()) {
+            assertSubrange(macroStart, macroEnd, replacement, "macro replacement", path);
+            assertTrue(rangeStart(replacement) >= previousEnd,
+                    "macro replacement precedes its declaration in " + path);
+        }
+        assertTrue(Set.of("object", "function")
+                .contains(payload.path("macroKind").asText()));
+        assertFalse("object".equals(payload.path("macroKind").asText())
+                        && (payload.path("variadic").asBoolean()
+                                || !payload.path("parameterRanges").isEmpty()),
+                "object macro claimed function parameters in " + path);
+    }
+
+    private static void assertSubrange(int outerStart, int outerEnd, JsonNode range,
+                                       String label, Path path) {
+        assertTrue(rangeStart(range) >= outerStart && rangeEnd(range) <= outerEnd,
+                label + " is outside macro range in " + path + ": " + range);
+    }
+
     private static String slice(String source, JsonNode range) {
         int start = rangeStart(range);
         int end = rangeEnd(range);
@@ -385,6 +496,47 @@ class SemanticEvidenceActualCorpusTest {
         boolean exists = false;
         for (JsonNode existing : reasons) exists |= reason.equals(existing.asText());
         if (!exists) reasons.add(reason);
+    }
+
+    private static void selectMacro(Map<String, ObjectNode> selection, JsonNode fact,
+                                    JsonNode evidence, String sourceId, String source,
+                                    String reason) {
+        String id = fact.path("factId").asText();
+        ObjectNode selected = selection.computeIfAbsent(id, ignored -> {
+            ObjectNode row = JSON.createObjectNode();
+            row.put("factId", id);
+            row.put("sourceId", sourceId);
+            row.put("grammarRule", evidence.path("grammarRules")
+                    .path(fact.path("grammarRuleRef").asInt()).asText());
+            row.set("range", fact.path("range").deepCopy());
+            row.set("presence", presence(evidence, fact).deepCopy());
+            row.set("payload", fact.path("payload").deepCopy());
+            ObjectNode display = row.putObject("displayPreview");
+            display.put("macroDirective", slice(source, fact.path("range")));
+            display.put("terminalName", slice(source,
+                    fact.path("payload").path("nameRange")));
+            ArrayNode parameters = display.putArray("parameters");
+            fact.path("payload").path("parameterRanges").forEach(range ->
+                    parameters.add(slice(source, range)));
+            JsonNode replacement = fact.path("payload").path("replacementRange");
+            if (replacement.isNull()) display.putNull("replacement");
+            else display.put("replacement", slice(source, replacement));
+            row.set("selectionReasons", JSON.createArrayNode());
+            return row;
+        });
+        ArrayNode reasons = (ArrayNode) selected.path("selectionReasons");
+        boolean exists = false;
+        for (JsonNode existing : reasons) exists |= reason.equals(existing.asText());
+        if (!exists) reasons.add(reason);
+    }
+
+    private static JsonNode completeness(JsonNode evidence, String kind) {
+        List<JsonNode> rows = new ArrayList<>();
+        evidence.path("completeness").forEach(row -> {
+            if (kind.equals(row.path("kind").asText())) rows.add(row);
+        });
+        assertEquals(1, rows.size(), "missing or duplicate completeness row for " + kind);
+        return rows.get(0);
     }
 
     private static JsonNode presence(JsonNode evidence, JsonNode fact) {

@@ -32,7 +32,9 @@ public final class CConditionalCompilationAnalyzer {
             if (token.getType() != CLexer.Directive && token.getType() != CLexer.MultiLineMacro) continue;
             int start = token.getStartIndex();
             int end = token.getStopIndex() + 1;
-            addSpan(spans, cursor, start, currentPresence(stack));
+            Presence directivePresence = currentPresence(stack);
+            addSpan(spans, cursor, start, directivePresence);
+            addSpan(spans, start, end, directivePresence);
 
             Directive directive = Directive.parse(token.getText());
             switch (directive.kind()) {
