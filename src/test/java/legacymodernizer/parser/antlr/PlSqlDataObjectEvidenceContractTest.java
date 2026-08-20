@@ -66,7 +66,7 @@ class PlSqlDataObjectEvidenceContractTest {
         String insertJson = insert.toJson();
         String selectJson = select.toJson();
 
-        assertTrue(insertJson.contains("\"dataObjectEvidenceVersion\":2"));
+        assertTrue(insertJson.contains("\"dataObjectEvidenceVersion\":3"));
         assertTrue(insertJson.contains("\"rawReference\":\"APP.RESULT_T@WRITE_LINK\""));
         assertTrue(insertJson.contains("\"schema\":\"APP\""));
         assertTrue(insertJson.contains("\"name\":\"RESULT_T\""));
@@ -87,6 +87,27 @@ class PlSqlDataObjectEvidenceContractTest {
     }
 
     @Test
+    void preservesQuotedDatabaseLinkComponentsAsGrammarOwnedIdentity() {
+        Node root = parse("""
+                CREATE OR REPLACE PROCEDURE P AS
+                BEGIN
+                  SELECT * FROM APP.ORDERS@"Prod"."East"@"Conn";
+                END;
+                /
+                """);
+
+        String json = all(root, "SELECT").get(0).toJson();
+
+        assertTrue(json.contains("\"dataObjectEvidenceVersion\":3"));
+        assertTrue(json.contains("\"databaseLink\":\"\\\"Prod\\\".\\\"East\\\"@\\\"Conn\\\"\""));
+        assertTrue(json.contains(
+                "\"databaseLinkComponents\":["
+                + "{\"role\":\"database\",\"name\":\"\\\"Prod\\\"\",\"nameQuoted\":true},"
+                + "{\"role\":\"domain\",\"name\":\"\\\"East\\\"\",\"nameQuoted\":true},"
+                + "{\"role\":\"connection_qualifier\",\"name\":\"\\\"Conn\\\"\",\"nameQuoted\":true}]"));
+    }
+
+    @Test
     void preservesGrammarOwnedUnqualifiedIdentifiersWithoutFunctionOrAliasGuessing() {
         Node root = parse("""
                 CREATE OR REPLACE PROCEDURE P(P_STATUS IN VARCHAR2) AS
@@ -101,7 +122,7 @@ class PlSqlDataObjectEvidenceContractTest {
         Node select = all(root, "SELECT").get(0);
         String json = select.toJson();
 
-        assertTrue(json.contains("\"dataObjectEvidenceVersion\":2"));
+        assertTrue(json.contains("\"dataObjectEvidenceVersion\":3"));
         assertTrue(json.contains("\"unqualifiedIdentifierReferences\""));
         assertEquals(
                 List.of("ORDER_ID", "AMOUNT", "STATUS", "P_STATUS"),

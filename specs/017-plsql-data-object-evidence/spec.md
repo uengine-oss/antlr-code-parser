@@ -43,6 +43,9 @@ table insight와 최종 table description에서 `VAL`이 `RDIB2EN_TB` 소유로 
   function name, SELECT output alias, 물리 object name, qualified reference의 재귀 prefix와 nested
   query 소유 identifier는 포함하지 않는다. 이 필드는 물리 table 소유권을 주장하지 않는다.
 - FR-012: 같은 줄의 같은 이름 occurrence도 token 시작점이 다르면 AST에 각각 exact-once 보존한다.
+- FR-013: evidence v3는 Oracle database link를 문자열만으로 축약하지 않고 grammar 순서대로
+  `databaseLinkComponents(role, name, nameQuoted)`에 보존한다. role은 `database`, `domain`,
+  `connection_qualifier`이며 quoted component의 내부 대소문자는 canonical identity다.
 
 ## 4. 비범위
 

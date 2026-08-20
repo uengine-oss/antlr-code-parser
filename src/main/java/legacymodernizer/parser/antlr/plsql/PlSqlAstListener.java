@@ -14,6 +14,7 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import legacymodernizer.parser.parsing.AntlrParseHarness;
+import legacymodernizer.parser.model.DatabaseLinkComponent;
 import legacymodernizer.parser.model.DataObjectReference;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.model.QualifiedColumnReference;
@@ -419,7 +420,7 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
             List<DataObjectReference> objects,
             List<QualifiedColumnReference> columns,
             List<UnqualifiedIdentifierReference> identifiers) {
-        node.dataObjectEvidenceVersion = 2;
+        node.dataObjectEvidenceVersion = 3;
         if (!objects.isEmpty()) node.dataObjectReferences = new ArrayList<>(objects);
         if (!columns.isEmpty()) node.qualifiedColumnReferences = new ArrayList<>(columns);
         if (!identifiers.isEmpty()) {
@@ -497,11 +498,36 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
         }
         if (isQuoted(reference.schema)) reference.schemaQuoted = true;
         if (isQuoted(reference.name)) reference.nameQuoted = true;
-        if (table.link_name() != null) reference.databaseLink = table.link_name().getText();
+        if (table.link_name() != null) {
+            reference.databaseLink = table.link_name().getText();
+            reference.databaseLinkComponents = databaseLinkComponents(table.link_name());
+        }
         if (alias != null) reference.alias = alias.getText();
         reference.access = access;
         reference.startLine = table.getStart().getLine();
         return reference;
+    }
+
+    private static ArrayList<DatabaseLinkComponent> databaseLinkComponents(
+            PlSqlParser.Link_nameContext link) {
+        ArrayList<DatabaseLinkComponent> components = new ArrayList<>();
+        components.add(databaseLinkComponent("database", link.database().getText()));
+        for (PlSqlParser.DomainContext domain : link.domain()) {
+            components.add(databaseLinkComponent("domain", domain.getText()));
+        }
+        if (link.connection_qualifier() != null) {
+            components.add(databaseLinkComponent(
+                    "connection_qualifier", link.connection_qualifier().getText()));
+        }
+        return components;
+    }
+
+    private static DatabaseLinkComponent databaseLinkComponent(String role, String name) {
+        DatabaseLinkComponent component = new DatabaseLinkComponent();
+        component.role = role;
+        component.name = name;
+        if (isQuoted(name)) component.nameQuoted = true;
+        return component;
     }
 
     private static PlSqlParser.Tableview_nameContext physicalTable(
