@@ -62,7 +62,8 @@ class SemanticEvidenceIrContractTest {
         for (Map.Entry<String, Fixture> entry : fixtures.entrySet()) {
             JsonNode evidence = parse(workspace, entry.getValue()).path("evidence");
             assertFalse(evidence.isMissingNode(), entry.getKey() + " omitted evidence envelope");
-            assertEquals("1.1.0", evidence.path("version").asText());
+            assertEquals("c".equals(entry.getKey()) ? "1.2.0" : "1.1.0",
+                    evidence.path("version").asText());
             assertEquals(entry.getValue().relativePath(), evidence.path("sourceId").asText());
             assertEquals(64, evidence.path("rawSourceSha256").asText().length());
             assertEquals(64, evidence.path("decodedTextSha256").asText().length());
@@ -73,7 +74,8 @@ class SemanticEvidenceIrContractTest {
             assertEquals("unicode-code-point", evidence.path("positionEncoding").asText());
             assertEquals("half-open", evidence.path("rangeConvention").asText());
             assertEquals("char-offset-length", evidence.path("rangeEncoding").asText());
-            assertEquals("exact", evidence.path("parseStatus").asText());
+            assertEquals("exact", evidence.path("parseStatus").asText(),
+                    entry.getKey() + " unexpected parse status: " + evidence);
             assertTrue(evidence.path("facts").isArray());
             assertTrue(evidence.path("grammarRules").isArray());
             assertTrue(evidence.path("presences").isArray());

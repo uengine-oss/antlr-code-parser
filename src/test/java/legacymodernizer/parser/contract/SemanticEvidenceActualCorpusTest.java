@@ -45,6 +45,8 @@ class SemanticEvidenceActualCorpusTest {
         String configuredCorpus = System.getProperty("parser.evidence.corpus", "");
         String configuredReport = System.getProperty("parser.evidence.report", "");
         String configuredExport = System.getProperty("parser.evidence.export", "");
+        String configuredAstBaseline = System.getProperty(
+                "parser.evidence.astBaseline", "");
         Assumptions.assumeTrue(!configuredCorpus.isBlank() && !configuredReport.isBlank(),
                 "Set parser.evidence.corpus and parser.evidence.report for actual validation");
 
@@ -69,6 +71,17 @@ class SemanticEvidenceActualCorpusTest {
                 }
             }
         }
+        Path astBaselineRoot = configuredAstBaseline.isBlank() ? null
+                : Path.of(configuredAstBaseline).toAbsolutePath().normalize();
+        if (astBaselineRoot != null) {
+            String normalizedBaseline = astBaselineRoot.toString().replace('\\', '/');
+            assertTrue(normalizedBaseline.contains(
+                            "/specs/131-cross-node-semantic-grounding/_runs/framework/"),
+                    "actual AST baseline must stay inside spec 131 _runs/framework: "
+                            + astBaselineRoot);
+            assertTrue(Files.isDirectory(astBaselineRoot),
+                    "actual AST baseline does not exist: " + astBaselineRoot);
+        }
 
         ParserWorkspace workspace = new ParserWorkspace(new SourceIntakeClassifier());
         workspace.intakeFromPath(corpus);
@@ -92,8 +105,10 @@ class SemanticEvidenceActualCorpusTest {
         List<String> orderedCallIds = new ArrayList<>();
         List<String> orderedImportIds = new ArrayList<>();
         List<String> orderedMacroIds = new ArrayList<>();
+        List<String> orderedSymbolIds = new ArrayList<>();
         List<String> orderedPreprocessingIds = new ArrayList<>();
         Map<String, ObjectNode> sealedSelection = new LinkedHashMap<>();
+        List<ObjectNode> sealedSymbolCandidates = new ArrayList<>();
         ArrayNode files = JSON.createArrayNode();
         long legacyCalls = 0;
         long legacyIncludes = 0;
@@ -117,8 +132,15 @@ class SemanticEvidenceActualCorpusTest {
         long inactiveMacros = 0;
         long conditionalMacros = 0;
         long explicitlyUnresolvedMacros = 0;
+        long symbolFacts = 0;
+        long symbolDefinitions = 0;
+        long symbolLookups = 0;
+        long resolvedSymbolLookups = 0;
+        long unresolvedSymbolLookups = 0;
         long diagnostics = 0;
         long recoveries = 0;
+        long baselineComparedFiles = 0;
+        long baselineTypedefDelta = 0;
 
         for (Path sourcePath : sources) {
             byte[] sourceBytes = Files.readAllBytes(sourcePath);
@@ -132,10 +154,23 @@ class SemanticEvidenceActualCorpusTest {
 
             JsonNode root = JSON.readTree(first.astJson());
             JsonNode evidence = root.path("evidence");
-            assertEquals("1.1.0", evidence.path("version").asText());
+            assertEquals("1.2.0", evidence.path("version").asText());
             assertEquals(first.sourceSha256(), evidence.path("rawSourceSha256").asText());
             assertEquals(source, evidence.path("decodedText").asText(),
                     "sealed decoded source mismatch in " + sourcePath);
+            if (astBaselineRoot != null) {
+                Path baselinePath = astBaselineRoot.resolve(sourcePath.getFileName() + ".json");
+                assertTrue(Files.isRegularFile(baselinePath),
+                        "missing accepted AST baseline for " + sourcePath);
+                JsonNode baseline = JSON.readTree(Files.readString(
+                        baselinePath, StandardCharsets.UTF_8));
+                assertEquals(childrenWithoutType(baseline, "TYPEDEF"),
+                        childrenWithoutType(root, "TYPEDEF"),
+                        "non-TYPEDEF compatibility AST changed for " + sourcePath);
+                baselineComparedFiles++;
+                baselineTypedefDelta += countNodes(root, "TYPEDEF")
+                        - countNodes(baseline, "TYPEDEF");
+            }
             verifyCompleteness(evidence, sourcePath);
             JsonNode configuredPreprocessing = evidence.path("configuredPreprocessing");
             assertEquals("1.0.0", configuredPreprocessing.path("version").asText());
@@ -176,6 +211,14 @@ class SemanticEvidenceActualCorpusTest {
             List<JsonNode> imports = new ArrayList<>();
             List<JsonNode> macros = new ArrayList<>();
             List<JsonNode> regions = new ArrayList<>();
+            List<JsonNode> symbols = new ArrayList<>();
+            Set<String> definitionIds = new HashSet<>();
+            evidence.path("facts").forEach(fact -> {
+                if ("symbol".equals(fact.path("kind").asText())
+                        && "definition".equals(fact.path("payload").path("role").asText())) {
+                    definitionIds.add(fact.path("factId").asText());
+                }
+            });
             String sourceId = evidence.path("sourceId").asText();
             for (JsonNode fact : evidence.path("facts")) {
                 String factId = fact.path("factId").asText();
@@ -231,6 +274,25 @@ class SemanticEvidenceActualCorpusTest {
                         case "conditional", "unknown" -> conditionalMacros++;
                         default -> throw new AssertionError("invalid macro presence: " + fact);
                     }
+                } else if ("symbol".equals(fact.path("kind").asText())) {
+                    verifySymbolFact(fact, definitionIds, sourcePath);
+                    symbols.add(fact);
+                    symbolFacts++;
+                    orderedSymbolIds.add(factId);
+                    String role = fact.path("payload").path("role").asText();
+                    if ("definition".equals(role)) {
+                        symbolDefinitions++;
+                    } else {
+                        symbolLookups++;
+                        if ("resolved".equals(fact.path("payload")
+                                .path("resolutionStatus").asText())) {
+                            resolvedSymbolLookups++;
+                        } else {
+                            unresolvedSymbolLookups++;
+                        }
+                    }
+                    sealedSymbolCandidates.add(symbolCandidate(
+                            fact, evidence, sourceId, source));
                 }
             }
 
@@ -240,6 +302,17 @@ class SemanticEvidenceActualCorpusTest {
             JsonNode importCompleteness = completeness(evidence, "import");
             explicitlyUnresolvedImports += importCompleteness
                     .path("explicitlyUnresolved").asLong();
+            JsonNode symbolCompleteness = completeness(evidence, "symbol");
+            List<String> unresolvedIds = symbols.stream()
+                    .filter(fact -> "lookup".equals(fact.path("payload")
+                            .path("role").asText()))
+                    .filter(fact -> "unresolved".equals(fact.path("payload")
+                            .path("resolutionStatus").asText()))
+                    .map(fact -> fact.path("factId").asText())
+                    .toList();
+            assertEquals(unresolvedIds,
+                    strings(symbolCompleteness.path("unresolvedFactIds")),
+                    "symbol unresolved ledger diverged in " + sourcePath);
 
             List<JsonNode> includeNodes = nodes(root, "INCLUDE");
             assertEquals(imports.size(), includeNodes.size(),
@@ -352,6 +425,14 @@ class SemanticEvidenceActualCorpusTest {
             fileRow.put("macroFacts", macros.size());
             fileRow.put("explicitlyUnresolvedMacros",
                     macroCompleteness.path("explicitlyUnresolved").asLong());
+            fileRow.put("symbolFacts", symbols.size());
+            fileRow.put("symbolDefinitions", symbols.stream()
+                    .filter(fact -> "definition".equals(fact.path("payload")
+                            .path("role").asText())).count());
+            fileRow.put("symbolLookups", symbols.stream()
+                    .filter(fact -> "lookup".equals(fact.path("payload")
+                            .path("role").asText())).count());
+            fileRow.put("unresolvedSymbolLookups", unresolvedIds.size());
             fileRow.put("diagnostics", first.diagnostics().size());
             fileRow.put("antlrRecoveries", first.antlrRecoveries());
             fileRow.put("firstParseElapsedMillis", first.elapsedMillis());
@@ -373,13 +454,18 @@ class SemanticEvidenceActualCorpusTest {
                 "macro syntax partition is incomplete");
         assertEquals(macroFacts, activeMacros + inactiveMacros + conditionalMacros,
                 "macro presence partition is incomplete");
+        assertFalse(orderedSymbolIds.isEmpty(), "actual corpus emitted no symbol facts");
+        assertEquals(symbolFacts, symbolDefinitions + symbolLookups,
+                "symbol role partition is incomplete");
+        assertEquals(symbolLookups, resolvedSymbolLookups + unresolvedSymbolLookups,
+                "symbol resolution partition is incomplete");
         assertEquals(46, orderedPreprocessingIds.size(),
                 "configured preprocessing evidence population changed");
         assertEquals(orderedFactIds.size() + orderedPreprocessingIds.size(),
                 globalFactIds.size(), "global fact/evidence ID set accounting mismatch");
 
         ObjectNode report = JSON.createObjectNode();
-        report.put("contractVersion", "1.1.0");
+        report.put("contractVersion", "1.2.0");
         report.put("corpus", corpus.toString().replace('\\', '/'));
         report.put("sourceFiles", sources.size());
         report.put("sourceInventorySha256", sourceInventoryHash(workspace.sourceDir(), sources));
@@ -406,12 +492,20 @@ class SemanticEvidenceActualCorpusTest {
         report.put("inactiveMacros", inactiveMacros);
         report.put("conditionalOrUnknownMacros", conditionalMacros);
         report.put("explicitlyUnresolvedMacros", explicitlyUnresolvedMacros);
+        report.put("symbolFacts", symbolFacts);
+        report.put("symbolDefinitions", symbolDefinitions);
+        report.put("symbolLookups", symbolLookups);
+        report.put("resolvedSymbolLookups", resolvedSymbolLookups);
+        report.put("unresolvedSymbolLookups", unresolvedSymbolLookups);
         report.put("diagnostics", diagnostics);
         report.put("antlrRecoveries", recoveries);
+        report.put("acceptedAstComparedFiles", baselineComparedFiles);
+        report.put("acceptedAstTypedefDelta", baselineTypedefDelta);
         report.put("factIdLedgerSha256", ledgerHash(orderedFactIds));
         report.put("callFactIdLedgerSha256", ledgerHash(orderedCallIds));
         report.put("importFactIdLedgerSha256", ledgerHash(orderedImportIds));
         report.put("macroFactIdLedgerSha256", ledgerHash(orderedMacroIds));
+        report.put("symbolFactIdLedgerSha256", ledgerHash(orderedSymbolIds));
         report.put("configuredPreprocessingSourcePopulation", sources.size());
         report.put("configuredPreprocessingStatus", "unresolved");
         report.put("configuredPreprocessingTrust", "unresolved");
@@ -425,6 +519,14 @@ class SemanticEvidenceActualCorpusTest {
         report.set("files", files);
         ArrayNode selection = report.putArray("sealedDirectJudgmentPopulation");
         sealedSelection.values().forEach(selection::add);
+        ArrayNode symbolSelection = report.putArray("sealedSymbolDirectJudgmentPopulation");
+        ObjectNode symbolStrata = report.putObject("sealedSymbolDirectJudgmentStrata");
+        for (ObjectNode candidate : stratifiedSymbolSelection(sealedSymbolCandidates, 40)) {
+            candidate.remove("selectionRank");
+            symbolSelection.add(candidate);
+            String stratum = candidate.path("selectionReason").asText();
+            symbolStrata.put(stratum, symbolStrata.path(stratum).asInt() + 1);
+        }
 
         Files.createDirectories(reportPath.getParent());
         new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT)
@@ -498,6 +600,29 @@ class SemanticEvidenceActualCorpusTest {
         return count;
     }
 
+    private static ArrayNode childrenWithoutType(JsonNode root, String omittedType) {
+        ArrayNode result = JSON.createArrayNode();
+        for (JsonNode child : root.path("children")) {
+            JsonNode filtered = nodeWithoutType(child, omittedType);
+            if (filtered != null) result.add(filtered);
+        }
+        return result;
+    }
+
+    private static JsonNode nodeWithoutType(JsonNode node, String omittedType) {
+        if (omittedType.equals(node.path("type").asText())) return null;
+        ObjectNode copy = node.deepCopy();
+        if (node.has("children")) {
+            ArrayNode children = JSON.createArrayNode();
+            for (JsonNode child : node.path("children")) {
+                JsonNode filtered = nodeWithoutType(child, omittedType);
+                if (filtered != null) children.add(filtered);
+            }
+            copy.set("children", children);
+        }
+        return copy;
+    }
+
     private static List<JsonNode> nodes(JsonNode root, String type) {
         List<JsonNode> result = new ArrayList<>();
         collectNodes(root, type, result);
@@ -548,6 +673,140 @@ class SemanticEvidenceActualCorpusTest {
                     "argument range/order mismatch in " + path + ": " + range);
             previousEnd = end;
         }
+    }
+
+    private static void verifySymbolFact(
+            JsonNode fact, Set<String> definitionIds, Path path) {
+        JsonNode payload = fact.path("payload");
+        String role = payload.path("role").asText();
+        assertTrue(Set.of("definition", "lookup").contains(role),
+                "invalid symbol role in " + path + ": " + fact);
+        if ("definition".equals(role)) {
+            assertTrue(Set.of("typedef_name", "ordinary_identifier")
+                    .contains(payload.path("symbolKind").asText()),
+                    "invalid symbol definition kind in " + path + ": " + fact);
+            assertTrue(Set.of("file", "block", "function_prototype")
+                    .contains(payload.path("scopeKind").asText()),
+                    "invalid symbol scope in " + path + ": " + fact);
+            assertTrue(rangeStart(payload.path("scopeRange"))
+                            <= rangeStart(fact.path("range"))
+                            && rangeEnd(fact.path("range"))
+                            <= rangeEnd(payload.path("scopeRange")),
+                    "symbol definition escaped scope in " + path + ": " + fact);
+            assertTrue(payload.path("visibilityStartOffset").asInt(-1)
+                            >= rangeEnd(fact.path("range")),
+                    "symbol visibility precedes declaration in " + path + ": " + fact);
+            return;
+        }
+
+        assertEquals("type_name", payload.path("lookupKind").asText());
+        assertTrue(Set.of("type_name", "ordinary_identifier")
+                .contains(payload.path("parserDecision").asText()),
+                "invalid parser decision in " + path + ": " + fact);
+        String status = payload.path("resolutionStatus").asText();
+        String provenance = payload.path("provenance").asText();
+        assertTrue(Set.of("resolved", "unresolved").contains(status),
+                "invalid symbol resolution in " + path + ": " + fact);
+        switch (provenance) {
+            case "source_declaration" -> {
+                assertEquals("resolved", status);
+                assertTrue(definitionIds.contains(payload.path("definitionFactId").asText()),
+                        "symbol lookup references a missing definition in " + path + ": " + fact);
+                assertTrue(payload.path("configuredEvidenceId").isNull());
+            }
+            case "grammar_context" -> {
+                assertEquals("resolved", status);
+                assertTrue(payload.path("definitionFactId").isNull());
+                assertTrue(payload.path("configuredEvidenceId").isNull());
+            }
+            case "configured_preprocessing" -> {
+                assertEquals("resolved", status);
+                assertTrue(payload.path("definitionFactId").isNull());
+                assertEquals(64, payload.path("configuredEvidenceId").asText().length());
+            }
+            case "unresolved_environment" -> {
+                assertEquals("unresolved", status);
+                assertTrue(payload.path("definitionFactId").isNull());
+                assertTrue(payload.path("configuredEvidenceId").isNull());
+            }
+            default -> throw new AssertionError(
+                    "invalid symbol provenance in " + path + ": " + fact);
+        }
+    }
+
+    private static ObjectNode symbolCandidate(
+            JsonNode fact, JsonNode evidence, String sourceId, String source) {
+        JsonNode payload = fact.path("payload");
+        String role = payload.path("role").asText();
+        String provenance = payload.path("provenance").asText();
+        int rank;
+        String reason;
+        if ("unresolved".equals(payload.path("resolutionStatus").asText())) {
+            rank = 0;
+            reason = "unresolved_type_name_environment";
+        } else if ("lookup".equals(role) && "source_declaration".equals(provenance)) {
+            rank = 1;
+            reason = "resolved_source_declaration_lookup";
+        } else if ("lookup".equals(role)) {
+            rank = 2;
+            reason = "grammar_context_lookup";
+        } else if ("typedef_name".equals(payload.path("symbolKind").asText())) {
+            rank = 3;
+            reason = "typedef_definition";
+        } else {
+            rank = 4;
+            reason = "ordinary_definition";
+        }
+        ObjectNode row = JSON.createObjectNode();
+        row.put("selectionRank", rank);
+        row.put("selectionReason", reason);
+        row.put("factId", fact.path("factId").asText());
+        row.put("sourceId", sourceId);
+        row.put("parseStatus", evidence.path("parseStatus").asText());
+        row.put("grammarRule", evidence.path("grammarRules")
+                .path(fact.path("grammarRuleRef").asInt()).asText());
+        row.set("range", fact.path("range").deepCopy());
+        row.put("sourceSlice", slice(source, fact.path("range")));
+        row.set("payload", payload.deepCopy());
+        return row;
+    }
+
+    private static List<ObjectNode> stratifiedSymbolSelection(
+            List<ObjectNode> candidates, int target) {
+        List<String> strata = List.of(
+                "unresolved_type_name_environment",
+                "resolved_source_declaration_lookup",
+                "grammar_context_lookup",
+                "typedef_definition",
+                "ordinary_definition");
+        int quota = target / strata.size();
+        List<ObjectNode> selected = new ArrayList<>();
+        Set<String> selectedIds = new HashSet<>();
+        Comparator<ObjectNode> byFactId = Comparator.comparing(
+                candidate -> candidate.path("factId").asText());
+        for (String stratum : strata) {
+            candidates.stream()
+                    .filter(candidate -> stratum.equals(
+                            candidate.path("selectionReason").asText()))
+                    .sorted(byFactId)
+                    .limit(quota)
+                    .forEach(candidate -> {
+                        selected.add(candidate);
+                        selectedIds.add(candidate.path("factId").asText());
+                    });
+        }
+        candidates.stream()
+                .filter(candidate -> !selectedIds.contains(
+                        candidate.path("factId").asText()))
+                .sorted(Comparator
+                        .<ObjectNode>comparingInt(
+                                candidate -> candidate.path("selectionRank").asInt())
+                        .thenComparing(byFactId))
+                .limit(Math.max(0, target - selected.size()))
+                .forEach(selected::add);
+        assertEquals(target, selected.size(),
+                "symbol direct-judgment population is smaller than its sealed target");
+        return selected;
     }
 
     private static void verifyMacroSubranges(String source, JsonNode macro, Path path) {

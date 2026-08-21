@@ -73,7 +73,8 @@ class CrossLanguageMinimalUnitRecoveryTest {
     }
 
     @Test
-    void leavesCFunctionPartialInsteadOfGuessingPreprocessorBranch() throws Exception {
+    void preservesCFunctionAndMarksConditionalTypeEvidencePartialWithoutGuessingBranch()
+            throws Exception {
         String source = "int helper(void) { return 1; }\n"
                 + "int main(void) {\n"
                 + "#ifdef PLATFORM_WITH_EXTERNAL_TYPE\n"
@@ -94,22 +95,44 @@ class CrossLanguageMinimalUnitRecoveryTest {
         RawParseResult firstPass = module.parseFile(file.toFile(), tracker);
         ParseQualityGate gate = new ParseQualityGate();
         QualityDecision firstDecision = gate.evaluateFirstPass(firstPass);
-        assertFalse(firstDecision.accepted());
+        assertTrue(firstDecision.accepted(), firstPass::astJson);
 
-        RecoveryOutcome outcome = new LayeredRecoveryPipeline(gate,
-                new RecoveryRuleRegistry(List.of())).recover(
-                module, file, workspace.sourceDir(), firstPass, firstDecision, tracker);
-
-        assertEquals(QualityStatus.PARTIAL, outcome.decision().status(),
-                outcome.units().toString());
-        assertEquals(1, outcome.unresolvedUnits());
-        assertEquals(List.of("helper"), children(outcome.astJson()).stream()
+        JsonNode root = JSON.readTree(firstPass.astJson());
+        assertEquals(List.of("helper", "main"), children(firstPass.astJson()).stream()
                 .filter(child -> "FUNCTION".equals(child.path("type").asText()))
                 .map(child -> child.path("name").asText()).toList());
-        assertFalse(outcome.units().stream().flatMap(unit -> unit.attempts().stream())
-                .anyMatch(attempt -> "c.alternate-preprocessor-branches.v1"
-                        .equals(attempt.ruleId())));
+        assertEquals("partial", root.path("evidence").path("parseStatus").asText());
+        assertEquals("unresolved", root.path("evidence")
+                .path("configuredPreprocessing").path("status").asText());
+
+        JsonNode unresolvedType = null;
+        int conditionalRegions = 0;
+        for (JsonNode fact : root.path("evidence").path("facts")) {
+            if ("conditional_region".equals(fact.path("kind").asText())) {
+                conditionalRegions++;
+            }
+            if ("symbol".equals(fact.path("kind").asText())
+                    && "lookup".equals(fact.path("payload").path("role").asText())
+                    && "UNKNOWN_EXTERNAL_TYPE".equals(slice(source, fact.path("range")))) {
+                unresolvedType = fact;
+            }
+        }
+        assertEquals(1, conditionalRegions);
+        assertTrue(unresolvedType != null, root.path("evidence").path("facts")::toPrettyString);
+        assertEquals("type_name", unresolvedType.path("payload")
+                .path("parserDecision").asText());
+        assertEquals("unresolved", unresolvedType.path("payload")
+                .path("resolutionStatus").asText());
+        int presenceRef = unresolvedType.path("presenceRef").asInt(-1);
+        assertEquals("conditional", root.path("evidence").path("presences")
+                .path(presenceRef).path("status").asText());
         assertEquals(originalSha256, Hashes.sha256(Files.readAllBytes(file)));
+    }
+
+    private static String slice(String source, JsonNode range) {
+        int start = range.path("charOffset").asInt();
+        int length = range.path("charLength").asInt();
+        return new String(source.codePoints().toArray(), start, length);
     }
 
     @Test

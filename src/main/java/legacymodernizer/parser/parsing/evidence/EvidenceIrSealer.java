@@ -29,6 +29,7 @@ import legacymodernizer.parser.recovery.workingcopy.Hashes;
 public final class EvidenceIrSealer {
 
     private static final String VERSION = "1.1.0";
+    private static final String SYMBOL_VERSION = "1.2.0";
     private static final String ID_DOMAIN = "robo-evidence-v1";
     private static final List<String> KINDS = List.of(
             "call", "import", "symbol", "literal", "assignment", "parameter",
@@ -61,7 +62,7 @@ public final class EvidenceIrSealer {
                                    List<CallEvidenceCandidate> calls,
                                    ConditionalCompilationEvidence conditional) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, null, null, null);
+                conditional, true, null, null, null, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -72,7 +73,7 @@ public final class EvidenceIrSealer {
                                    ConditionalCompilationEvidence conditional,
                                    MacroEvidenceExtraction macros) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, macros, null, null);
+                conditional, true, macros, null, null, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -82,7 +83,7 @@ public final class EvidenceIrSealer {
                                    List<CallEvidenceCandidate> calls,
                                    ImportEvidenceExtraction imports) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                ConditionalCompilationEvidence.NONE, true, null, imports, null);
+                ConditionalCompilationEvidence.NONE, true, null, imports, null, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -94,7 +95,7 @@ public final class EvidenceIrSealer {
                                    MacroEvidenceExtraction macros,
                                    ConfiguredPreprocessingEvidence configuredPreprocessing) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, macros, null, configuredPreprocessing);
+                conditional, true, macros, null, configuredPreprocessing, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -107,7 +108,21 @@ public final class EvidenceIrSealer {
                                    ImportEvidenceExtraction imports,
                                    ConfiguredPreprocessingEvidence configuredPreprocessing) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, macros, imports, configuredPreprocessing);
+                conditional, true, macros, imports, configuredPreprocessing, null);
+    }
+
+    public static String sealExact(Node root, byte[] rawSource,
+                                   SourceTextCodec.DecodedText decoded,
+                                   String sourceId,
+                                   String parseStatus,
+                                   List<CallEvidenceCandidate> calls,
+                                   ConditionalCompilationEvidence conditional,
+                                   MacroEvidenceExtraction macros,
+                                   ImportEvidenceExtraction imports,
+                                   ConfiguredPreprocessingEvidence configuredPreprocessing,
+                                   SymbolEvidenceExtraction symbols) {
+        return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
+                conditional, true, macros, imports, configuredPreprocessing, symbols);
     }
 
     private static String seal(Node root, byte[] rawSource,
@@ -119,7 +134,8 @@ public final class EvidenceIrSealer {
                                boolean callSupported,
                                MacroEvidenceExtraction macros,
                                ImportEvidenceExtraction imports,
-                               ConfiguredPreprocessingEvidence configuredPreprocessing) {
+                               ConfiguredPreprocessingEvidence configuredPreprocessing,
+                               SymbolEvidenceExtraction symbols) {
         try {
             String source = decoded.text();
             CodePointIndex index = new CodePointIndex(source);
@@ -133,6 +149,10 @@ public final class EvidenceIrSealer {
             Map<String, Integer> grammarRules = new LinkedHashMap<>();
             Map<Presence, Integer> presences = new LinkedHashMap<>();
             List<String> unresolvedScopeFactIds = new ArrayList<>();
+            List<String> unresolvedSymbolFactIds = new ArrayList<>();
+            Map<SourceRangeCandidate, String> symbolDefinitionFactIds = new HashMap<>();
+            Map<SourceRangeCandidate, SymbolDefinitionEvidenceCandidate> symbolDefinitions =
+                    new HashMap<>();
             String legacyJson = root.toJson();
             if (legacyJson.isEmpty() || legacyJson.charAt(legacyJson.length() - 1) != '}') {
                 throw new IllegalStateException("FILE root did not serialize as a JSON object");
@@ -142,7 +162,8 @@ public final class EvidenceIrSealer {
             output.write(",\"evidence\":");
             try (JsonGenerator generator = JSON.getFactory().createGenerator(output)) {
                 generator.writeStartObject();
-                generator.writeStringField("version", VERSION);
+                generator.writeStringField("version",
+                        symbols == null ? VERSION : SYMBOL_VERSION);
                 generator.writeStringField("sourceId", normalizedSourceId);
                 generator.writeStringField("rawSourceSha256", Hashes.sha256(rawSource));
                 generator.writeStringField("decodedTextSha256", decodedHash);
@@ -152,9 +173,12 @@ public final class EvidenceIrSealer {
                 generator.writeStringField("positionEncoding", "unicode-code-point");
                 generator.writeStringField("rangeConvention", "half-open");
                 generator.writeStringField("rangeEncoding", "char-offset-length");
-                generator.writeStringField("parseStatus", unresolvedRegions > 0
-                        && "exact".equals(effectiveParseStatus)
-                                ? "partial" : effectiveParseStatus);
+                boolean unresolvedSymbols = symbols != null
+                        && symbols.unresolvedLookups() > 0;
+                generator.writeStringField("parseStatus",
+                        (unresolvedRegions > 0 || unresolvedSymbols)
+                                && "exact".equals(effectiveParseStatus)
+                                        ? "partial" : effectiveParseStatus);
                 if (configuredPreprocessing != null) {
                     writeConfiguredPreprocessing(generator, configuredPreprocessing);
                 }
@@ -177,6 +201,32 @@ public final class EvidenceIrSealer {
                         generator.writeTree(sealMacro(macro, normalizedSourceId, decodedHash,
                                 index, ordinals, grammarRules, presences,
                                 conditional.presenceAt(macro.range().startOffset())));
+                    }
+                }
+                if (symbols != null) {
+                    for (SymbolDefinitionEvidenceCandidate definition : symbols.definitions()) {
+                        ObjectNode fact = sealSymbolDefinition(definition, normalizedSourceId,
+                                decodedHash, index, ordinals, grammarRules, presences,
+                                conditional.presenceAt(definition.range().startOffset()));
+                        String previous = symbolDefinitionFactIds.put(
+                                definition.range(), fact.path("factId").asText());
+                        SymbolDefinitionEvidenceCandidate previousDefinition =
+                                symbolDefinitions.put(definition.range(), definition);
+                        if (previous != null || previousDefinition != null) {
+                            throw new IllegalStateException(
+                                    "duplicate C symbol definition range: " + definition.range());
+                        }
+                        generator.writeTree(fact);
+                    }
+                    for (SymbolLookupEvidenceCandidate lookup : symbols.lookups()) {
+                        ObjectNode fact = sealSymbolLookup(lookup, normalizedSourceId,
+                                decodedHash, index, ordinals, grammarRules, presences,
+                                conditional.presenceAt(lookup.range().startOffset()),
+                                symbolDefinitionFactIds, symbolDefinitions);
+                        if ("unresolved".equals(lookup.resolutionStatus())) {
+                            unresolvedSymbolFactIds.add(fact.path("factId").asText());
+                        }
+                        generator.writeTree(fact);
                     }
                 }
                 for (ConditionalRegionCandidate region : conditional.regions()) {
@@ -208,6 +258,8 @@ public final class EvidenceIrSealer {
                                     ? imports.candidates().size()
                             : "macro".equals(kind) && macros != null
                                     ? macros.candidates().size()
+                            : "symbol".equals(kind) && symbols != null
+                                    ? symbols.definitions().size() + symbols.lookups().size()
                             : "conditional_region".equals(kind) ? conditional.regions().size() : 0;
                     int unresolved = "macro".equals(kind) && macros != null
                             ? macros.explicitlyUnresolved()
@@ -242,10 +294,17 @@ public final class EvidenceIrSealer {
                             : "import".equals(kind)
                                     ? imports == null ? "unsupported"
                                             : !importReasons.isEmpty() ? "partial" : "complete"
+                            : "symbol".equals(kind)
+                                    ? symbols == null ? "unsupported"
+                                            : !unresolvedSymbolFactIds.isEmpty()
+                                                    ? "partial" : "complete"
                             : "conditional_region".equals(kind) ? "complete" : "unsupported";
                     List<String> reasons = "call".equals(kind)
                             ? callReasons : "macro".equals(kind) ? macroReasons
-                            : "import".equals(kind) ? importReasons : List.of();
+                            : "import".equals(kind) ? importReasons
+                            : "symbol".equals(kind) && !unresolvedSymbolFactIds.isEmpty()
+                                    ? List.of("insufficient_type_name_environment")
+                                    : List.of();
                     generator.writeStartObject();
                     generator.writeStringField("kind", kind);
                     generator.writeStringField("status", status);
@@ -259,6 +318,13 @@ public final class EvidenceIrSealer {
                             && !unresolvedScopeFactIds.isEmpty()) {
                         generator.writeArrayFieldStart("unresolvedScopeFactIds");
                         for (String factId : unresolvedScopeFactIds) generator.writeString(factId);
+                        generator.writeEndArray();
+                    }
+                    if ("symbol".equals(kind) && !unresolvedSymbolFactIds.isEmpty()) {
+                        generator.writeArrayFieldStart("unresolvedFactIds");
+                        for (String factId : unresolvedSymbolFactIds) {
+                            generator.writeString(factId);
+                        }
                         generator.writeEndArray();
                     }
                     generator.writeNumberField("population", emitted + unresolved);
@@ -284,7 +350,7 @@ public final class EvidenceIrSealer {
                                    ConditionalCompilationEvidence conditional,
                                    boolean callSupported) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, callSupported, null, null, null);
+                conditional, callSupported, null, null, null, null);
     }
 
     private static void writeConfiguredPreprocessing(
@@ -400,6 +466,90 @@ public final class EvidenceIrSealer {
         fact.put("presenceRef", reference(presences, candidate.presence()));
         ObjectNode payload = fact.putObject("payload");
         payload.put("condition", candidate.condition());
+        return fact;
+    }
+
+    private static ObjectNode sealSymbolDefinition(
+            SymbolDefinitionEvidenceCandidate candidate,
+            String sourceId,
+            String decodedHash,
+            CodePointIndex index,
+            Map<String, Integer> ordinals,
+            Map<String, Integer> grammarRules,
+            Map<Presence, Integer> presences,
+            Presence factPresence) {
+        index.requireValid(candidate.range());
+        index.requireValid(candidate.scopeRange());
+        index.requireSubrange(candidate.scopeRange(), candidate.range(),
+                "symbol definition");
+        String ordinalKey = "symbol\0" + candidate.range().startOffset()
+                + "\0" + candidate.range().endOffset();
+        int ordinal = ordinals.merge(ordinalKey, 1, Integer::sum) - 1;
+        ObjectNode fact = JSON.createObjectNode();
+        fact.put("factId", factId(sourceId, decodedHash, "symbol",
+                candidate.range(), ordinal));
+        fact.put("kind", "symbol");
+        fact.set("range", index.rangeJson(candidate.range()));
+        fact.put("grammarRuleRef", reference(grammarRules, candidate.grammarRule()));
+        fact.put("presenceRef", reference(presences, factPresence));
+        ObjectNode payload = fact.putObject("payload");
+        payload.put("role", "definition");
+        payload.put("symbolKind", candidate.symbolKind());
+        payload.put("scopeKind", candidate.scopeKind());
+        payload.set("scopeRange", index.rangeJson(candidate.scopeRange()));
+        payload.put("visibilityStartOffset", candidate.visibilityStartOffset());
+        return fact;
+    }
+
+    private static ObjectNode sealSymbolLookup(
+            SymbolLookupEvidenceCandidate candidate,
+            String sourceId,
+            String decodedHash,
+            CodePointIndex index,
+            Map<String, Integer> ordinals,
+            Map<String, Integer> grammarRules,
+            Map<Presence, Integer> presences,
+            Presence factPresence,
+            Map<SourceRangeCandidate, String> definitionFactIds,
+            Map<SourceRangeCandidate, SymbolDefinitionEvidenceCandidate> definitions) {
+        index.requireValid(candidate.range());
+        String ordinalKey = "symbol\0" + candidate.range().startOffset()
+                + "\0" + candidate.range().endOffset();
+        int ordinal = ordinals.merge(ordinalKey, 1, Integer::sum) - 1;
+        ObjectNode fact = JSON.createObjectNode();
+        fact.put("factId", factId(sourceId, decodedHash, "symbol",
+                candidate.range(), ordinal));
+        fact.put("kind", "symbol");
+        fact.set("range", index.rangeJson(candidate.range()));
+        fact.put("grammarRuleRef", reference(grammarRules, candidate.grammarRule()));
+        fact.put("presenceRef", reference(presences, factPresence));
+        ObjectNode payload = fact.putObject("payload");
+        payload.put("role", "lookup");
+        payload.put("lookupKind", "type_name");
+        payload.put("parserDecision", candidate.parserDecision());
+        payload.put("resolutionStatus", candidate.resolutionStatus());
+        payload.put("provenance", candidate.provenance());
+        if (candidate.definitionRange() == null) {
+            payload.putNull("definitionFactId");
+        } else {
+            String definitionFactId = definitionFactIds.get(candidate.definitionRange());
+            SymbolDefinitionEvidenceCandidate definition =
+                    definitions.get(candidate.definitionRange());
+            if (definitionFactId == null || definition == null
+                    || candidate.range().startOffset() < definition.visibilityStartOffset()
+                    || candidate.range().startOffset() >= definition.scopeRange().endOffset()) {
+                throw new IllegalStateException(
+                        "C symbol lookup does not resolve to a visible definition");
+            }
+            payload.put("definitionFactId", definitionFactId);
+        }
+        if (candidate.configuredEvidenceId() == null) {
+            payload.putNull("configuredEvidenceId");
+        } else {
+            payload.put("configuredEvidenceId", candidate.configuredEvidenceId());
+        }
+        ArrayNode contexts = payload.putArray("predicateContexts");
+        candidate.predicateContexts().forEach(contexts::add);
         return fact;
     }
 
