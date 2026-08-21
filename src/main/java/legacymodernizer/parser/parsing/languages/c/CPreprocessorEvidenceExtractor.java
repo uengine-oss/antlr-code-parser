@@ -19,6 +19,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import legacymodernizer.parser.antlr.c.preprocessor.CPreprocessorLexer;
 import legacymodernizer.parser.antlr.c.preprocessor.CPreprocessorParser;
 import legacymodernizer.parser.antlr.c.preprocessor.CPreprocessorParserBaseListener;
+import legacymodernizer.parser.parsing.evidence.ImportBindingCandidate;
 import legacymodernizer.parser.parsing.evidence.ImportEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.ImportEvidenceExtraction;
 import legacymodernizer.parser.parsing.evidence.MacroEvidenceCandidate;
@@ -108,11 +109,24 @@ public final class CPreprocessorEvidenceExtractor {
                         ? "quoted"
                         : target instanceof CPreprocessorParser.AngleIncludeTargetContext
                                 ? "angle" : "computed";
+                SourceRangeCandidate targetRange =
+                        spliced.semanticRange(target.getStart(), target.getStop());
+                String importKind = "computed".equals(targetKind)
+                        ? "computed" : "source_file";
+                String locality = "quoted".equals(targetKind)
+                        ? "local" : "angle".equals(targetKind) ? "system" : "unspecified";
+                List<SourceRangeCandidate> pathComponents = "computed".equals(targetKind)
+                        ? List.of()
+                        : List.of(new SourceRangeCandidate(
+                                targetRange.startOffset() + 1,
+                                targetRange.endOffset() - 1));
                 imports.add(new ImportEvidenceCandidate(
                         "includeLine",
                         spliced.outerRange(context.HASH().getSymbol(), context.getStop()),
-                        spliced.semanticRange(target.getStart(), target.getStop()),
-                        targetKind));
+                        "include",
+                        List.of(new ImportBindingCandidate(
+                                importKind, targetKind, targetRange, pathComponents,
+                                null, null, 0, false, locality))));
             } catch (IllegalArgumentException noncontiguous) {
                 unresolvedImports++;
                 importReasons.add(NONCONTIGUOUS_REASON);

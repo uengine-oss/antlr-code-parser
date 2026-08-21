@@ -63,7 +63,8 @@ public class JavaLanguageModule extends AntlrLanguageModuleSupport {
                 Java20Lexer::new, Java20Parser::new, Java20Parser::start_, JavaAstListener::new);
         String astJson = evidenceSourceId != null
                 ? EvidenceIrSealer.sealExact(run.listener().getRoot(), sourceBytes, decoded,
-                        evidenceSourceId, parseStatus(run), run.listener().callEvidenceCandidates())
+                        evidenceSourceId, parseStatus(run), run.listener().callEvidenceCandidates(),
+                        run.listener().importEvidenceExtraction())
                 : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
                 Set.of("normalClassDeclaration", "normalInterfaceDeclaration",

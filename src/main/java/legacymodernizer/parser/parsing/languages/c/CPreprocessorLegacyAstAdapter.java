@@ -1,6 +1,7 @@
 package legacymodernizer.parser.parsing.languages.c;
 
 import legacymodernizer.parser.model.Node;
+import legacymodernizer.parser.parsing.evidence.ImportBindingCandidate;
 import legacymodernizer.parser.parsing.evidence.ImportEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.ImportEvidenceExtraction;
 import legacymodernizer.parser.parsing.evidence.MacroEvidenceCandidate;
@@ -40,10 +41,11 @@ public final class CPreprocessorLegacyAstAdapter {
         int[] codePoints = source.codePoints().toArray();
         int[] sourceLines = lineIndex(codePoints);
         for (ImportEvidenceCandidate include : extraction.candidates()) {
+            ImportBindingCandidate entry = include.entries().get(0);
             int startLine = sourceLines[include.range().startOffset()];
             int endLine = sourceLines[Math.max(
                     include.range().startOffset(), include.range().endOffset() - 1)];
-            Node node = new Node("INCLUDE", slice(codePoints, include.targetRange()),
+            Node node = new Node("INCLUDE", slice(codePoints, entry.targetRange()),
                     startLine, root);
             node.endLine = endLine;
         }

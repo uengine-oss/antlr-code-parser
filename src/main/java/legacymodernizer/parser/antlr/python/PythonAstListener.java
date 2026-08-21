@@ -7,8 +7,13 @@ import java.util.Stack;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
 import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.ImportBindingCandidate;
+import legacymodernizer.parser.parsing.evidence.ImportEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.ImportEvidenceExtraction;
+import legacymodernizer.parser.parsing.evidence.SourceRangeCandidate;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -33,6 +38,7 @@ public class PythonAstListener extends PythonParserBaseListener
     private final ListenerHelper h;
     private List<String> pendingDecorators = new ArrayList<>();
     private final List<CallEvidenceCandidate> callEvidence = new ArrayList<>();
+    private final List<ImportEvidenceCandidate> importEvidence = new ArrayList<>();
 
     public PythonAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
         this.h = new ListenerHelper(tokens, tracker);
@@ -49,6 +55,11 @@ public class PythonAstListener extends PythonParserBaseListener
     @Override
     public List<CallEvidenceCandidate> callEvidenceCandidates() {
         return List.copyOf(callEvidence);
+    }
+
+    @Override
+    public ImportEvidenceExtraction importEvidenceExtraction() {
+        return new ImportEvidenceExtraction(importEvidence, 0, List.of());
     }
 
     @Override
@@ -204,6 +215,17 @@ public class PythonAstListener extends PythonParserBaseListener
             name = ParserUtils.getOriginalText(ctx.dotted_as_names(), h.getTokens());
         }
         h.enterStatement("IMPORT", name, ctx.getStart().getLine());
+        List<ImportBindingCandidate> entries = new ArrayList<>();
+        for (PythonParser.Dotted_as_nameContext item
+                : ctx.dotted_as_names().dotted_as_name()) {
+            SourceRangeCandidate alias = item.name() == null ? null : range(item.name());
+            entries.add(new ImportBindingCandidate(
+                    "module", "qualified", range(item),
+                    pythonNameRanges(item.dotted_name()), null, alias,
+                    0, false, "unspecified"));
+        }
+        importEvidence.add(new ImportEvidenceCandidate(
+                "import_stmt", range(ctx), "import", entries));
     }
 
     @Override
@@ -215,11 +237,61 @@ public class PythonAstListener extends PythonParserBaseListener
     public void enterFrom_stmt(PythonParser.From_stmtContext ctx) {
         String text = ParserUtils.getOriginalText(ctx, h.getTokens());
         h.enterStatement("IMPORT", text, ctx.getStart().getLine());
+        int relativeLevel = ctx.DOT().size() + ctx.ELLIPSIS().size() * 3;
+        List<SourceRangeCandidate> path = ctx.dotted_name() == null
+                ? List.of() : pythonNameRanges(ctx.dotted_name());
+        List<ImportBindingCandidate> entries = new ArrayList<>();
+        if (ctx.STAR() != null) {
+            entries.add(new ImportBindingCandidate(
+                    "module_member", "qualified",
+                    range(ctx.STAR().getSymbol(), ctx.STAR().getSymbol()),
+                    path, null, null, relativeLevel, true, "unspecified"));
+        } else {
+            for (PythonParser.Import_as_nameContext item
+                    : ctx.import_as_names().import_as_name()) {
+                List<PythonParser.NameContext> names = item.name();
+                SourceRangeCandidate member = range(names.get(0));
+                SourceRangeCandidate alias = names.size() > 1 ? range(names.get(1)) : null;
+                entries.add(new ImportBindingCandidate(
+                        "module_member", "qualified", range(item), path,
+                        member, alias, relativeLevel, false, "unspecified"));
+            }
+        }
+        importEvidence.add(new ImportEvidenceCandidate(
+                "from_stmt", range(ctx), "import", entries));
     }
 
     @Override
     public void exitFrom_stmt(PythonParser.From_stmtContext ctx) {
         exitStatement("IMPORT", ctx.getStop().getLine(), ctx);
+    }
+
+    private static SourceRangeCandidate range(ParserRuleContext context) {
+        return range(context.getStart(), context.getStop());
+    }
+
+    private static SourceRangeCandidate range(Token start, Token stop) {
+        if (start == null || stop == null) {
+            throw new IllegalArgumentException("ANTLR token boundary is required");
+        }
+        return new SourceRangeCandidate(start.getStartIndex(), stop.getStopIndex() + 1);
+    }
+
+    private static List<SourceRangeCandidate> pythonNameRanges(ParseTree path) {
+        List<SourceRangeCandidate> result = new ArrayList<>();
+        collectPythonNameRanges(path, result);
+        return List.copyOf(result);
+    }
+
+    private static void collectPythonNameRanges(
+            ParseTree tree, List<SourceRangeCandidate> result) {
+        if (tree instanceof PythonParser.NameContext name) {
+            result.add(range(name));
+            return;
+        }
+        for (int index = 0; index < tree.getChildCount(); index++) {
+            collectPythonNameRanges(tree.getChild(index), result);
+        }
     }
 
     // ========================================

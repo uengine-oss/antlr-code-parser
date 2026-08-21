@@ -61,7 +61,8 @@ public class PythonLanguageModule extends AntlrLanguageModuleSupport {
                 PythonLexer::new, PythonParser::new, PythonParser::root, PythonAstListener::new);
         String astJson = evidenceSourceId != null
                 ? EvidenceIrSealer.sealExact(run.listener().getRoot(), sourceBytes, decoded,
-                        evidenceSourceId, parseStatus(run), run.listener().callEvidenceCandidates())
+                        evidenceSourceId, parseStatus(run), run.listener().callEvidenceCandidates(),
+                        run.listener().importEvidenceExtraction())
                 : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
                 Set.of("classdef", "funcdef"), astJson, Set.of("CLASS", "FUNCTION", "METHOD"));

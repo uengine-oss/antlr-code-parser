@@ -12,6 +12,10 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.ImportBindingCandidate;
+import legacymodernizer.parser.parsing.evidence.ImportEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.ImportEvidenceExtraction;
+import legacymodernizer.parser.parsing.evidence.SourceRangeCandidate;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -26,6 +30,7 @@ public class JavaAstListener extends Java20ParserBaseListener
 
     private final ListenerHelper h;
     private final List<CallEvidenceCandidate> callEvidence = new ArrayList<>();
+    private final List<ImportEvidenceCandidate> importEvidence = new ArrayList<>();
 
     public JavaAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
         this.h = new ListenerHelper(tokens, tracker);
@@ -34,6 +39,9 @@ public class JavaAstListener extends Java20ParserBaseListener
     public Node getRoot() { return h.getRoot(); }
     public void setFileInfo(String fileName, String filePath) { h.setFileInfo(fileName, filePath); }
     @Override public List<CallEvidenceCandidate> callEvidenceCandidates() { return List.copyOf(callEvidence); }
+    @Override public ImportEvidenceExtraction importEvidenceExtraction() {
+        return new ImportEvidenceExtraction(importEvidence, 0, List.of());
+    }
 
     @Override
     public void enterEveryRule(ParserRuleContext ctx) { h.checkProgress(ctx); }
@@ -91,16 +99,86 @@ public class JavaAstListener extends Java20ParserBaseListener
     
     @Override
     public void enterImportDeclaration(Java20Parser.ImportDeclarationContext ctx) {
-        String text = ctx.getText();
-        String name = (text != null)
-                ? text.replaceFirst("^import\\s*", "").replaceAll("\\s*;\\s*$", "").trim()
-                : null;
-        h.enterStatement("IMPORT", name, ctx.getStart().getLine());
+        ImportBindingCandidate entry;
+        String grammarRule;
+        String legacyName;
+        if (ctx.singleTypeImportDeclaration() != null) {
+            var declaration = ctx.singleTypeImportDeclaration();
+            var path = declaration.typeName();
+            grammarRule = "singleTypeImportDeclaration";
+            legacyName = path.getText();
+            entry = new ImportBindingCandidate(
+                    "type", "qualified", range(path), componentRanges(path),
+                    null, null, 0, false, "unspecified");
+        } else if (ctx.typeImportOnDemandDeclaration() != null) {
+            var declaration = ctx.typeImportOnDemandDeclaration();
+            var path = declaration.packageOrTypeName();
+            grammarRule = "typeImportOnDemandDeclaration";
+            legacyName = path.getText() + ".*";
+            entry = new ImportBindingCandidate(
+                    "namespace", "qualified",
+                    range(path.getStart(), declaration.MUL().getSymbol()),
+                    componentRanges(path), null, null, 0, true, "unspecified");
+        } else if (ctx.singleStaticImportDeclaration() != null) {
+            var declaration = ctx.singleStaticImportDeclaration();
+            var path = declaration.typeName();
+            grammarRule = "singleStaticImportDeclaration";
+            legacyName = "static " + path.getText() + "." + declaration.identifier().getText();
+            entry = new ImportBindingCandidate(
+                    "static_member", "qualified",
+                    range(path.getStart(), declaration.identifier().getStop()),
+                    componentRanges(path), range(declaration.identifier()), null,
+                    0, false, "unspecified");
+        } else if (ctx.staticImportOnDemandDeclaration() != null) {
+            var declaration = ctx.staticImportOnDemandDeclaration();
+            var path = declaration.typeName();
+            grammarRule = "staticImportOnDemandDeclaration";
+            legacyName = "static " + path.getText() + ".*";
+            entry = new ImportBindingCandidate(
+                    "static_member", "qualified",
+                    range(path.getStart(), declaration.MUL().getSymbol()),
+                    componentRanges(path), null, null, 0, true, "unspecified");
+        } else {
+            throw new IllegalStateException("importDeclaration has no grammar alternative");
+        }
+        h.enterStatement("IMPORT", legacyName, ctx.getStart().getLine());
+        importEvidence.add(new ImportEvidenceCandidate(
+                grammarRule, range(ctx), "import", List.of(entry)));
     }
     
     @Override
     public void exitImportDeclaration(Java20Parser.ImportDeclarationContext ctx) {
         h.exitStatement("IMPORT", ctx.getStop().getLine(), ctx);
+    }
+
+    private static SourceRangeCandidate range(ParserRuleContext context) {
+        return range(context.getStart(), context.getStop());
+    }
+
+    private static SourceRangeCandidate range(Token start, Token stop) {
+        if (start == null || stop == null) {
+            throw new IllegalArgumentException("ANTLR token boundary is required");
+        }
+        return new SourceRangeCandidate(start.getStartIndex(), stop.getStopIndex() + 1);
+    }
+
+    private static List<SourceRangeCandidate> componentRanges(ParserRuleContext path) {
+        List<SourceRangeCandidate> result = new ArrayList<>();
+        collectComponentRanges(path, result);
+        return List.copyOf(result);
+    }
+
+    private static void collectComponentRanges(
+            ParseTree tree, List<SourceRangeCandidate> result) {
+        if (tree instanceof TerminalNode terminal) {
+            if (!".".equals(terminal.getText())) {
+                result.add(range(terminal.getSymbol(), terminal.getSymbol()));
+            }
+            return;
+        }
+        for (int index = 0; index < tree.getChildCount(); index++) {
+            collectComponentRanges(tree.getChild(index), result);
+        }
     }
     
     // ========================================

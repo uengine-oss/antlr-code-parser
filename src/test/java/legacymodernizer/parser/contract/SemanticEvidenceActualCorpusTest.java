@@ -132,7 +132,7 @@ class SemanticEvidenceActualCorpusTest {
 
             JsonNode root = JSON.readTree(first.astJson());
             JsonNode evidence = root.path("evidence");
-            assertEquals("1.0.0", evidence.path("version").asText());
+            assertEquals("1.1.0", evidence.path("version").asText());
             assertEquals(first.sourceSha256(), evidence.path("rawSourceSha256").asText());
             assertEquals(source, evidence.path("decodedText").asText(),
                     "sealed decoded source mismatch in " + sourcePath);
@@ -205,7 +205,8 @@ class SemanticEvidenceActualCorpusTest {
                     imports.add(fact);
                     importFacts++;
                     orderedImportIds.add(factId);
-                    switch (fact.path("payload").path("targetKind").asText()) {
+                    JsonNode importEntry = fact.path("payload").path("entries").get(0);
+                    switch (importEntry.path("targetKind").asText()) {
                         case "quoted" -> quotedImports++;
                         case "angle" -> angleImports++;
                         case "computed" -> computedImports++;
@@ -246,7 +247,8 @@ class SemanticEvidenceActualCorpusTest {
             for (int i = 0; i < imports.size(); i++) {
                 JsonNode fact = imports.get(i);
                 JsonNode include = includeNodes.get(i);
-                JsonNode targetRange = fact.path("payload").path("targetRange");
+                JsonNode targetRange = fact.path("payload").path("entries").get(0)
+                        .path("targetRange");
                 assertEquals(slice(source, targetRange), include.path("name").asText(),
                         "legacy INCLUDE target diverged from grammar fact in " + sourcePath);
                 assertEquals(lineOfOffset(source, rangeStart(fact.path("range"))),
@@ -377,7 +379,7 @@ class SemanticEvidenceActualCorpusTest {
                 globalFactIds.size(), "global fact/evidence ID set accounting mismatch");
 
         ObjectNode report = JSON.createObjectNode();
-        report.put("contractVersion", "1.0.0");
+        report.put("contractVersion", "1.1.0");
         report.put("corpus", corpus.toString().replace('\\', '/'));
         report.put("sourceFiles", sources.size());
         report.put("sourceInventorySha256", sourceInventoryHash(workspace.sourceDir(), sources));
@@ -583,13 +585,19 @@ class SemanticEvidenceActualCorpusTest {
         JsonNode payload = fact.path("payload");
         assertEquals("include", payload.path("directiveKind").asText(),
                 "invalid import directive kind in " + path);
+        assertEquals(1, payload.path("entries").size(),
+                "C include must own exactly one binding entry in " + path);
+        JsonNode entry = payload.path("entries").get(0);
         assertTrue(Set.of("quoted", "angle", "computed")
-                        .contains(payload.path("targetKind").asText()),
+                        .contains(entry.path("targetKind").asText()),
                 "invalid import target kind in " + path + ": " + fact);
-        JsonNode targetRange = payload.path("targetRange");
+        JsonNode targetRange = entry.path("targetRange");
         assertSubrange(directiveStart, directiveEnd, targetRange, "import target", path);
         assertFalse(slice(source, targetRange).isBlank(),
                 "empty import target range in " + path);
+        entry.path("pathComponentRanges").forEach(component ->
+                assertSubrange(directiveStart, directiveEnd, component,
+                        "import path component", path));
     }
 
     private static void assertSubrange(int outerStart, int outerEnd, JsonNode range,
@@ -679,7 +687,8 @@ class SemanticEvidenceActualCorpusTest {
                                      String reason) {
         selectRangeFact(selection, fact, evidence, sourceId, reason, display -> {
             display.put("directive", slice(source, fact.path("range")));
-            display.put("target", slice(source, fact.path("payload").path("targetRange")));
+            display.put("target", slice(source, fact.path("payload").path("entries")
+                    .get(0).path("targetRange")));
         });
     }
 

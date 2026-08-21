@@ -17,6 +17,7 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence;
+import legacymodernizer.parser.parsing.evidence.ImportEvidenceExtraction;
 import legacymodernizer.parser.recovery.diagnostics.CollectingAntlrErrorListener;
 import legacymodernizer.parser.recovery.diagnostics.CountingErrorStrategy;
 import legacymodernizer.parser.recovery.diagnostics.DiagnosticPhase;
@@ -50,6 +51,11 @@ public final class AntlrParseHarness {
 
         default ConditionalCompilationEvidence conditionalCompilationEvidence() {
             return ConditionalCompilationEvidence.NONE;
+        }
+
+        /** Grammar-owned import/include statements, or null when the frontend is unsupported. */
+        default ImportEvidenceExtraction importEvidenceExtraction() {
+            return null;
         }
     }
 

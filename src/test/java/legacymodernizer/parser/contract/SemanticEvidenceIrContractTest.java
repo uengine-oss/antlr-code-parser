@@ -62,7 +62,7 @@ class SemanticEvidenceIrContractTest {
         for (Map.Entry<String, Fixture> entry : fixtures.entrySet()) {
             JsonNode evidence = parse(workspace, entry.getValue()).path("evidence");
             assertFalse(evidence.isMissingNode(), entry.getKey() + " omitted evidence envelope");
-            assertEquals("1.0.0", evidence.path("version").asText());
+            assertEquals("1.1.0", evidence.path("version").asText());
             assertEquals(entry.getValue().relativePath(), evidence.path("sourceId").asText());
             assertEquals(64, evidence.path("rawSourceSha256").asText().length());
             assertEquals(64, evidence.path("decodedTextSha256").asText().length());
@@ -329,6 +329,81 @@ class SemanticEvidenceIrContractTest {
     }
 
     @Test
+    void importsPublishGrammarOwnedOrderedBindingEntriesAcrossLanguages() throws Exception {
+        ParserWorkspace workspace = workspace();
+
+        String cSource = "#include <system/api.h>\n"
+                + "#include \"local/config.h\"\n"
+                + "#include HEADER_MACRO\n";
+        JsonNode cRoot = parse(workspace, new Fixture(new CLanguageModule(workspace),
+                "imports/sample.c", cSource));
+        List<JsonNode> cImports = facts(cRoot, "import");
+        assertEquals(3, cImports.size());
+        assertImportEntry(cRoot, cSource, cImports.get(0), 0,
+                "source_file", "angle", "<system/api.h>",
+                List.of("system/api.h"), null, null, 0, false, "system");
+        assertImportEntry(cRoot, cSource, cImports.get(1), 0,
+                "source_file", "quoted", "\"local/config.h\"",
+                List.of("local/config.h"), null, null, 0, false, "local");
+        assertImportEntry(cRoot, cSource, cImports.get(2), 0,
+                "computed", "computed", "HEADER_MACRO",
+                List.of(), null, null, 0, false, "unspecified");
+
+        String javaSource = "package use;\n"
+                + "import pkg.Type;\n"
+                + "import pkg.types.*;\n"
+                + "import static pkg.Constants.VALUE;\n"
+                + "import static pkg.Constants.*;\n"
+                + "class Sample {}\n";
+        JsonNode javaRoot = parse(workspace, new Fixture(new JavaLanguageModule(workspace),
+                "imports/Sample.java", javaSource));
+        List<JsonNode> javaImports = facts(javaRoot, "import");
+        assertEquals(4, javaImports.size());
+        assertImportEntry(javaRoot, javaSource, javaImports.get(0), 0,
+                "type", "qualified", "pkg.Type", List.of("pkg", "Type"),
+                null, null, 0, false, "unspecified");
+        assertImportEntry(javaRoot, javaSource, javaImports.get(1), 0,
+                "namespace", "qualified", "pkg.types.*", List.of("pkg", "types"),
+                null, null, 0, true, "unspecified");
+        assertImportEntry(javaRoot, javaSource, javaImports.get(2), 0,
+                "static_member", "qualified", "pkg.Constants.VALUE",
+                List.of("pkg", "Constants"), "VALUE", null, 0, false, "unspecified");
+        assertImportEntry(javaRoot, javaSource, javaImports.get(3), 0,
+                "static_member", "qualified", "pkg.Constants.*",
+                List.of("pkg", "Constants"), null, null, 0, true, "unspecified");
+        assertEquals("complete", completeness(javaRoot, "import").path("status").asText());
+
+        String pythonSource = "import pkg.mod, other as renamed\n"
+                + "from ..base.tools import first as one, second\n"
+                + "from . import child\n"
+                + "from pkg.public import *\n";
+        JsonNode pythonRoot = parse(workspace, new Fixture(new PythonLanguageModule(workspace),
+                "imports/sample.py", pythonSource));
+        List<JsonNode> pythonImports = facts(pythonRoot, "import");
+        assertEquals(4, pythonImports.size(), "facts are import statements, not flattened names");
+        assertEquals(2, pythonImports.get(0).path("payload").path("entries").size());
+        assertImportEntry(pythonRoot, pythonSource, pythonImports.get(0), 0,
+                "module", "qualified", "pkg.mod", List.of("pkg", "mod"),
+                null, null, 0, false, "unspecified");
+        assertImportEntry(pythonRoot, pythonSource, pythonImports.get(0), 1,
+                "module", "qualified", "other as renamed", List.of("other"),
+                null, "renamed", 0, false, "unspecified");
+        assertImportEntry(pythonRoot, pythonSource, pythonImports.get(1), 0,
+                "module_member", "qualified", "first as one", List.of("base", "tools"),
+                "first", "one", 2, false, "unspecified");
+        assertImportEntry(pythonRoot, pythonSource, pythonImports.get(1), 1,
+                "module_member", "qualified", "second", List.of("base", "tools"),
+                "second", null, 2, false, "unspecified");
+        assertImportEntry(pythonRoot, pythonSource, pythonImports.get(2), 0,
+                "module_member", "qualified", "child", List.of(),
+                "child", null, 1, false, "unspecified");
+        assertImportEntry(pythonRoot, pythonSource, pythonImports.get(3), 0,
+                "module_member", "qualified", "*", List.of("pkg", "public"),
+                null, null, 0, true, "unspecified");
+        assertEquals("complete", completeness(pythonRoot, "import").path("status").asText());
+    }
+
+    @Test
     void unknownConditionalCompilationNeverBecomesAFalseConcreteBuild() throws Exception {
         ParserWorkspace workspace = workspace();
         String source = "void run(void) {\n"
@@ -529,6 +604,30 @@ class SemanticEvidenceIrContractTest {
         List<String> result = new ArrayList<>();
         ranges.forEach(range -> result.add(slice(source, range)));
         return result;
+    }
+
+    private static void assertImportEntry(
+            JsonNode root, String source, JsonNode fact, int ordinal,
+            String importKind, String targetKind, String target,
+            List<String> pathComponents, String member, String alias,
+            int relativeLevel, boolean wildcard, String locality) {
+        JsonNode entries = fact.path("payload").path("entries");
+        assertTrue(ordinal >= 0 && ordinal < entries.size(), "missing import binding entry");
+        JsonNode entry = entries.get(ordinal);
+        assertEquals(importKind, entry.path("importKind").asText());
+        assertEquals(targetKind, entry.path("targetKind").asText());
+        assertEquals(target, slice(source, entry.path("targetRange")));
+        assertEquals(pathComponents,
+                rangeSlices(source, entry.path("pathComponentRanges")));
+        if (member == null) assertTrue(entry.path("memberRange").isNull());
+        else assertEquals(member, slice(source, entry.path("memberRange")));
+        if (alias == null) assertTrue(entry.path("aliasRange").isNull());
+        else assertEquals(alias, slice(source, entry.path("aliasRange")));
+        assertEquals(relativeLevel, entry.path("relativeLevel").asInt(-1));
+        assertEquals(wildcard, entry.path("wildcard").asBoolean());
+        assertEquals(locality, entry.path("locality").asText());
+        assertEquals("active", presence(root, fact).path("status").asText());
+        assertExactSlice(source, fact);
     }
 
     private static void assertNoDuplicatedSourceText(JsonNode call) {

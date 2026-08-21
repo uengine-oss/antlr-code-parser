@@ -28,7 +28,7 @@ import legacymodernizer.parser.recovery.workingcopy.Hashes;
  */
 public final class EvidenceIrSealer {
 
-    private static final String VERSION = "1.0.0";
+    private static final String VERSION = "1.1.0";
     private static final String ID_DOMAIN = "robo-evidence-v1";
     private static final List<String> KINDS = List.of(
             "call", "import", "symbol", "literal", "assignment", "parameter",
@@ -73,6 +73,16 @@ public final class EvidenceIrSealer {
                                    MacroEvidenceExtraction macros) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
                 conditional, true, macros, null, null);
+    }
+
+    public static String sealExact(Node root, byte[] rawSource,
+                                   SourceTextCodec.DecodedText decoded,
+                                   String sourceId,
+                                   String parseStatus,
+                                   List<CallEvidenceCandidate> calls,
+                                   ImportEvidenceExtraction imports) {
+        return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
+                ConditionalCompilationEvidence.NONE, true, null, imports, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -402,11 +412,6 @@ public final class EvidenceIrSealer {
                                          Map<Presence, Integer> presences,
                                          Presence factPresence) {
         index.requireValid(candidate.range());
-        index.requireValid(candidate.targetRange());
-        if (candidate.targetRange().startOffset() < candidate.range().startOffset()
-                || candidate.targetRange().endOffset() > candidate.range().endOffset()) {
-            throw new IllegalArgumentException("import target range is outside directive range");
-        }
         String ordinalKey = "import\0" + candidate.range().startOffset()
                 + "\0" + candidate.range().endOffset();
         int ordinal = ordinals.merge(ordinalKey, 1, Integer::sum) - 1;
@@ -417,9 +422,33 @@ public final class EvidenceIrSealer {
         fact.put("grammarRuleRef", reference(grammarRules, candidate.grammarRule()));
         fact.put("presenceRef", reference(presences, factPresence));
         ObjectNode payload = fact.putObject("payload");
-        payload.put("directiveKind", "include");
-        payload.put("targetKind", candidate.targetKind());
-        payload.set("targetRange", index.rangeJson(candidate.targetRange()));
+        payload.put("directiveKind", candidate.directiveKind());
+        ArrayNode entries = payload.putArray("entries");
+        for (ImportBindingCandidate entry : candidate.entries()) {
+            index.requireSubrange(candidate.range(), entry.targetRange(), "import target");
+            ObjectNode encoded = entries.addObject();
+            encoded.put("importKind", entry.importKind());
+            encoded.put("targetKind", entry.targetKind());
+            encoded.set("targetRange", index.rangeJson(entry.targetRange()));
+            ArrayNode components = encoded.putArray("pathComponentRanges");
+            for (SourceRangeCandidate component : entry.pathComponentRanges()) {
+                index.requireSubrange(candidate.range(), component, "import path component");
+                components.add(index.rangeJson(component));
+            }
+            if (entry.memberRange() == null) encoded.putNull("memberRange");
+            else {
+                index.requireSubrange(candidate.range(), entry.memberRange(), "import member");
+                encoded.set("memberRange", index.rangeJson(entry.memberRange()));
+            }
+            if (entry.aliasRange() == null) encoded.putNull("aliasRange");
+            else {
+                index.requireSubrange(candidate.range(), entry.aliasRange(), "import alias");
+                encoded.set("aliasRange", index.rangeJson(entry.aliasRange()));
+            }
+            encoded.put("relativeLevel", entry.relativeLevel());
+            encoded.put("wildcard", entry.wildcard());
+            encoded.put("locality", entry.locality());
+        }
         return fact;
     }
 
