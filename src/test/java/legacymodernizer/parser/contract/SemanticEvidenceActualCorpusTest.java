@@ -2,6 +2,7 @@ package legacymodernizer.parser.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -103,14 +104,18 @@ class SemanticEvidenceActualCorpusTest {
         Set<String> globalFactIds = new HashSet<>();
         List<String> orderedFactIds = new ArrayList<>();
         List<String> orderedCallIds = new ArrayList<>();
+        List<String> orderedCallBindingRows = new ArrayList<>();
+        List<String> orderedCallableIds = new ArrayList<>();
         List<String> orderedImportIds = new ArrayList<>();
         List<String> orderedMacroIds = new ArrayList<>();
         List<String> orderedSymbolIds = new ArrayList<>();
         List<String> orderedPreprocessingIds = new ArrayList<>();
         Map<String, ObjectNode> sealedSelection = new LinkedHashMap<>();
         List<ObjectNode> sealedSymbolCandidates = new ArrayList<>();
+        List<ObjectNode> sealedCallBindingCandidates = new ArrayList<>();
         ArrayNode files = JSON.createArrayNode();
         long legacyCalls = 0;
+        long legacyFunctions = 0;
         long legacyIncludes = 0;
         long callFacts = 0;
         long activeCalls = 0;
@@ -119,6 +124,24 @@ class SemanticEvidenceActualCorpusTest {
         long namedCalls = 0;
         long constructorCalls = 0;
         long expressionCalls = 0;
+        long declarationBoundCalls = 0;
+        long directDefinitionCalls = 0;
+        long compatibleDefinitionCalls = 0;
+        long externalCalls = 0;
+        long configurationDependentCalls = 0;
+        long dynamicCalls = 0;
+        long ambiguousCalls = 0;
+        long unsupportedCalls = 0;
+        long callableFacts = 0;
+        long callableDeclarations = 0;
+        long callableDefinitions = 0;
+        long sourceFileCallables = 0;
+        long corpusCallables = 0;
+        long unavailableCallableCompatibility = 0;
+        long sourceFileCallableCompatibility = 0;
+        long corpusCallableCompatibility = 0;
+        long configurationCallableCompatibility = 0;
+        long configurationDependentDefinitions = 0;
         long conditionalRegions = 0;
         long importFacts = 0;
         long quotedImports = 0;
@@ -154,7 +177,7 @@ class SemanticEvidenceActualCorpusTest {
 
             JsonNode root = JSON.readTree(first.astJson());
             JsonNode evidence = root.path("evidence");
-            assertEquals("1.2.0", evidence.path("version").asText());
+            assertEquals("1.3.0", evidence.path("version").asText());
             assertEquals(first.sourceSha256(), evidence.path("rawSourceSha256").asText());
             assertEquals(source, evidence.path("decodedText").asText(),
                     "sealed decoded source mismatch in " + sourcePath);
@@ -208,11 +231,19 @@ class SemanticEvidenceActualCorpusTest {
             }
 
             List<JsonNode> calls = new ArrayList<>();
+            List<JsonNode> callables = new ArrayList<>();
             List<JsonNode> imports = new ArrayList<>();
             List<JsonNode> macros = new ArrayList<>();
             List<JsonNode> regions = new ArrayList<>();
             List<JsonNode> symbols = new ArrayList<>();
             Set<String> definitionIds = new HashSet<>();
+            Map<String, JsonNode> factsById = new LinkedHashMap<>();
+            evidence.path("facts").forEach(fact -> {
+                String factId = fact.path("factId").asText();
+                assertFalse(factId.isBlank(), "fact omitted identity in " + sourcePath);
+                assertNull(factsById.put(factId, fact),
+                        "duplicate fact identity in " + sourcePath + ": " + factId);
+            });
             evidence.path("facts").forEach(fact -> {
                 if ("symbol".equals(fact.path("kind").asText())
                         && "definition".equals(fact.path("payload").path("role").asText())) {
@@ -228,6 +259,9 @@ class SemanticEvidenceActualCorpusTest {
                 verifyExactSlice(source, fact, sourcePath);
                 if ("call".equals(fact.path("kind").asText())) {
                     verifyCallSubranges(source, fact, sourcePath);
+                    verifyCallBinding(fact, factsById, evidence, source, sourcePath);
+                    orderedCallBindingRows.add(factId + "\0"
+                            + fact.path("payload").path("binding").toString());
                     calls.add(fact);
                     callFacts++;
                     switch (fact.path("payload").path("calleeKind").asText()) {
@@ -236,13 +270,67 @@ class SemanticEvidenceActualCorpusTest {
                         case "expression" -> expressionCalls++;
                         default -> throw new AssertionError("invalid callee kind: " + fact);
                     }
+                    switch (fact.path("payload").path("binding")
+                            .path("status").asText()) {
+                        case "declaration_bound" -> declarationBoundCalls++;
+                        case "external" -> externalCalls++;
+                        case "configuration_dependent" -> configurationDependentCalls++;
+                        case "dynamic" -> dynamicCalls++;
+                        case "ambiguous" -> ambiguousCalls++;
+                        case "unsupported" -> unsupportedCalls++;
+                        default -> throw new AssertionError("invalid call binding status: " + fact);
+                    }
+                    switch (fact.path("payload").path("binding")
+                            .path("resolutionMode").asText()) {
+                        case "direct_definition" -> directDefinitionCalls++;
+                        case "compatible_definition" -> compatibleDefinitionCalls++;
+                        case "none" -> { }
+                        default -> throw new AssertionError(
+                                "invalid call binding resolution mode: " + fact);
+                    }
                     orderedCallIds.add(factId);
+                    sealedCallBindingCandidates.add(callBindingCandidate(
+                            fact, evidence, sourceId, source));
                     switch (presence(evidence, fact).path("status").asText()) {
                         case "active" -> activeCalls++;
                         case "inactive" -> inactiveCalls++;
                         case "conditional", "unknown" -> conditionalCalls++;
                         default -> throw new AssertionError("invalid call presence: " + fact);
                     }
+                } else if ("callable".equals(fact.path("kind").asText())) {
+                    verifyCallableFact(fact, sourcePath);
+                    callables.add(fact);
+                    callableFacts++;
+                    orderedCallableIds.add(factId);
+                    if ("definition".equals(fact.path("payload").path("role").asText())) {
+                        callableDefinitions++;
+                    } else {
+                        callableDeclarations++;
+                    }
+                    if ("source_file".equals(fact.path("payload")
+                            .path("targetScope").asText())) {
+                        sourceFileCallables++;
+                    } else {
+                        corpusCallables++;
+                    }
+                    if ("unavailable".equals(fact.path("payload")
+                            .path("compatibilityStatus").asText())) {
+                        unavailableCallableCompatibility++;
+                    }
+                    switch (fact.path("payload").path("compatibilityScope").asText()) {
+                        case "source_file" -> sourceFileCallableCompatibility++;
+                        case "corpus" -> corpusCallableCompatibility++;
+                        case "configuration" -> configurationCallableCompatibility++;
+                        case "unavailable" -> { }
+                        default -> throw new AssertionError(
+                                "invalid callable compatibility scope: " + fact);
+                    }
+                    if ("configuration_dependent".equals(fact.path("payload")
+                            .path("definitionStatus").asText())) {
+                        configurationDependentDefinitions++;
+                    }
+                    sealedCallBindingCandidates.add(callableCandidate(
+                            fact, evidence, sourceId, source));
                 } else if ("import".equals(fact.path("kind").asText())) {
                     verifyImportSubranges(source, fact, sourcePath);
                     imports.add(fact);
@@ -303,6 +391,12 @@ class SemanticEvidenceActualCorpusTest {
             explicitlyUnresolvedImports += importCompleteness
                     .path("explicitlyUnresolved").asLong();
             JsonNode symbolCompleteness = completeness(evidence, "symbol");
+            JsonNode bindingCompleteness = completeness(evidence, "call_binding");
+            assertEquals(calls.size(), bindingCompleteness.path("population").asInt());
+            assertEquals(calls.size(), bindingCompleteness.path("emitted").asInt());
+            JsonNode callableCompleteness = completeness(evidence, "callable");
+            assertEquals(callables.size(), callableCompleteness.path("population").asInt());
+            assertEquals(callables.size(), callableCompleteness.path("emitted").asInt());
             List<String> unresolvedIds = symbols.stream()
                     .filter(fact -> "lookup".equals(fact.path("payload")
                             .path("role").asText()))
@@ -408,6 +502,8 @@ class SemanticEvidenceActualCorpusTest {
 
             long fileLegacyCalls = countNodes(root, "FUNCTION_CALL");
             legacyCalls += fileLegacyCalls;
+            long fileLegacyFunctions = countNodes(root, "FUNCTION");
+            legacyFunctions += fileLegacyFunctions;
             long fileLegacyIncludes = includeNodes.size();
             legacyIncludes += fileLegacyIncludes;
             diagnostics += first.diagnostics().size();
@@ -417,8 +513,13 @@ class SemanticEvidenceActualCorpusTest {
             fileRow.put("rawSourceSha256", first.sourceSha256());
             fileRow.put("parseStatus", evidence.path("parseStatus").asText());
             fileRow.put("legacyFunctionCallNodes", fileLegacyCalls);
+            fileRow.put("legacyFunctionNodes", fileLegacyFunctions);
             fileRow.put("legacyIncludeNodes", fileLegacyIncludes);
             fileRow.put("callFacts", calls.size());
+            fileRow.put("callableFacts", callables.size());
+            fileRow.put("callableDefinitions", callables.stream()
+                    .filter(fact -> "definition".equals(fact.path("payload")
+                            .path("role").asText())).count());
             fileRow.put("importFacts", imports.size());
             fileRow.put("explicitlyUnresolvedImports",
                     importCompleteness.path("explicitlyUnresolved").asLong());
@@ -443,7 +544,28 @@ class SemanticEvidenceActualCorpusTest {
                 "call presence partition is incomplete");
         assertEquals(callFacts, namedCalls + constructorCalls + expressionCalls,
                 "callee syntax partition is incomplete");
+        assertEquals(callFacts, declarationBoundCalls + externalCalls
+                        + configurationDependentCalls + dynamicCalls
+                        + ambiguousCalls + unsupportedCalls,
+                "call binding status partition is incomplete");
+        assertEquals(declarationBoundCalls,
+                directDefinitionCalls + compatibleDefinitionCalls,
+                "declaration-bound resolution mode partition is incomplete");
         assertFalse(orderedCallIds.isEmpty(), "actual corpus emitted no call facts");
+        assertFalse(orderedCallableIds.isEmpty(), "actual corpus emitted no callable facts");
+        assertEquals(callableFacts, callableDeclarations + callableDefinitions,
+                "callable role partition is incomplete");
+        assertEquals(callableFacts, sourceFileCallables + corpusCallables,
+                "callable target scope partition is incomplete");
+        assertEquals(callableFacts, sourceFileCallableCompatibility
+                        + corpusCallableCompatibility
+                        + configurationCallableCompatibility
+                        + unavailableCallableCompatibility,
+                "callable compatibility scope partition is incomplete");
+        assertEquals(legacyCalls, callFacts,
+                "legacy AST and canonical call populations diverged");
+        assertEquals(legacyFunctions, callableDefinitions,
+                "legacy AST and canonical callable definition populations diverged");
         assertFalse(orderedImportIds.isEmpty(), "actual corpus emitted no import facts");
         assertFalse(orderedMacroIds.isEmpty(), "actual corpus emitted no macro facts");
         assertEquals(importFacts, legacyIncludes,
@@ -464,13 +586,49 @@ class SemanticEvidenceActualCorpusTest {
         assertEquals(orderedFactIds.size() + orderedPreprocessingIds.size(),
                 globalFactIds.size(), "global fact/evidence ID set accounting mismatch");
 
+        long bindingJoinTargetZero = 0;
+        long bindingJoinTargetUnique = 0;
+        long bindingJoinTargetAmbiguous = 0;
+        long bindingJoinSameSourceUnique = 0;
+        long bindingJoinCrossSourceUnique = 0;
+        for (ObjectNode candidate : sealedCallBindingCandidates) {
+            if (!"call_binding".equals(candidate.path("semanticKind").asText())
+                    || !"declaration_bound".equals(candidate.path("binding")
+                            .path("status").asText())) continue;
+            List<String> definitionFactIds = eligibleDefinitionFactIds(
+                    candidate, sealedCallBindingCandidates);
+            ArrayNode eligible = candidate.putArray("eligibleDefinitionFactIds");
+            definitionFactIds.forEach(eligible::add);
+            switch (definitionFactIds.size()) {
+                case 0 -> bindingJoinTargetZero++;
+                case 1 -> {
+                    bindingJoinTargetUnique++;
+                    String targetSourceId = sourceIdForFact(
+                            definitionFactIds.get(0), sealedCallBindingCandidates);
+                    if (candidate.path("sourceId").asText().equals(targetSourceId)) {
+                        bindingJoinSameSourceUnique++;
+                    } else {
+                        bindingJoinCrossSourceUnique++;
+                    }
+                }
+                default -> bindingJoinTargetAmbiguous++;
+            }
+        }
+        assertEquals(declarationBoundCalls, bindingJoinTargetZero
+                        + bindingJoinTargetUnique + bindingJoinTargetAmbiguous,
+                "declaration-bound definition join accounting is incomplete");
+        assertEquals(bindingJoinTargetUnique,
+                bindingJoinSameSourceUnique + bindingJoinCrossSourceUnique,
+                "unique definition join source partition is incomplete");
+
         ObjectNode report = JSON.createObjectNode();
-        report.put("contractVersion", "1.2.0");
+        report.put("contractVersion", "1.3.0");
         report.put("corpus", corpus.toString().replace('\\', '/'));
         report.put("sourceFiles", sources.size());
         report.put("sourceInventorySha256", sourceInventoryHash(workspace.sourceDir(), sources));
         report.put("deterministicReplay", true);
         report.put("legacyFunctionCallNodes", legacyCalls);
+        report.put("legacyFunctionNodes", legacyFunctions);
         report.put("legacyIncludeNodes", legacyIncludes);
         report.put("callFacts", callFacts);
         report.put("activeCalls", activeCalls);
@@ -479,6 +637,33 @@ class SemanticEvidenceActualCorpusTest {
         report.put("namedCalls", namedCalls);
         report.put("constructorCalls", constructorCalls);
         report.put("expressionCalls", expressionCalls);
+        report.put("declarationBoundCalls", declarationBoundCalls);
+        report.put("directDefinitionCalls", directDefinitionCalls);
+        report.put("compatibleDefinitionCalls", compatibleDefinitionCalls);
+        report.put("externalCalls", externalCalls);
+        report.put("configurationDependentCalls", configurationDependentCalls);
+        report.put("dynamicCalls", dynamicCalls);
+        report.put("ambiguousCalls", ambiguousCalls);
+        report.put("unsupportedCalls", unsupportedCalls);
+        report.put("bindingJoinTargetZero", bindingJoinTargetZero);
+        report.put("bindingJoinTargetUnique", bindingJoinTargetUnique);
+        report.put("bindingJoinTargetAmbiguous", bindingJoinTargetAmbiguous);
+        report.put("bindingJoinSameSourceUnique", bindingJoinSameSourceUnique);
+        report.put("bindingJoinCrossSourceUnique", bindingJoinCrossSourceUnique);
+        report.put("callableFacts", callableFacts);
+        report.put("callableDeclarations", callableDeclarations);
+        report.put("callableDefinitions", callableDefinitions);
+        report.put("sourceFileCallables", sourceFileCallables);
+        report.put("corpusCallables", corpusCallables);
+        report.put("unavailableCallableCompatibility",
+                unavailableCallableCompatibility);
+        report.put("sourceFileCallableCompatibility",
+                sourceFileCallableCompatibility);
+        report.put("corpusCallableCompatibility", corpusCallableCompatibility);
+        report.put("configurationCallableCompatibility",
+                configurationCallableCompatibility);
+        report.put("configurationDependentDefinitions",
+                configurationDependentDefinitions);
         report.put("conditionalRegions", conditionalRegions);
         report.put("importFacts", importFacts);
         report.put("quotedImports", quotedImports);
@@ -503,6 +688,8 @@ class SemanticEvidenceActualCorpusTest {
         report.put("acceptedAstTypedefDelta", baselineTypedefDelta);
         report.put("factIdLedgerSha256", ledgerHash(orderedFactIds));
         report.put("callFactIdLedgerSha256", ledgerHash(orderedCallIds));
+        report.put("callBindingLedgerSha256", ledgerHash(orderedCallBindingRows));
+        report.put("callableFactIdLedgerSha256", ledgerHash(orderedCallableIds));
         report.put("importFactIdLedgerSha256", ledgerHash(orderedImportIds));
         report.put("macroFactIdLedgerSha256", ledgerHash(orderedMacroIds));
         report.put("symbolFactIdLedgerSha256", ledgerHash(orderedSymbolIds));
@@ -526,6 +713,16 @@ class SemanticEvidenceActualCorpusTest {
             symbolSelection.add(candidate);
             String stratum = candidate.path("selectionReason").asText();
             symbolStrata.put(stratum, symbolStrata.path(stratum).asInt() + 1);
+        }
+        ArrayNode callBindingSelection = report.putArray(
+                "sealedCallBindingDirectJudgmentPopulation");
+        ObjectNode callBindingStrata = report.putObject(
+                "sealedCallBindingDirectJudgmentStrata");
+        for (ObjectNode candidate : stratifiedFactSelection(
+                sealedCallBindingCandidates, 40)) {
+            callBindingSelection.add(candidate);
+            String stratum = candidate.path("selectionReason").asText();
+            callBindingStrata.put(stratum, callBindingStrata.path(stratum).asInt() + 1);
         }
 
         Files.createDirectories(reportPath.getParent());
@@ -579,8 +776,9 @@ class SemanticEvidenceActualCorpusTest {
                     row.path("emitted").asLong() + row.path("explicitlyUnresolved").asLong(),
                     "completeness equation failed in " + source + ": " + row);
         }
-        assertEquals(Set.of("call", "import", "symbol", "literal", "assignment",
-                "parameter", "macro", "embedded_language", "conditional_region"), kinds);
+        assertEquals(Set.of("call", "call_binding", "callable", "import", "symbol",
+                "literal", "assignment", "parameter", "macro",
+                "embedded_language", "conditional_region"), kinds);
     }
 
     private static void verifyExactSlice(String source, JsonNode fact, Path path) {
@@ -675,6 +873,168 @@ class SemanticEvidenceActualCorpusTest {
         }
     }
 
+    private static void verifyCallBinding(
+            JsonNode call, Map<String, JsonNode> factsById,
+            JsonNode evidence, String source, Path path) {
+        JsonNode binding = call.path("payload").path("binding");
+        assertTrue(binding.isObject(), "call omitted binding payload in " + path);
+        assertFalse(binding.path("adapterSchema").asText().isBlank(),
+                "call omitted adapter schema in " + path);
+        String status = binding.path("status").asText();
+        assertTrue(Set.of("declaration_bound", "external", "configuration_dependent",
+                        "dynamic", "ambiguous", "unsupported").contains(status),
+                "invalid binding status in " + path + ": " + call);
+        String resolutionMode = binding.path("resolutionMode").asText();
+        assertTrue(Set.of("direct_definition", "compatible_definition", "none")
+                        .contains(resolutionMode),
+                "invalid binding resolution mode in " + path + ": " + call);
+        assertEquals("declaration_bound".equals(status), !"none".equals(resolutionMode),
+                "binding status/resolution mode mismatch in " + path + ": " + call);
+        assertTrue(Set.of("source_file", "corpus", "runtime")
+                        .contains(binding.path("targetScope").asText()),
+                "invalid binding target scope in " + path + ": " + call);
+        assertTrue(Set.of("exact", "virtual", "dynamic")
+                        .contains(binding.path("dispatch").asText()),
+                "invalid binding dispatch in " + path + ": " + call);
+        if ("declaration_bound".equals(status)) {
+            JsonNode declaration = factsById.get(
+                    binding.path("declarationFactId").asText());
+            assertTrue(declaration != null
+                            && "callable".equals(declaration.path("kind").asText()),
+                    "bound call references a missing callable in " + path + ": " + call);
+            assertEquals(declaration.path("payload").path("bindingKey"),
+                    binding.path("bindingKey"));
+            assertEquals(declaration.path("payload").path("compatibilityKey"),
+                    binding.path("compatibilityKey"));
+            assertEquals(declaration.path("payload").path("compatibilityScope"),
+                    binding.path("compatibilityScope"));
+            assertEquals(64, binding.path("bindingKey").asText().length());
+            if ("compatible_definition".equals(resolutionMode)) {
+                assertEquals("declaration",
+                        declaration.path("payload").path("role").asText());
+                assertEquals(64, binding.path("compatibilityKey").asText().length());
+            } else {
+                assertEquals("definition",
+                        declaration.path("payload").path("role").asText());
+                assertEquals("exact", declaration.path("payload")
+                        .path("definitionStatus").asText());
+            }
+            assertTrue(binding.path("reason").isNull());
+        } else {
+            assertTrue(binding.path("declarationFactId").isNull());
+            assertTrue(binding.path("bindingKey").isNull());
+            assertTrue(binding.path("compatibilityKey").isNull());
+            assertTrue(binding.path("compatibilityScope").isNull());
+            assertFalse(binding.path("reason").asText().isBlank());
+        }
+        Set<String> candidateIds = new HashSet<>();
+        List<JsonNode> candidates = new ArrayList<>();
+        for (JsonNode candidateId : binding.path("candidateFactIds")) {
+            assertTrue(candidateIds.add(candidateId.asText()),
+                    "binding candidate is duplicated in " + path + ": " + call);
+            JsonNode candidate = factsById.get(candidateId.asText());
+            assertTrue(candidate != null,
+                    "binding candidate fact is missing in " + path + ": " + call);
+            candidates.add(candidate);
+        }
+        if (Set.of("declaration_bound", "external", "dynamic").contains(status)) {
+            assertTrue(candidates.isEmpty(),
+                    "resolved/external/dynamic binding retained candidates in "
+                            + path + ": " + call);
+        }
+        if ("configuration_dependent".equals(status)) {
+            assertFalse(candidates.isEmpty(),
+                    "configuration-dependent binding omitted candidates in "
+                            + path + ": " + call);
+        }
+        if ("ambiguous".equals(status)) {
+            assertTrue(candidates.size() >= 2
+                            && candidates.stream().allMatch(candidate ->
+                                    "callable".equals(candidate.path("kind").asText())),
+                    "ambiguous binding lacks multiple callable candidates in "
+                            + path + ": " + call);
+        }
+        if ("unsupported".equals(status)
+                && "insufficient_callable_type_compatibility".equals(
+                        binding.path("reason").asText())) {
+            assertFalse(candidates.isEmpty(),
+                    "unsupported callable compatibility omitted its evidence in "
+                            + path + ": " + call);
+            String terminalName = call.path("payload").path("terminalName").asText();
+            int callStart = rangeStart(call.path("range"));
+            for (JsonNode candidate : candidates) {
+                assertEquals("callable", candidate.path("kind").asText(),
+                        "unsupported compatibility referenced a non-callable fact in "
+                                + path + ": " + call);
+                JsonNode payload = candidate.path("payload");
+                assertEquals("unavailable", payload.path("compatibilityStatus").asText(),
+                        "unsupported compatibility referenced a supported callable in "
+                                + path + ": " + call);
+                assertEquals(terminalName, slice(source, payload.path("nameRange")),
+                        "unsupported compatibility referenced a different callable name in "
+                                + path + ": " + call);
+                assertEquals("active", presence(evidence, candidate).path("status").asText(),
+                        "unsupported compatibility referenced a non-active callable in "
+                                + path + ": " + call);
+                assertTrue(payload.path("visibilityStartOffset").asInt() <= callStart
+                                && callStart < rangeEnd(payload.path("visibilityRange")),
+                        "unsupported compatibility referenced a non-visible callable in "
+                                + path + ": " + call);
+            }
+        }
+    }
+
+    private static void verifyCallableFact(JsonNode fact, Path path) {
+        JsonNode payload = fact.path("payload");
+        assertTrue(Set.of("declaration", "definition")
+                        .contains(payload.path("role").asText()),
+                "invalid callable role in " + path + ": " + fact);
+        assertEquals(64, payload.path("bindingKey").asText().length(),
+                "invalid callable binding key in " + path + ": " + fact);
+        assertTrue(Set.of("exact", "configuration_bound", "unavailable")
+                        .contains(payload.path("compatibilityStatus").asText()),
+                "invalid callable compatibility status in " + path + ": " + fact);
+        if ("unavailable".equals(payload.path("compatibilityStatus").asText())) {
+            assertTrue(payload.path("compatibilityKey").isNull());
+        } else {
+            assertEquals(64, payload.path("compatibilityKey").asText().length());
+        }
+        assertTrue(Set.of("source_file", "corpus", "configuration", "unavailable")
+                        .contains(payload.path("compatibilityScope").asText()),
+                "invalid callable compatibility scope in " + path + ": " + fact);
+        assertEquals("unavailable".equals(
+                        payload.path("compatibilityStatus").asText()),
+                "unavailable".equals(payload.path("compatibilityScope").asText()),
+                "callable compatibility status/scope mismatch in " + path + ": " + fact);
+        assertTrue(Set.of("exact", "configuration_dependent", "not_applicable")
+                        .contains(payload.path("definitionStatus").asText()),
+                "invalid callable definition status in " + path + ": " + fact);
+        assertTrue(rangeStart(fact.path("range"))
+                        <= rangeStart(payload.path("nameRange"))
+                        && rangeEnd(payload.path("nameRange"))
+                        <= rangeEnd(fact.path("range")),
+                "callable name escaped fact range in " + path + ": " + fact);
+        assertTrue(rangeStart(payload.path("visibilityRange"))
+                        <= rangeStart(fact.path("range"))
+                        && rangeEnd(fact.path("range"))
+                        <= rangeEnd(payload.path("visibilityRange")),
+                "callable escaped visibility range in " + path + ": " + fact);
+        assertTrue(payload.path("visibilityStartOffset").asInt(-1)
+                        >= rangeEnd(payload.path("nameRange"))
+                        && payload.path("visibilityStartOffset").asInt(-1)
+                        <= rangeEnd(payload.path("visibilityRange")),
+                "invalid callable visibility boundary in " + path + ": " + fact);
+        if ("definition".equals(payload.path("role").asText())) {
+            assertEquals(fact.path("range"), payload.path("astNodeRange"));
+            assertFalse("not_applicable".equals(
+                    payload.path("definitionStatus").asText()));
+        } else {
+            assertTrue(payload.path("astNodeRange").isNull());
+            assertEquals("not_applicable",
+                    payload.path("definitionStatus").asText());
+        }
+    }
+
     private static void verifySymbolFact(
             JsonNode fact, Set<String> definitionIds, Path path) {
         JsonNode payload = fact.path("payload");
@@ -732,6 +1092,151 @@ class SemanticEvidenceActualCorpusTest {
             default -> throw new AssertionError(
                     "invalid symbol provenance in " + path + ": " + fact);
         }
+    }
+
+    private static ObjectNode callBindingCandidate(
+            JsonNode fact, JsonNode evidence, String sourceId, String source) {
+        JsonNode binding = fact.path("payload").path("binding");
+        ObjectNode row = JSON.createObjectNode();
+        String bindingStratum = "binding:" + binding.path("status").asText();
+        if ("declaration_bound".equals(binding.path("status").asText())) {
+            bindingStratum += ":" + binding.path("resolutionMode").asText();
+        }
+        row.put("selectionReason", bindingStratum);
+        row.put("selectionDiversityKey", fact.path("payload")
+                .path("terminalName").isNull()
+                        ? slice(source, fact.path("payload").path("calleeRange"))
+                        : fact.path("payload").path("terminalName").asText());
+        row.put("semanticKind", "call_binding");
+        row.put("factId", fact.path("factId").asText());
+        row.put("sourceId", sourceId);
+        row.put("parseStatus", evidence.path("parseStatus").asText());
+        row.set("range", fact.path("range").deepCopy());
+        row.set("presence", presence(evidence, fact).deepCopy());
+        row.put("sourceSlice", slice(source, fact.path("range")));
+        row.put("calleeSlice", slice(source,
+                fact.path("payload").path("calleeRange")));
+        row.set("binding", binding.deepCopy());
+        return row;
+    }
+
+    private static ObjectNode callableCandidate(
+            JsonNode fact, JsonNode evidence, String sourceId, String source) {
+        JsonNode payload = fact.path("payload");
+        ObjectNode row = JSON.createObjectNode();
+        row.put("selectionReason", String.join(":", "callable",
+                payload.path("role").asText(), payload.path("targetScope").asText(),
+                payload.path("compatibilityStatus").asText()));
+        row.put("selectionDiversityKey", slice(source, payload.path("nameRange")));
+        row.put("semanticKind", "callable");
+        row.put("factId", fact.path("factId").asText());
+        row.put("sourceId", sourceId);
+        row.put("parseStatus", evidence.path("parseStatus").asText());
+        row.set("range", fact.path("range").deepCopy());
+        row.set("presence", presence(evidence, fact).deepCopy());
+        row.put("sourceSlice", slice(source, fact.path("range")));
+        row.put("nameSlice", slice(source, payload.path("nameRange")));
+        row.set("payload", payload.deepCopy());
+        return row;
+    }
+
+    private static List<String> eligibleDefinitionFactIds(
+            ObjectNode call, List<ObjectNode> candidates) {
+        JsonNode binding = call.path("binding");
+        if ("direct_definition".equals(binding.path("resolutionMode").asText())) {
+            String referenced = binding.path("declarationFactId").asText();
+            return candidates.stream()
+                    .filter(candidate -> referenced.equals(
+                            candidate.path("factId").asText()))
+                    .filter(candidate -> "callable".equals(
+                            candidate.path("semanticKind").asText()))
+                    .filter(candidate -> "definition".equals(
+                            candidate.path("payload").path("role").asText()))
+                    .filter(candidate -> "exact".equals(candidate.path("payload")
+                            .path("definitionStatus").asText()))
+                    .map(candidate -> candidate.path("factId").asText())
+                    .toList();
+        }
+        List<String> result = new ArrayList<>();
+        for (ObjectNode candidate : candidates) {
+            if (!"callable".equals(candidate.path("semanticKind").asText())) continue;
+            JsonNode payload = candidate.path("payload");
+            if (!"definition".equals(payload.path("role").asText())
+                    || !"exact".equals(payload.path("definitionStatus").asText())) {
+                continue;
+            }
+            if (binding.path("adapterSchema").equals(payload.path("adapterSchema"))
+                    && binding.path("bindingKey").equals(payload.path("bindingKey"))
+                    && binding.path("compatibilityKey")
+                            .equals(payload.path("compatibilityKey"))
+                    && binding.path("compatibilityScope")
+                            .equals(payload.path("compatibilityScope"))
+                    && binding.path("targetScope").equals(payload.path("targetScope"))
+                    && binding.path("configurationId")
+                            .equals(payload.path("configurationId"))) {
+                result.add(candidate.path("factId").asText());
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    private static String sourceIdForFact(
+            String factId, List<ObjectNode> candidates) {
+        return candidates.stream()
+                .filter(candidate -> factId.equals(candidate.path("factId").asText()))
+                .map(candidate -> candidate.path("sourceId").asText())
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "eligible definition fact omitted source identity: " + factId));
+    }
+
+    private static List<ObjectNode> stratifiedFactSelection(
+            List<ObjectNode> candidates, int target) {
+        Map<String, List<ObjectNode>> byStratum = candidates.stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                        candidate -> candidate.path("selectionReason").asText(),
+                        java.util.TreeMap::new,
+                        java.util.stream.Collectors.toCollection(ArrayList::new)));
+        Comparator<ObjectNode> hardestFirst = Comparator
+                .<ObjectNode>comparingInt(candidate -> candidate.path("range")
+                        .path("charLength").asInt()).reversed()
+                .thenComparing(candidate -> candidate.path("sourceId").asText())
+                .thenComparingInt(candidate -> candidate.path("range")
+                        .path("charOffset").asInt())
+                .thenComparing(candidate -> candidate.path("factId").asText());
+        byStratum.replaceAll((ignored, group) -> {
+            group.sort(hardestFirst);
+            Map<String, ObjectNode> firstByDiversity = new LinkedHashMap<>();
+            for (ObjectNode candidate : group) {
+                firstByDiversity.putIfAbsent(
+                        candidate.path("selectionDiversityKey").asText(), candidate);
+            }
+            List<ObjectNode> diverseFirst = new ArrayList<>(firstByDiversity.values());
+            Set<String> firstIds = diverseFirst.stream()
+                    .map(candidate -> candidate.path("factId").asText())
+                    .collect(java.util.stream.Collectors.toSet());
+            group.stream().filter(candidate -> !firstIds.contains(
+                            candidate.path("factId").asText()))
+                    .forEach(diverseFirst::add);
+            return diverseFirst;
+        });
+
+        List<ObjectNode> selected = new ArrayList<>();
+        int ordinal = 0;
+        while (selected.size() < target) {
+            boolean added = false;
+            for (List<ObjectNode> group : byStratum.values()) {
+                if (ordinal < group.size() && selected.size() < target) {
+                    selected.add(group.get(ordinal));
+                    added = true;
+                }
+            }
+            if (!added) break;
+            ordinal++;
+        }
+        assertEquals(target, selected.size(),
+                "call-binding direct-judgment population is smaller than its sealed target");
+        return selected;
     }
 
     private static ObjectNode symbolCandidate(

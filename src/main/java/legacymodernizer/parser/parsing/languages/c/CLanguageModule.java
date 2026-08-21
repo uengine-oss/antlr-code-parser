@@ -93,7 +93,8 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
                         // A grammar-owned call range proves its callee is an expression, so an
                         // earlier negative typedef lookahead there is not missing type context.
                         configuredPreprocessing, run.parser().symbolEvidenceExtraction(
-                                run.listener().callEvidenceCandidates()))
+                                run.listener().callEvidenceCandidates()),
+                        run.listener().callableEvidenceExtraction())
                 : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
                 Set.of("functionDefinition"), astJson, Set.of("FUNCTION"));

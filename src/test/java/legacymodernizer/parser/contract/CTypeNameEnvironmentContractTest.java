@@ -59,7 +59,7 @@ class CTypeNameEnvironmentContractTest {
         module.prepareProjectContext();
         JsonNode root = parse(module, consumer);
 
-        assertEquals("1.2.0", root.path("evidence").path("version").asText());
+        assertEquals("1.3.0", root.path("evidence").path("version").asText());
         for (String name : List.of(
                 "CrossTuOnly_7f31", "CommentOnly_7f31", "OrdinaryInstance_7f31")) {
             JsonNode lookup = onlyLookup(root, consumerSource, name);
