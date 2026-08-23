@@ -62,7 +62,7 @@ class SemanticEvidenceIrContractTest {
         for (Map.Entry<String, Fixture> entry : fixtures.entrySet()) {
             JsonNode evidence = parse(workspace, entry.getValue()).path("evidence");
             assertFalse(evidence.isMissingNode(), entry.getKey() + " omitted evidence envelope");
-            assertEquals("c".equals(entry.getKey()) ? "1.3.0" : "1.1.0",
+            assertEquals("c".equals(entry.getKey()) ? "2.0.0" : "1.1.0",
                     evidence.path("version").asText());
             assertEquals(entry.getValue().relativePath(), evidence.path("sourceId").asText());
             assertEquals(64, evidence.path("rawSourceSha256").asText().length());
@@ -81,6 +81,8 @@ class SemanticEvidenceIrContractTest {
             assertTrue(evidence.path("presences").isArray());
             assertTrue(evidence.path("completeness").isArray());
             if ("c".equals(entry.getKey())) {
+                assertEquals("c", evidence.path("language").asText());
+                assertEquals("antlr-c/v1", evidence.path("frontendSchema").asText());
                 JsonNode configured = evidence.path("configuredPreprocessing");
                 assertEquals("1.0.0", configured.path("version").asText());
                 assertEquals("unresolved", configured.path("status").asText());
@@ -115,7 +117,9 @@ class SemanticEvidenceIrContractTest {
                 "ranges/sample.c", cSource));
         JsonNode cNamed = callByCallee(cRoot, cSource, "service->handler");
         assertEquals("expression", cNamed.path("payload").path("calleeKind").asText());
-        assertTrue(cNamed.path("payload").path("terminalName").isNull());
+        assertEquals("handler", cNamed.path("payload").path("terminalName").asText());
+        assertEquals("service", slice(cSource,
+                cNamed.path("payload").path("receiverRange")));
         JsonNode cExpression = callByCallee(cRoot, cSource, "(*callback)");
         assertEquals("expression", cExpression.path("payload").path("calleeKind").asText());
         assertTrue(cExpression.path("payload").path("terminalName").isNull());

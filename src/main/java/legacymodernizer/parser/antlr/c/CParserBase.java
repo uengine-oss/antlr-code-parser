@@ -90,7 +90,8 @@ public abstract class CParserBase extends Parser {
 
     public boolean IsDeclaration() {
         Token first = tokens().LT(1);
-        if (!syntaxProbe && first.getType() == CLexer.Identifier
+        if ((!syntaxProbe || syntaxProbeTypeNameStartOffset != null)
+                && first.getType() == CLexer.Identifier
                 && symbolTable.resolve(first.getText()) == null) {
             BlockItemDecision decision = blockItemDecisions.computeIfAbsent(
                     first.getTokenIndex(), ignored -> probeBlockItem());
@@ -243,7 +244,9 @@ public abstract class CParserBase extends Parser {
         }
         boolean probeTypeName = syntaxProbe
                 && syntaxProbeTypeNameStartOffset != null
-                && token.getStartIndex() == syntaxProbeTypeNameStartOffset;
+                && (token.getStartIndex() == syntaxProbeTypeNameStartOffset
+                        || isDeclarationOnlyTypePosition()
+                        || recoveredContext != null);
         boolean recoveredTypeName = !syntaxProbe
                 && (recoveredContext != null || isDeclarationOnlyTypePosition());
         if (resolved == null && (probeTypeName || recoveredTypeName)) {
@@ -526,8 +529,8 @@ public abstract class CParserBase extends Parser {
         if (first.getType() != CLexer.LeftParen) return false;
         if (second.getType() != CLexer.Identifier) return true;
         if (syntaxProbe) {
-            return syntaxProbeTypeNameStartOffset != null
-                    && second.getStartIndex() == syntaxProbeTypeNameStartOffset;
+            if (syntaxProbeTypeNameStartOffset == null) return false;
+            if (second.getStartIndex() == syntaxProbeTypeNameStartOffset) return true;
         }
 
         Symbol resolved = symbolTable.resolve(second.getText());

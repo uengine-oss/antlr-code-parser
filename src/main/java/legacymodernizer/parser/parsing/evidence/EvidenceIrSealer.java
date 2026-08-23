@@ -6,10 +6,12 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -20,8 +22,8 @@ import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.parsing.SourceTextCodec;
 import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence.ConditionalRegionCandidate;
 import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence.Presence;
-import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallBindingCandidate;
 import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableCandidate;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableSyntaxCandidate;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 
 /**
@@ -32,10 +34,8 @@ public final class EvidenceIrSealer {
 
     private static final String VERSION = "1.1.0";
     private static final String SYMBOL_VERSION = "1.2.0";
-    private static final String CALL_BINDING_VERSION = "1.3.0";
+    private static final String STRUCTURAL_VERSION = "2.0.0";
     private static final String ID_DOMAIN = "robo-evidence-v1";
-    private static final String BINDING_ID_DOMAIN = "robo-call-binding-v1";
-    private static final String COMPATIBILITY_ID_DOMAIN = "robo-call-compatibility-v1";
     private static final List<String> KINDS = List.of(
             "call", "import", "symbol", "literal", "assignment", "parameter",
             "macro", "embedded_language", "conditional_region");
@@ -172,39 +172,11 @@ public final class EvidenceIrSealer {
             Map<Presence, Integer> presences = new LinkedHashMap<>();
             List<String> unresolvedScopeFactIds = new ArrayList<>();
             List<String> unresolvedSymbolFactIds = new ArrayList<>();
-            List<String> partialCallBindingFactIds = new ArrayList<>();
-            List<String> unavailableCallableFactIds = new ArrayList<>();
-            List<String> configurationDependentCallableFactIds = new ArrayList<>();
             Map<SourceRangeCandidate, String> symbolDefinitionFactIds = new HashMap<>();
             Map<SourceRangeCandidate, SymbolDefinitionEvidenceCandidate> symbolDefinitions =
                     new HashMap<>();
             List<CallableCandidate> emittedCallables = callables == null
                     ? List.of() : callables.callables();
-            List<CallBindingCandidate> emittedBindings = callables == null
-                    ? List.of() : callables.bindings();
-            if (callables != null && emittedBindings.size() != emittedCalls.size()) {
-                throw new IllegalStateException(
-                        "call binding population must equal call fact population");
-            }
-            Map<SourceRangeCandidate, CallableCandidate> callableByNameRange = new HashMap<>();
-            List<String> callableIds = precomputedFactIdList(
-                    emittedCallables.stream().map(CallableCandidate::range).toList(),
-                    normalizedSourceId, decodedHash, "callable");
-            Map<SourceRangeCandidate, String> callableFactIds = new HashMap<>();
-            Map<SourceRangeCandidate, String> macroFactIds = precomputedFactIds(
-                    macros == null ? List.of()
-                            : macros.candidates().stream()
-                                    .map(MacroEvidenceCandidate::range).toList(),
-                    normalizedSourceId, decodedHash, "macro");
-            for (int callableIndex = 0; callableIndex < emittedCallables.size();
-                    callableIndex++) {
-                CallableCandidate callable = emittedCallables.get(callableIndex);
-                if (callableByNameRange.put(callable.nameRange(), callable) != null) {
-                    throw new IllegalStateException(
-                            "duplicate callable name range: " + callable.nameRange());
-                }
-                callableFactIds.put(callable.nameRange(), callableIds.get(callableIndex));
-            }
             String legacyJson = root.toJson();
             if (legacyJson.isEmpty() || legacyJson.charAt(legacyJson.length() - 1) != '}') {
                 throw new IllegalStateException("FILE root did not serialize as a JSON object");
@@ -215,8 +187,12 @@ public final class EvidenceIrSealer {
             try (JsonGenerator generator = JSON.getFactory().createGenerator(output)) {
                 generator.writeStartObject();
                 generator.writeStringField("version", callables != null
-                        ? CALL_BINDING_VERSION
+                        ? STRUCTURAL_VERSION
                         : symbols == null ? VERSION : SYMBOL_VERSION);
+                if (callables != null) {
+                    generator.writeStringField("language", callables.language());
+                    generator.writeStringField("frontendSchema", callables.frontendSchema());
+                }
                 generator.writeStringField("sourceId", normalizedSourceId);
                 generator.writeStringField("rawSourceSha256", Hashes.sha256(rawSource));
                 generator.writeStringField("decodedTextSha256", decodedHash);
@@ -237,18 +213,11 @@ public final class EvidenceIrSealer {
                 }
 
                 generator.writeArrayFieldStart("facts");
-                for (int callIndex = 0; callIndex < emittedCalls.size(); callIndex++) {
-                    CallEvidenceCandidate call = emittedCalls.get(callIndex);
-                    CallBindingCandidate binding = callables == null
-                            ? null : emittedBindings.get(callIndex);
-                    ObjectNode fact = sealCall(call, binding, normalizedSourceId,
+                for (CallEvidenceCandidate call : emittedCalls) {
+                    ObjectNode fact = sealCall(call, normalizedSourceId,
                             decodedHash, index, ordinals, grammarRules, presences,
                             conditional.presenceAt(call.callRange().startOffset()),
-                            callableByNameRange, callableFactIds, macroFactIds);
-                    if (binding != null && ("configuration_dependent".equals(binding.status())
-                            || "unsupported".equals(binding.status()))) {
-                        partialCallBindingFactIds.add(fact.path("factId").asText());
-                    }
+                            callables != null);
                     generator.writeTree(fact);
                 }
                 if (callables != null) {
@@ -256,14 +225,6 @@ public final class EvidenceIrSealer {
                         ObjectNode fact = sealCallable(callable, normalizedSourceId,
                                 decodedHash, index, ordinals, grammarRules, presences,
                                 conditional.presenceAt(callable.range().startOffset()));
-                        if ("unavailable".equals(callable.compatibilityStatus())) {
-                            unavailableCallableFactIds.add(fact.path("factId").asText());
-                        }
-                        if ("configuration_dependent".equals(
-                                callable.definitionStatus())) {
-                            configurationDependentCallableFactIds.add(
-                                    fact.path("factId").asText());
-                        }
                         generator.writeTree(fact);
                     }
                 }
@@ -331,12 +292,11 @@ public final class EvidenceIrSealer {
 
                 generator.writeArrayFieldStart("completeness");
                 List<String> completenessKinds = callables == null ? KINDS : List.of(
-                        "call", "call_binding", "callable", "import", "symbol",
+                        "call", "callable", "import", "symbol",
                         "literal", "assignment", "parameter", "macro",
                         "embedded_language", "conditional_region");
                 for (String kind : completenessKinds) {
                     int emitted = "call".equals(kind) ? emittedCalls.size()
-                            : "call_binding".equals(kind) ? emittedBindings.size()
                             : "callable".equals(kind) ? emittedCallables.size()
                             : "import".equals(kind) && imports != null
                                     ? imports.candidates().size()
@@ -348,7 +308,9 @@ public final class EvidenceIrSealer {
                     int unresolved = "macro".equals(kind) && macros != null
                             ? macros.explicitlyUnresolved()
                             : "import".equals(kind) && imports != null
-                                    ? imports.explicitlyUnresolved() : 0;
+                                    ? imports.explicitlyUnresolved()
+                            : "callable".equals(kind) && callables != null
+                                    ? callables.explicitlyUnresolved() : 0;
                     List<String> callReasons = new ArrayList<>();
                     if (decoded.lossy()) callReasons.add("insufficient_lossy_decode");
                     if (!"exact".equals(parseStatus)) {
@@ -356,6 +318,12 @@ public final class EvidenceIrSealer {
                     }
                     if (!unresolvedScopeFactIds.isEmpty()) {
                         callReasons.add("insufficient_missing_build_configuration");
+                    }
+                    List<String> callableReasons = new ArrayList<>(callReasons);
+                    if (callables != null) {
+                        for (String reason : callables.reasons()) {
+                            if (!callableReasons.contains(reason)) callableReasons.add(reason);
+                        }
                     }
                     List<String> macroReasons = new ArrayList<>();
                     if (macros != null) {
@@ -382,27 +350,14 @@ public final class EvidenceIrSealer {
                                     ? symbols == null ? "unsupported"
                                             : !unresolvedSymbolFactIds.isEmpty()
                                                     ? "partial" : "complete"
-                            : "call_binding".equals(kind)
-                                    ? callables == null ? "unsupported"
-                                            : !partialCallBindingFactIds.isEmpty()
-                                                    ? "partial" : "complete"
                             : "callable".equals(kind)
                                     ? callables == null ? "unsupported"
-                                            : !unavailableCallableFactIds.isEmpty()
-                                                    || !configurationDependentCallableFactIds
-                                                            .isEmpty()
-                                                    ? "partial" : "complete"
+                                            : !callableReasons.isEmpty() ? "partial" : "complete"
                             : "conditional_region".equals(kind) ? "complete" : "unsupported";
                     List<String> reasons = "call".equals(kind)
                             ? callReasons : "macro".equals(kind) ? macroReasons
                             : "import".equals(kind) ? importReasons
-                            : "call_binding".equals(kind)
-                                    && !partialCallBindingFactIds.isEmpty()
-                                    ? callBindingCompletenessReasons(emittedBindings)
-                            : "callable".equals(kind)
-                                    ? callableCompletenessReasons(
-                                            unavailableCallableFactIds,
-                                            configurationDependentCallableFactIds)
+                            : "callable".equals(kind) ? callableReasons
                             : "symbol".equals(kind) && !unresolvedSymbolFactIds.isEmpty()
                                     ? List.of("insufficient_type_name_environment")
                                     : List.of();
@@ -424,26 +379,6 @@ public final class EvidenceIrSealer {
                     if ("symbol".equals(kind) && !unresolvedSymbolFactIds.isEmpty()) {
                         generator.writeArrayFieldStart("unresolvedFactIds");
                         for (String factId : unresolvedSymbolFactIds) {
-                            generator.writeString(factId);
-                        }
-                        generator.writeEndArray();
-                    }
-                    if ("call_binding".equals(kind)
-                            && !partialCallBindingFactIds.isEmpty()) {
-                        generator.writeArrayFieldStart("unresolvedFactIds");
-                        for (String factId : partialCallBindingFactIds) {
-                            generator.writeString(factId);
-                        }
-                        generator.writeEndArray();
-                    }
-                    if ("callable".equals(kind)
-                            && (!unavailableCallableFactIds.isEmpty()
-                                    || !configurationDependentCallableFactIds.isEmpty())) {
-                        generator.writeArrayFieldStart("unresolvedFactIds");
-                        java.util.LinkedHashSet<String> factIds =
-                                new java.util.LinkedHashSet<>(unavailableCallableFactIds);
-                        factIds.addAll(configurationDependentCallableFactIds);
-                        for (String factId : factIds) {
                             generator.writeString(factId);
                         }
                         generator.writeEndArray();
@@ -523,7 +458,6 @@ public final class EvidenceIrSealer {
     }
 
     private static ObjectNode sealCall(CallEvidenceCandidate candidate,
-                                       CallBindingCandidate binding,
                                        String sourceId,
                                        String decodedHash,
                                        CodePointIndex index,
@@ -531,9 +465,7 @@ public final class EvidenceIrSealer {
                                        Map<String, Integer> grammarRules,
                                        Map<Presence, Integer> presences,
                                        Presence factPresence,
-                                       Map<SourceRangeCandidate, CallableCandidate> callables,
-                                       Map<SourceRangeCandidate, String> callableFactIds,
-                                       Map<SourceRangeCandidate, String> macroFactIds) {
+                                       boolean structuralIr) {
         index.requireValid(candidate.callRange());
         index.requireValid(candidate.calleeRange());
         if (candidate.calleeRange().startOffset() < candidate.callRange().startOffset()
@@ -547,9 +479,12 @@ public final class EvidenceIrSealer {
                 throw new IllegalArgumentException("argument range is outside call range");
             }
         }
-        if (binding != null && !candidate.callRange().equals(binding.callRange())) {
-            throw new IllegalArgumentException(
-                    "call binding range does not match its call fact");
+        if (candidate.receiverRange() != null) {
+            index.requireSubrange(
+                    candidate.calleeRange(), candidate.receiverRange(), "call receiver");
+        }
+        if (structuralIr) {
+            requireScopePath(candidate.scopePath(), candidate.callRange(), index, "call");
         }
 
         String ordinalKey = "call\0" + candidate.callRange().startOffset()
@@ -565,6 +500,10 @@ public final class EvidenceIrSealer {
 
         ObjectNode payload = fact.putObject("payload");
         payload.set("calleeRange", index.rangeJson(candidate.calleeRange()));
+        if (structuralIr) {
+            if (candidate.receiverRange() == null) payload.putNull("receiverRange");
+            else payload.set("receiverRange", index.rangeJson(candidate.receiverRange()));
+        }
         payload.put("calleeKind", candidate.calleeKind());
         if (candidate.terminalName() == null) payload.putNull("terminalName");
         else payload.put("terminalName", candidate.terminalName());
@@ -572,83 +511,8 @@ public final class EvidenceIrSealer {
         for (SourceRangeCandidate argument : candidate.argumentRanges()) {
             arguments.add(index.rangeJson(argument));
         }
-        if (binding != null) {
-            ObjectNode encoded = payload.putObject("binding");
-            encoded.put("adapterSchema", binding.adapterSchema());
-            encoded.put("status", binding.status());
-            encoded.put("resolutionMode", binding.resolutionMode());
-
-            CallableCandidate declaration = null;
-            String declarationFactId = null;
-            String bindingKey = null;
-            String compatibilityKey = null;
-            String compatibilityScope = null;
-            if (binding.declarationNameRange() != null) {
-                declaration = callables.get(binding.declarationNameRange());
-                declarationFactId = callableFactIds.get(binding.declarationNameRange());
-                if (declaration == null || declarationFactId == null) {
-                    throw new IllegalStateException(
-                            "call binding references a missing callable declaration");
-                }
-                if (!binding.adapterSchema().equals(declaration.adapterSchema())
-                        || !binding.targetScope().equals(declaration.targetScope())
-                        || !java.util.Objects.equals(
-                                binding.configurationId(), declaration.configurationId())) {
-                    throw new IllegalStateException(
-                            "call binding contradicts its callable declaration");
-                }
-                boolean directDefinition = "direct_definition".equals(
-                        binding.resolutionMode());
-                boolean compatibleDefinition = "compatible_definition".equals(
-                        binding.resolutionMode());
-                if (directDefinition
-                        && (!("definition".equals(declaration.role()))
-                                || !("exact".equals(declaration.definitionStatus())))) {
-                    throw new IllegalStateException(
-                            "direct call binding must reference an exact definition");
-                }
-                if (compatibleDefinition
-                        && (!("declaration".equals(declaration.role()))
-                                || "unavailable".equals(
-                                        declaration.compatibilityStatus()))) {
-                    throw new IllegalStateException(
-                            "compatible call binding must reference an exact declaration type");
-                }
-                bindingKey = bindingKey(declaration, sourceId);
-                compatibilityKey = compatibilityKey(declaration, sourceId);
-                compatibilityScope = declaration.compatibilityScope();
-                if (compatibleDefinition && compatibilityKey == null) {
-                    throw new IllegalStateException(
-                            "bound callable has no compatibility identity");
-                }
-            }
-            putNullable(encoded, "declarationFactId", declarationFactId);
-            putNullable(encoded, "bindingKey", bindingKey);
-            putNullable(encoded, "compatibilityKey", compatibilityKey);
-            putNullable(encoded, "compatibilityScope", compatibilityScope);
-            encoded.put("targetScope", binding.targetScope());
-            encoded.put("dispatch", binding.dispatch());
-            putNullable(encoded, "configurationId", binding.configurationId());
-            encoded.putNull("externalIdentityKey");
-            ArrayNode candidateFactIds = encoded.putArray("candidateFactIds");
-            for (SourceRangeCandidate range : binding.candidateMacroRanges()) {
-                String factId = macroFactIds.get(range);
-                if (factId == null) {
-                    throw new IllegalStateException(
-                            "call binding references a missing macro fact");
-                }
-                candidateFactIds.add(factId);
-            }
-            for (SourceRangeCandidate range : binding.candidateCallableRanges()) {
-                String factId = callableFactIds.get(range);
-                if (factId == null) {
-                    throw new IllegalStateException(
-                            "call binding references a missing callable fact");
-                }
-                candidateFactIds.add(factId);
-            }
-            encoded.put("provenance", binding.provenance());
-            putNullable(encoded, "reason", binding.reason());
+        if (structuralIr) {
+            payload.set("scopePath", scopePathJson(candidate.scopePath(), index));
         }
         return fact;
     }
@@ -663,12 +527,8 @@ public final class EvidenceIrSealer {
                                            Presence factPresence) {
         index.requireValid(candidate.range());
         index.requireSubrange(candidate.range(), candidate.nameRange(), "callable name");
-        index.requireValid(candidate.visibilityRange());
-        if (candidate.visibilityStartOffset() < candidate.nameRange().endOffset()
-                || candidate.visibilityStartOffset()
-                        > candidate.visibilityRange().endOffset()) {
-            throw new IllegalArgumentException("invalid callable visibility boundary");
-        }
+        requireScopePath(candidate.scopePath(), candidate.range(), index, "callable");
+        index.requireValid(candidate.scopeRange());
         if (candidate.astNodeRange() != null) {
             index.requireValid(candidate.astNodeRange());
             if (!candidate.range().equals(candidate.astNodeRange())) {
@@ -691,19 +551,108 @@ public final class EvidenceIrSealer {
         ObjectNode payload = fact.putObject("payload");
         payload.put("role", candidate.role());
         payload.set("nameRange", index.rangeJson(candidate.nameRange()));
-        payload.put("adapterSchema", candidate.adapterSchema());
-        payload.put("bindingKey", bindingKey(candidate, sourceId));
-        putNullable(payload, "compatibilityKey", compatibilityKey(candidate, sourceId));
-        payload.put("compatibilityStatus", candidate.compatibilityStatus());
-        payload.put("compatibilityScope", candidate.compatibilityScope());
-        payload.put("definitionStatus", candidate.definitionStatus());
-        payload.put("targetScope", candidate.targetScope());
-        putNullable(payload, "configurationId", candidate.configurationId());
         if (candidate.astNodeRange() == null) payload.putNull("astNodeRange");
         else payload.set("astNodeRange", index.rangeJson(candidate.astNodeRange()));
-        payload.set("visibilityRange", index.rangeJson(candidate.visibilityRange()));
-        payload.put("visibilityStartOffset", candidate.visibilityStartOffset());
+        payload.set("scopePath", scopePathJson(candidate.scopePath(), index));
+        payload.set("scopeRange", index.rangeJson(candidate.scopeRange()));
+        payload.put("declarationPoint", candidate.declarationPoint());
+        payload.set("syntax", callableSyntaxJson(candidate.syntax(), candidate.range(), index));
         return fact;
+    }
+
+    private static void requireScopePath(
+            List<ScopeEvidenceCandidate> scopePath,
+            SourceRangeCandidate subject,
+            CodePointIndex index,
+            String kind) {
+        if (scopePath == null || scopePath.isEmpty()
+                || !"translation_unit".equals(scopePath.get(0).kind())) {
+            throw new IllegalArgumentException(kind + " has no canonical scope path");
+        }
+        SourceRangeCandidate previous = null;
+        for (ScopeEvidenceCandidate scope : scopePath) {
+            index.requireValid(scope.range());
+            if (previous != null) {
+                requireContained(previous, scope.range(), kind + " nested scope");
+            }
+            previous = scope.range();
+        }
+        requireContained(previous, subject, kind + " range");
+    }
+
+    private static ArrayNode scopePathJson(
+            List<ScopeEvidenceCandidate> scopePath,
+            CodePointIndex index) {
+        ArrayNode result = JSON.createArrayNode();
+        for (ScopeEvidenceCandidate scope : scopePath) {
+            ObjectNode encoded = result.addObject();
+            encoded.put("kind", scope.kind());
+            encoded.set("range", index.rangeJson(scope.range()));
+        }
+        return result;
+    }
+
+    private static ObjectNode callableSyntaxJson(
+            CallableSyntaxCandidate syntax,
+            SourceRangeCandidate callableRange,
+            CodePointIndex index) {
+        ObjectNode encoded = JSON.createObjectNode();
+        encoded.put("schema", syntax.schema());
+        Set<String> directTokenCoordinates = new HashSet<>();
+        ArrayNode specifiers = encoded.putArray("declarationSpecifiers");
+        for (SyntaxComponentCandidate component : syntax.declarationSpecifiers()) {
+            specifiers.add(syntaxComponentJson(
+                    component, callableRange, index, directTokenCoordinates));
+        }
+        encoded.set("declarator", syntaxComponentJson(
+                syntax.declarator(), callableRange, index, directTokenCoordinates));
+        ArrayNode attributes = encoded.putArray("attributes");
+        for (SyntaxComponentCandidate component : syntax.attributes()) {
+            attributes.add(syntaxComponentJson(
+                    component, callableRange, index, directTokenCoordinates));
+        }
+        return encoded;
+    }
+
+    private static ObjectNode syntaxComponentJson(
+            SyntaxComponentCandidate component,
+            SourceRangeCandidate enclosingRange,
+            CodePointIndex index,
+            Set<String> directTokenCoordinates) {
+        index.requireValid(component.range());
+        requireContained(enclosingRange, component.range(), "syntax component");
+        ObjectNode encoded = JSON.createObjectNode();
+        encoded.put("grammarRule", component.grammarRule());
+        encoded.set("range", index.rangeJson(component.range()));
+        ArrayNode tokens = encoded.putArray("directTokens");
+        for (SyntaxTokenCandidate token : component.directTokens()) {
+            index.requireValid(token.range());
+            requireContained(component.range(), token.range(), "direct syntax token");
+            String coordinate = token.tokenKind() + "\0" + token.range().startOffset()
+                    + "\0" + token.range().endOffset();
+            if (!directTokenCoordinates.add(coordinate)) {
+                throw new IllegalStateException("duplicate direct syntax token: " + coordinate);
+            }
+            ObjectNode encodedToken = tokens.addObject();
+            encodedToken.put("tokenKind", token.tokenKind());
+            encodedToken.set("range", index.rangeJson(token.range()));
+        }
+        ArrayNode children = encoded.putArray("children");
+        for (SyntaxComponentCandidate child : component.children()) {
+            children.add(syntaxComponentJson(
+                    child, component.range(), index, directTokenCoordinates));
+        }
+        return encoded;
+    }
+
+    private static void requireContained(
+            SourceRangeCandidate outer,
+            SourceRangeCandidate inner,
+            String kind) {
+        if (inner.startOffset() < outer.startOffset()
+                || inner.endOffset() > outer.endOffset()) {
+            throw new IllegalArgumentException(kind + " is outside its owner range");
+        }
     }
 
     private static ObjectNode sealConditionalRegion(ConditionalRegionCandidate candidate,
@@ -920,89 +869,6 @@ public final class EvidenceIrSealer {
         result.putNull("configurationId");
         result.put("provenance", presence.provenance());
         return result;
-    }
-
-    private static List<String> precomputedFactIdList(
-            List<SourceRangeCandidate> ranges,
-            String sourceId,
-            String decodedHash,
-            String kind) {
-        Map<SourceRangeCandidate, Integer> ordinals = new HashMap<>();
-        List<String> result = new ArrayList<>(ranges.size());
-        for (SourceRangeCandidate range : ranges) {
-            int ordinal = ordinals.merge(range, 1, Integer::sum) - 1;
-            result.add(factId(sourceId, decodedHash, kind, range, ordinal));
-        }
-        return List.copyOf(result);
-    }
-
-    private static List<String> callableCompletenessReasons(
-            List<String> unavailableCompatibility,
-            List<String> configurationDependentDefinitions) {
-        List<String> reasons = new ArrayList<>(2);
-        if (!unavailableCompatibility.isEmpty()) {
-            reasons.add("insufficient_callable_type_compatibility");
-        }
-        if (!configurationDependentDefinitions.isEmpty()) {
-            reasons.add("insufficient_inline_definition_configuration");
-        }
-        return List.copyOf(reasons);
-    }
-
-    private static List<String> callBindingCompletenessReasons(
-            List<CallBindingCandidate> bindings) {
-        boolean configurationDependent = bindings.stream()
-                .anyMatch(item -> "configuration_dependent".equals(item.status()));
-        boolean unsupported = bindings.stream()
-                .anyMatch(item -> "unsupported".equals(item.status()));
-        List<String> reasons = new ArrayList<>(2);
-        if (configurationDependent) {
-            reasons.add("insufficient_call_binding_configuration");
-        }
-        if (unsupported) reasons.add("insufficient_call_binding_capability");
-        return List.copyOf(reasons);
-    }
-
-    private static Map<SourceRangeCandidate, String> precomputedFactIds(
-            List<SourceRangeCandidate> ranges,
-            String sourceId,
-            String decodedHash,
-            String kind) {
-        List<String> ids = precomputedFactIdList(ranges, sourceId, decodedHash, kind);
-        Map<SourceRangeCandidate, String> result = new HashMap<>();
-        for (int index = 0; index < ranges.size(); index++) {
-            if (result.put(ranges.get(index), ids.get(index)) != null) {
-                throw new IllegalStateException(
-                        "duplicate " + kind + " range cannot be referenced exactly: "
-                                + ranges.get(index));
-            }
-        }
-        return result;
-    }
-
-    private static String bindingKey(CallableCandidate candidate, String sourceId) {
-        String sourceScope = "source_file".equals(candidate.targetScope())
-                ? sourceId : "";
-        String tuple = String.join("\0", BINDING_ID_DOMAIN,
-                candidate.adapterSchema(), candidate.targetScope(), sourceScope,
-                candidate.terminalName());
-        return sha256(tuple.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private static String compatibilityKey(
-            CallableCandidate candidate, String sourceId) {
-        if (candidate.compatibilityMaterial() == null) return null;
-        String sourceScope = "source_file".equals(candidate.compatibilityScope())
-                ? sourceId : "";
-        String tuple = String.join("\0", COMPATIBILITY_ID_DOMAIN,
-                candidate.adapterSchema(), candidate.compatibilityScope(), sourceScope,
-                candidate.compatibilityMaterial());
-        return sha256(tuple.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private static void putNullable(ObjectNode object, String field, String value) {
-        if (value == null) object.putNull(field);
-        else object.put(field, value);
     }
 
     private static String factId(String sourceId, String decodedHash, String kind,

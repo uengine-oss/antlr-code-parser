@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -37,6 +38,7 @@ import legacymodernizer.parser.recovery.workingcopy.Hashes;
 import legacymodernizer.parser.service.ParseProgressTracker;
 
 /** Opt-in, deterministic full-population accounting for spec 131 actual corpora. */
+@Disabled("sealed IR 1.3 Strategy A 312/312 history; C-080 forbids rerun/reanalysis")
 class SemanticEvidenceActualCorpusTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();

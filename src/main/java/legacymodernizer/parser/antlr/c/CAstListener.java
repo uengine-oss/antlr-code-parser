@@ -1,12 +1,7 @@
 package legacymodernizer.parser.antlr.c;
 
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -17,11 +12,13 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction;
-import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallBindingCandidate;
 import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableCandidate;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableSyntaxCandidate;
 import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence;
-import legacymodernizer.parser.parsing.evidence.MacroEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.ScopeEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.SourceRangeCandidate;
+import legacymodernizer.parser.parsing.evidence.SyntaxComponentCandidate;
+import legacymodernizer.parser.parsing.evidence.SyntaxTokenCandidate;
 import legacymodernizer.parser.parsing.languages.c.CPreprocessorEvidenceExtractor;
 import legacymodernizer.parser.parsing.languages.c.CPreprocessorLegacyAstAdapter;
 import legacymodernizer.parser.parsing.languages.c.CPreprocessorSyntax;
@@ -46,10 +43,7 @@ public class CAstListener extends CParserBaseListener
     private final ListenerHelper h;
     private final List<CallEvidenceCandidate> callEvidence = new ArrayList<>();
     private final List<CallableCandidate> callableEvidence = new ArrayList<>();
-    private final List<RuntimeCallableObject> runtimeCallableObjects = new ArrayList<>();
-    private final List<MacroEvidenceCandidate> macroEvidence;
-    private final Map<String, String> fileTargetScopes = new HashMap<>();
-    private final Set<String> conditionalLinkageNames = new HashSet<>();
+    private int unresolvedCallableEvidence;
     private final ConditionalCompilationEvidence conditionalEvidence;
     private final int sourceLength;
 
@@ -70,35 +64,10 @@ public class CAstListener extends CParserBaseListener
     }
 
     public CallableEvidenceExtraction callableEvidenceExtraction() {
-        for (int index = 0; index < callableEvidence.size(); index++) {
-            callableEvidence.set(index, normalizeCallable(callableEvidence.get(index)));
-        }
-        List<CallBindingCandidate> bindings = callEvidence.stream()
-                .map(this::bindCall)
-                .toList();
-        return new CallableEvidenceExtraction(callableEvidence, bindings);
-    }
-
-    private CallableCandidate normalizeCallable(CallableCandidate candidate) {
-        String presence = conditionalEvidence
-                .presenceAt(candidate.range().startOffset()).status();
-        boolean active = "active".equals(presence);
-        String targetScope = active
-                ? fileTargetScopes.getOrDefault(
-                        candidate.terminalName(), candidate.targetScope())
-                : candidate.targetScope();
-        String definitionStatus = candidate.definitionStatus();
-        if ("definition".equals(candidate.role())
-                && conditionalLinkageNames.contains(candidate.terminalName())) {
-            definitionStatus = "configuration_dependent";
-        }
-        return new CallableCandidate(
-                candidate.grammarRule(), candidate.range(), candidate.nameRange(),
-                candidate.role(), candidate.adapterSchema(), candidate.terminalName(),
-                targetScope, candidate.compatibilityMaterial(),
-                candidate.compatibilityStatus(), candidate.compatibilityScope(),
-                definitionStatus, candidate.configurationId(), candidate.astNodeRange(),
-                candidate.visibilityRange(), candidate.visibilityStartOffset());
+        return new CallableEvidenceExtraction(
+                "c", "antlr-c/v1", callableEvidence, unresolvedCallableEvidence,
+                unresolvedCallableEvidence == 0
+                        ? List.of() : List.of("insufficient_parser_recovery"));
     }
 
     @Override
@@ -125,7 +94,6 @@ public class CAstListener extends CParserBaseListener
                         String source, CPreprocessorSyntax preprocessorSyntax) {
         this.h = new ListenerHelper(tokens, tracker);
         this.conditionalEvidence = preprocessorSyntax.conditional();
-        this.macroEvidence = preprocessorSyntax.macros().candidates();
         this.sourceLength = source.codePointCount(0, source.length());
         extractFileHeaderComment();
         CPreprocessorLegacyAstAdapter.appendIncludes(
@@ -276,7 +244,9 @@ public class CAstListener extends CParserBaseListener
         }
         if (nameToken != null) {
             addCallable("definition", "functionDefinition", ctx, nameToken,
-                    ctx.declarationSpecifiers(), ctx.declarator(), true, null);
+                    ctx.declarationSpecifiers(), ctx.declarator(), true,
+                    enclosingCompoundStatement(ctx.getParent() instanceof ParserRuleContext
+                            ? (ParserRuleContext) ctx.getParent() : null));
         }
 
         // 파라미터 텍스트 추출 (시그니처 표시용 — 별도 PARAMETER 노드는 생성하지 않음)
@@ -399,15 +369,6 @@ public class CAstListener extends CParserBaseListener
         if (initDecl.declarator() != null && !initDecl.declarator().pointer().isEmpty()) {
             actualVariableType = (actualVariableType != null ? actualVariableType : "") + " *";
             actualVariableType = actualVariableType.trim();
-        }
-
-        if (!isFunctionPrototype && containsFunctionSuffix(initDecl.declarator())
-                && "pointer".equals(firstDerivedOperator(initDecl.declarator()))) {
-            SourceRangeCandidate scopeRange = lexicalScope == null
-                    ? new SourceRangeCandidate(0, sourceLength)
-                    : range(lexicalScope.getStart(), lexicalScope.getStop());
-            runtimeCallableObjects.add(new RuntimeCallableObject(
-                    name, scopeRange, initDecl.declarator().getStop().getStopIndex() + 1));
         }
 
         boolean isConst = actualVariableType != null && actualVariableType.contains("const");
@@ -545,105 +506,47 @@ public class CAstListener extends CParserBaseListener
                 throw new IllegalStateException("postfix call has no closing parenthesis");
             }
             String terminalName = callTerminalName(context, children, index);
-            callEvidence.add(CallEvidenceCandidate.fromTokens("postfixExpression",
+            String calleeKind = index == 1 && context.primaryExpression() != null
+                    && context.primaryExpression().Identifier() != null
+                            ? "named" : "expression";
+            CallEvidenceCandidate candidate = CallEvidenceCandidate.fromTokens(
+                    "postfixExpression",
                     context.getStart(), close.getSymbol(), context.getStart(), calleeStop,
-                    terminalName == null ? "expression" : "named", terminalName,
-                    arguments));
+                    calleeKind, terminalName, arguments);
+            callEvidence.add(candidate.withStructuralContext(
+                    callReceiverRange(context, children, index),
+                    lexicalScopePath(context)));
         }
     }
 
     private static String callTerminalName(CParser.PostfixExpressionContext context,
                                            List<ParseTree> children, int openIndex) {
-        return openIndex == 1 && context.primaryExpression() != null
-                && context.primaryExpression().Identifier() != null
-                        ? context.primaryExpression().Identifier().getText() : null;
+        if (openIndex == 1 && context.primaryExpression() != null
+                && context.primaryExpression().Identifier() != null) {
+            return context.primaryExpression().Identifier().getText();
+        }
+        if (openIndex >= 3
+                && children.get(openIndex - 2) instanceof TerminalNode operator
+                && (".".equals(operator.getText()) || "->".equals(operator.getText()))
+                && children.get(openIndex - 1) instanceof TerminalNode member) {
+            return member.getText();
+        }
+        return null;
     }
 
-    private CallBindingCandidate bindCall(CallEvidenceCandidate call) {
-        String adapter = CallableEvidenceExtraction.C_SOURCE_ADAPTER;
-        if ("expression".equals(call.calleeKind())) {
-            return new CallBindingCandidate(call.callRange(), adapter, "dynamic", "none", null,
-                    "runtime", "dynamic", null, "runtime_semantics",
-                    "runtime_expression_target", List.of(), List.of());
+    private static SourceRangeCandidate callReceiverRange(
+            CParser.PostfixExpressionContext context,
+            List<ParseTree> children,
+            int openIndex) {
+        if (openIndex < 3
+                || !(children.get(openIndex - 2) instanceof TerminalNode operator)
+                || !(".".equals(operator.getText()) || "->".equals(operator.getText()))) {
+            return null;
         }
-        List<SourceRangeCandidate> macros = macroEvidence.stream()
-                .filter(macro -> "function".equals(macro.macroKind()))
-                .filter(macro -> macro.terminalName().equals(call.terminalName()))
-                .filter(macro -> macro.range().startOffset() < call.callRange().startOffset())
-                .filter(macro -> !"inactive".equals(conditionalEvidence
-                        .presenceAt(macro.range().startOffset()).status()))
-                .map(MacroEvidenceCandidate::range)
-                .toList();
-        if (!macros.isEmpty()) {
-            return new CallBindingCandidate(call.callRange(), adapter,
-                    "configuration_dependent", "none", null, "runtime", "dynamic", null,
-                    "grammar_scope", "insufficient_preprocessing_expansion", macros,
-                    List.of());
-        }
-        List<CallableCandidate> visible = callableEvidence.stream()
-                .filter(candidate -> candidate.terminalName().equals(call.terminalName()))
-                .filter(candidate -> candidate.visibilityStartOffset()
-                        <= call.callRange().startOffset())
-                .filter(candidate -> call.callRange().startOffset()
-                        < candidate.visibilityRange().endOffset())
-                .filter(candidate -> !"inactive".equals(conditionalEvidence
-                        .presenceAt(candidate.range().startOffset()).status()))
-                .sorted(Comparator.comparingInt(CallableCandidate::visibilityStartOffset)
-                        .reversed())
-                .toList();
-        if (!visible.isEmpty()) {
-            CallableCandidate declaration = visible.get(0);
-            List<SourceRangeCandidate> conditionalCandidates = visible.stream()
-                    .filter(candidate -> {
-                        String status = conditionalEvidence
-                                .presenceAt(candidate.range().startOffset()).status();
-                        return "conditional".equals(status) || "unknown".equals(status);
-                    })
-                    .map(CallableCandidate::nameRange)
-                    .toList();
-            if (!conditionalCandidates.isEmpty()) {
-                return new CallBindingCandidate(call.callRange(), adapter,
-                        "configuration_dependent", "none", null, "runtime", "dynamic", null,
-                        "grammar_scope", "conditional_callable_visibility",
-                        List.of(), conditionalCandidates);
-            }
-            if ("configuration_dependent".equals(declaration.definitionStatus())) {
-                return new CallBindingCandidate(call.callRange(), adapter,
-                        "configuration_dependent", "none", null, "runtime", "dynamic", null,
-                        "grammar_scope", "configuration_dependent_inline_definition",
-                        List.of(), List.of(declaration.nameRange()));
-            }
-            if ("definition".equals(declaration.role())) {
-                return new CallBindingCandidate(call.callRange(), adapter,
-                        "declaration_bound", "direct_definition", declaration.nameRange(),
-                        declaration.targetScope(), "exact", declaration.configurationId(),
-                        "grammar_scope", null, List.of(), List.of());
-            }
-            if ("unavailable".equals(declaration.compatibilityStatus())) {
-                return new CallBindingCandidate(call.callRange(), adapter,
-                        "unsupported", "none", null, "runtime", "dynamic", null,
-                        "grammar_scope", "insufficient_callable_type_compatibility",
-                        List.of(), List.of(declaration.nameRange()));
-            }
-            return new CallBindingCandidate(call.callRange(), adapter,
-                    "declaration_bound", "compatible_definition", declaration.nameRange(),
-                    declaration.targetScope(), "exact", declaration.configurationId(),
-                    "grammar_scope", null, List.of(), List.of());
-        }
-        boolean runtimeObject = runtimeCallableObjects.stream()
-                .anyMatch(candidate -> candidate.terminalName().equals(call.terminalName())
-                        && candidate.visibilityStartOffset()
-                                <= call.callRange().startOffset()
-                        && call.callRange().startOffset()
-                                < candidate.visibilityRange().endOffset());
-        if (runtimeObject) {
-            return new CallBindingCandidate(call.callRange(), adapter, "dynamic", "none", null,
-                    "runtime", "dynamic", null, "grammar_scope",
-                    "function_pointer_object", List.of(), List.of());
-        }
-        return new CallBindingCandidate(call.callRange(), adapter, "external", "none", null,
-                "runtime", "exact", null, "grammar_scope",
-                "missing_visible_declaration", List.of(), List.of());
+        ParseTree receiverEnd = children.get(openIndex - 3);
+        Token stop = receiverEnd instanceof TerminalNode terminal
+                ? terminal.getSymbol() : ((ParserRuleContext) receiverEnd).getStop();
+        return range(context.getStart(), stop);
     }
 
     private void addCallable(String role, String grammarRule, ParserRuleContext factContext,
@@ -652,40 +555,95 @@ public class CAstListener extends CParserBaseListener
                              CParser.DeclaratorContext declarator,
                              boolean definition,
                              ParserRuleContext lexicalScope) {
-        String name = nameToken.getText();
-        String targetScope = effectiveTargetScope(
-                name, specifiers, factContext.getStart().getStartIndex());
-        FunctionCompatibility compatibility = functionCompatibility(specifiers, declarator);
-        String definitionStatus = !definition ? "not_applicable"
-                : (hasInlineSpecifier(specifiers) && !"source_file".equals(targetScope))
-                        || conditionalLinkageNames.contains(name)
-                        ? "configuration_dependent" : "exact";
-        SourceRangeCandidate factRange = range(factContext.getStart(), factContext.getStop());
-        SourceRangeCandidate visibilityRange = lexicalScope == null
-                ? new SourceRangeCandidate(0, sourceLength)
-                : range(lexicalScope.getStart(), lexicalScope.getStop());
-        callableEvidence.add(new CallableCandidate(
-                grammarRule,
-                factRange,
-                range(nameToken, nameToken),
-                role,
-                CallableEvidenceExtraction.C_SOURCE_ADAPTER,
-                name,
-                targetScope,
-                compatibility == null ? null : compatibility.material(),
-                compatibility == null ? "unavailable" : "exact",
-                compatibility == null ? "unavailable" : compatibility.scope(),
-                definitionStatus,
-                null,
-                definition ? factRange : null,
-                visibilityRange,
-                declarator.getStop().getStopIndex() + 1));
+        try {
+            requireExactRange(declarator.getStart(), declarator.getStop());
+            SourceRangeCandidate factRange = range(factContext.getStart(), factContext.getStop());
+            List<ScopeEvidenceCandidate> scopePath = lexicalScopePath(lexicalScope);
+            SourceRangeCandidate scopeRange = scopePath.get(scopePath.size() - 1).range();
+            List<SyntaxComponentCandidate> declarationSpecifiers = specifiers == null
+                    ? List.of() : specifiers.declarationSpecifier().stream()
+                            .map(this::syntaxComponent)
+                            .toList();
+            List<SyntaxComponentCandidate> attributes = directAttributeComponents(factContext);
+            callableEvidence.add(new CallableCandidate(
+                    grammarRule,
+                    factRange,
+                    range(nameToken, nameToken),
+                    role,
+                    definition ? factRange : null,
+                    scopePath,
+                    scopeRange,
+                    declarator.getStop().getStopIndex() + 1,
+                    new CallableSyntaxCandidate(
+                            "c-callable-syntax/v1",
+                            declarationSpecifiers,
+                            syntaxComponent(declarator),
+                            attributes)));
+        } catch (IncompleteSyntaxEvidence ignored) {
+            unresolvedCallableEvidence++;
+        }
     }
 
-    private record RuntimeCallableObject(
-            String terminalName,
-            SourceRangeCandidate visibilityRange,
-            int visibilityStartOffset) { }
+    private List<ScopeEvidenceCandidate> lexicalScopePath(ParserRuleContext context) {
+        List<ScopeEvidenceCandidate> nested = new ArrayList<>();
+        ParserRuleContext cursor = context;
+        while (cursor != null) {
+            if (cursor instanceof CParser.FunctionDefinitionContext) {
+                nested.add(0, new ScopeEvidenceCandidate(
+                        "function", range(cursor.getStart(), cursor.getStop())));
+            } else if (cursor instanceof CParser.CompoundStatementContext) {
+                nested.add(0, new ScopeEvidenceCandidate(
+                        "block", range(cursor.getStart(), cursor.getStop())));
+            }
+            cursor = cursor.getParent() instanceof ParserRuleContext
+                    ? (ParserRuleContext) cursor.getParent() : null;
+        }
+        List<ScopeEvidenceCandidate> result = new ArrayList<>(nested.size() + 1);
+        result.add(new ScopeEvidenceCandidate(
+                "translation_unit", new SourceRangeCandidate(0, sourceLength)));
+        result.addAll(nested);
+        return List.copyOf(result);
+    }
+
+    private SyntaxComponentCandidate syntaxComponent(ParserRuleContext context) {
+        requireExactRange(context.getStart(), context.getStop());
+        List<SyntaxTokenCandidate> directTokens = new ArrayList<>();
+        List<SyntaxComponentCandidate> children = new ArrayList<>();
+        if (context.children != null) {
+            for (ParseTree child : context.children) {
+                if (child instanceof ParserRuleContext childContext) {
+                    children.add(syntaxComponent(childContext));
+                } else if (child instanceof TerminalNode terminal) {
+                    Token token = terminal.getSymbol();
+                    requireExactRange(token, token);
+                    String tokenKind = CParser.VOCABULARY.getSymbolicName(token.getType());
+                    if (tokenKind == null || tokenKind.isBlank()) {
+                        throw new IllegalStateException(
+                                "C lexer terminal has no symbolic name: " + token.getType());
+                    }
+                    directTokens.add(new SyntaxTokenCandidate(
+                            tokenKind, range(token, token)));
+                }
+            }
+        }
+        return new SyntaxComponentCandidate(
+                CParser.ruleNames[context.getRuleIndex()],
+                range(context.getStart(), context.getStop()),
+                directTokens,
+                children);
+    }
+
+    private List<SyntaxComponentCandidate> directAttributeComponents(
+            ParserRuleContext context) {
+        if (context.children == null) return List.of();
+        List<SyntaxComponentCandidate> result = new ArrayList<>();
+        for (ParseTree child : context.children) {
+            if (child instanceof CParser.AttributeSpecifierSequenceContext attribute) {
+                result.add(syntaxComponent(attribute));
+            }
+        }
+        return List.copyOf(result);
+    }
 
     private static CParser.CompoundStatementContext enclosingCompoundStatement(
             ParserRuleContext context) {
@@ -727,216 +685,6 @@ public class CAstListener extends CParserBaseListener
         return functionStart < arrayStart ? "function" : "array";
     }
 
-    private static boolean containsFunctionSuffix(CParser.DeclaratorContext declarator) {
-        if (declarator == null || declarator.directDeclarator() == null) return false;
-        CParser.DirectDeclaratorContext direct = declarator.directDeclarator();
-        return !direct.parameterTypeList().isEmpty()
-                || containsFunctionSuffix(direct.declarator());
-    }
-
-    private String effectiveTargetScope(
-            String name, CParser.DeclarationSpecifiersContext specifiers,
-            int declarationOffset) {
-        boolean isStatic = specifiers != null && specifiers.declarationSpecifier().stream()
-                .anyMatch(item -> item.storageClassSpecifier() != null
-                        && "static".equals(item.storageClassSpecifier().getText()));
-        String presence = conditionalEvidence.presenceAt(declarationOffset).status();
-        if ("inactive".equals(presence)) {
-            return isStatic ? "source_file" : "corpus";
-        }
-        if ("conditional".equals(presence) || "unknown".equals(presence)) {
-            conditionalLinkageNames.add(name);
-            return isStatic ? "source_file" : "corpus";
-        }
-        String previous = fileTargetScopes.get(name);
-        String scope = isStatic || "source_file".equals(previous)
-                ? "source_file" : "corpus";
-        fileTargetScopes.put(name, scope);
-        return scope;
-    }
-
-    private record FunctionCompatibility(String material, String scope) { }
-
-    private FunctionCompatibility functionCompatibility(
-            CParser.DeclarationSpecifiersContext specifiers,
-            CParser.DeclaratorContext declarator) {
-        if (specifiers == null || declarator == null
-                || declarator.directDeclarator() == null) return null;
-        CParser.DirectDeclaratorContext direct = declarator.directDeclarator();
-        if (direct.Identifier() == null || direct.parameterTypeList().size() != 1
-                || !direct.LeftBracket().isEmpty() || !declarator.pointer().isEmpty()) {
-            return null;
-        }
-        String resultType = canonicalBuiltinType(specifiers, false);
-        if (resultType == null) return null;
-        CParser.ParameterTypeListContext parameters = direct.parameterTypeList(0);
-        if (parameters.parameterList() == null) return null;
-        boolean unspecifiedParameters = ParserUtils.getOriginalText(
-                parameters, h.getTokens()).trim().isEmpty();
-        if (unspecifiedParameters || hasAbiSensitiveExtension(specifiers, declarator)) {
-            return null;
-        }
-        List<String> parameterTypes = new ArrayList<>();
-        for (CParser.ParameterDeclarationContext parameter
-                : parameters.parameterList().parameterDeclaration()) {
-            if (parameter.declarationSpecifiers() == null) return null;
-            String parameterType = canonicalBuiltinType(
-                    parameter.declarationSpecifiers(), true);
-            if (parameterType == null || !isPlainScalarParameter(parameter)) return null;
-            parameterTypes.add(parameterType);
-        }
-        if (parameterTypes.size() == 1 && "void".equals(parameterTypes.get(0))) {
-            if (parameters.Ellipsis() != null
-                    || parameters.parameterList().parameterDeclaration().get(0)
-                            .declarator() != null
-                    || parameters.parameterList().parameterDeclaration().get(0)
-                            .abstractDeclarator() != null) {
-                return null;
-            }
-            parameterTypes.clear();
-        } else if (parameterTypes.contains("void")) {
-            return null;
-        }
-        String material = "c-function-type-v2\0result=" + resultType
-                + "\0parameters=" + String.join(",", parameterTypes)
-                + "\0variadic=" + (parameters.Ellipsis() != null);
-        return new FunctionCompatibility(material, "corpus");
-    }
-
-    private static boolean isPlainScalarParameter(
-            CParser.ParameterDeclarationContext parameter) {
-        if (parameter.abstractDeclarator() != null) return false;
-        CParser.DeclaratorContext declarator = parameter.declarator();
-        if (declarator == null) return true;
-        CParser.DirectDeclaratorContext direct = declarator.directDeclarator();
-        return declarator.pointer().isEmpty()
-                && direct != null
-                && direct.Identifier() != null
-                && direct.declarator() == null
-                && direct.LeftBracket().isEmpty()
-                && direct.parameterTypeList().isEmpty()
-                && declarator.gnuAttribute().isEmpty()
-                && declarator.gccDeclaratorExtension().isEmpty()
-                && !containsAttributeSyntax(declarator);
-    }
-
-    private static String canonicalBuiltinType(
-            CParser.DeclarationSpecifiersContext specifiers,
-            boolean parameterType) {
-        Map<String, Integer> counts = new HashMap<>();
-        for (CParser.DeclarationSpecifierContext item
-                : specifiers.declarationSpecifier()) {
-            if (item.alignmentSpecifier() != null) return null;
-            if (item.typeQualifier() != null) {
-                if (!parameterType) return null;
-                continue;
-            }
-            if (item.typeSpecifier() == null) continue;
-            CParser.TypeSpecifierContext type = item.typeSpecifier();
-            if (type.atomicTypeSpecifier() != null
-                    || type.structOrUnionSpecifier() != null
-                    || type.enumSpecifier() != null
-                    || type.typedefName() != null
-                    || type.typeofSpecifier() != null
-                    || type.KW__m128() != null
-                    || type.KW__m128d() != null
-                    || type.KW__m128i() != null
-                    || type.KW__extension__() != null) {
-                return null;
-            }
-            String token = type.getText();
-            if (!List.of("void", "char", "short", "int", "long", "float",
-                    "double", "signed", "unsigned", "_Bool", "_Complex")
-                    .contains(token)) {
-                return null;
-            }
-            counts.merge(token, 1, Integer::sum);
-        }
-        if (counts.isEmpty()) return null;
-        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
-            if (entry.getValue() > 1
-                    && !("long".equals(entry.getKey()) && entry.getValue() == 2)) {
-                return null;
-            }
-        }
-        int longs = counts.getOrDefault("long", 0);
-        if (longs > 2 || counts.getOrDefault("signed", 0)
-                + counts.getOrDefault("unsigned", 0) > 1) return null;
-        String sign = counts.containsKey("unsigned") ? "unsigned"
-                : counts.containsKey("signed") ? "signed" : "";
-        boolean complex = counts.containsKey("_Complex");
-        if (counts.containsKey("void")) {
-            return counts.size() == 1 ? "void" : null;
-        }
-        if (counts.containsKey("_Bool")) {
-            return counts.size() == 1 ? "bool" : null;
-        }
-        if (counts.containsKey("char")) {
-            if (longs != 0 || counts.containsKey("short") || complex
-                    || counts.containsKey("int") || counts.containsKey("float")
-                    || counts.containsKey("double")) return null;
-            return sign.isEmpty() ? "char" : sign + "-char";
-        }
-        if (counts.containsKey("float")) {
-            if (!sign.isEmpty() || longs != 0 || counts.containsKey("short")
-                    || counts.containsKey("int") || counts.containsKey("double")) return null;
-            return complex ? "complex-float" : "float";
-        }
-        if (counts.containsKey("double")) {
-            if (!sign.isEmpty() || longs > 1 || counts.containsKey("short")
-                    || counts.containsKey("int") || counts.containsKey("float")) return null;
-            String base = longs == 1 ? "long-double" : "double";
-            return complex ? "complex-" + base : base;
-        }
-        if (complex || (counts.containsKey("short") && longs != 0)) return null;
-        if (counts.containsKey("short")) {
-            return "unsigned".equals(sign) ? "unsigned-short" : "signed-short";
-        }
-        if (longs == 1) {
-            return "unsigned".equals(sign) ? "unsigned-long" : "signed-long";
-        }
-        if (longs == 2) {
-            return "unsigned".equals(sign)
-                    ? "unsigned-long-long" : "signed-long-long";
-        }
-        return "unsigned".equals(sign) ? "unsigned-int" : "signed-int";
-    }
-
-    private static boolean hasInlineSpecifier(
-            CParser.DeclarationSpecifiersContext specifiers) {
-        return specifiers != null && specifiers.declarationSpecifier().stream()
-                .map(CParser.DeclarationSpecifierContext::functionSpecifier)
-                .filter(java.util.Objects::nonNull)
-                .anyMatch(item -> item.Inline() != null);
-    }
-
-    private static boolean hasAbiSensitiveExtension(
-            CParser.DeclarationSpecifiersContext specifiers,
-            CParser.DeclaratorContext declarator) {
-        if (declarator != null && (!declarator.gnuAttribute().isEmpty()
-                || !declarator.gccDeclaratorExtension().isEmpty())) return true;
-        if (containsAttributeSyntax(declarator)) return true;
-        if (specifiers == null) return false;
-        for (CParser.DeclarationSpecifierContext item
-                : specifiers.declarationSpecifier()) {
-            CParser.FunctionSpecifierContext function = item.functionSpecifier();
-            if (function != null && function.Inline() == null
-                    && function.Noreturn() == null) return true;
-        }
-        return containsAttributeSyntax(specifiers);
-    }
-
-    private static boolean containsAttributeSyntax(ParseTree tree) {
-        if (tree == null) return false;
-        if (tree instanceof CParser.AttributeSpecifierSequenceContext
-                || tree instanceof CParser.GnuAttributeContext
-                || tree instanceof CParser.GccDeclaratorExtensionContext) return true;
-        for (int index = 0; index < tree.getChildCount(); index++) {
-            if (containsAttributeSyntax(tree.getChild(index))) return true;
-        }
-        return false;
-    }
-
     private static Token extractDeclaratorNameToken(CParser.DeclaratorContext ctx) {
         if (ctx == null || ctx.directDeclarator() == null) return null;
         CParser.DirectDeclaratorContext direct = ctx.directDeclarator();
@@ -947,7 +695,19 @@ public class CAstListener extends CParserBaseListener
     }
 
     private static SourceRangeCandidate range(Token start, Token stop) {
+        requireExactRange(start, stop);
         return new SourceRangeCandidate(start.getStartIndex(), stop.getStopIndex() + 1);
+    }
+
+    private static void requireExactRange(Token start, Token stop) {
+        if (start == null || stop == null || start.getStartIndex() < 0
+                || stop.getStopIndex() < start.getStartIndex()) {
+            throw new IncompleteSyntaxEvidence();
+        }
+    }
+
+    private static final class IncompleteSyntaxEvidence extends RuntimeException {
+        private static final long serialVersionUID = 1L;
     }
 
     @Override

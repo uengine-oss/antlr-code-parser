@@ -10,9 +10,11 @@ public record CallEvidenceCandidate(
         String grammarRule,
         SourceRangeCandidate callRange,
         SourceRangeCandidate calleeRange,
+        SourceRangeCandidate receiverRange,
         String calleeKind,
         String terminalName,
-        List<SourceRangeCandidate> argumentRanges) {
+        List<SourceRangeCandidate> argumentRanges,
+        List<ScopeEvidenceCandidate> scopePath) {
 
     public CallEvidenceCandidate {
         if (grammarRule == null || grammarRule.isBlank()) {
@@ -21,14 +23,12 @@ public record CallEvidenceCandidate(
         if (!List.of("named", "constructor", "expression").contains(calleeKind)) {
             throw new IllegalArgumentException("unsupported calleeKind: " + calleeKind);
         }
-        if ("expression".equals(calleeKind)) {
-            if (terminalName != null) {
-                throw new IllegalArgumentException("expression callee cannot claim terminalName");
-            }
-        } else if (terminalName == null || terminalName.isBlank()) {
+        if (!"expression".equals(calleeKind)
+                && (terminalName == null || terminalName.isBlank())) {
             throw new IllegalArgumentException(calleeKind + " callee requires terminalName");
         }
         argumentRanges = List.copyOf(argumentRanges == null ? List.of() : argumentRanges);
+        scopePath = List.copyOf(scopePath == null ? List.of() : scopePath);
     }
 
     public static CallEvidenceCandidate fromTokens(
@@ -37,11 +37,18 @@ public record CallEvidenceCandidate(
             String calleeKind, String terminalName,
             List<? extends ParserRuleContext> arguments) {
         return new CallEvidenceCandidate(grammarRule,
-                range(callStart, callStop), range(calleeStart, calleeStop),
+                range(callStart, callStop), range(calleeStart, calleeStop), null,
                 calleeKind, terminalName,
                 arguments == null ? List.of() : arguments.stream()
                         .map(argument -> range(argument.getStart(), argument.getStop()))
-                        .toList());
+                        .toList(), List.of());
+    }
+
+    public CallEvidenceCandidate withStructuralContext(
+            SourceRangeCandidate receiver,
+            List<ScopeEvidenceCandidate> lexicalScopePath) {
+        return new CallEvidenceCandidate(grammarRule, callRange, calleeRange, receiver,
+                calleeKind, terminalName, argumentRanges, lexicalScopePath);
     }
 
     private static SourceRangeCandidate range(Token start, Token stop) {
