@@ -19,6 +19,8 @@ import legacymodernizer.parser.parsing.evidence.ScopeEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.SourceRangeCandidate;
 import legacymodernizer.parser.parsing.evidence.SyntaxComponentCandidate;
 import legacymodernizer.parser.parsing.evidence.SyntaxTokenCandidate;
+import legacymodernizer.parser.parsing.evidence.StructuralExpressionEvidenceExtraction;
+import legacymodernizer.parser.parsing.evidence.StructuralExpressionEvidenceExtraction.ExpressionCandidate;
 import legacymodernizer.parser.parsing.languages.c.CPreprocessorEvidenceExtractor;
 import legacymodernizer.parser.parsing.languages.c.CPreprocessorLegacyAstAdapter;
 import legacymodernizer.parser.parsing.languages.c.CPreprocessorSyntax;
@@ -44,6 +46,8 @@ public class CAstListener extends CParserBaseListener
     private final List<CallEvidenceCandidate> callEvidence = new ArrayList<>();
     private final List<CallableCandidate> callableEvidence = new ArrayList<>();
     private int unresolvedCallableEvidence;
+    private final List<ExpressionCandidate> structuralExpressionEvidence = new ArrayList<>();
+    private int unresolvedStructuralExpressionEvidence;
     private final ConditionalCompilationEvidence conditionalEvidence;
     private final int sourceLength;
 
@@ -67,6 +71,14 @@ public class CAstListener extends CParserBaseListener
         return new CallableEvidenceExtraction(
                 "c", "antlr-c/v1", callableEvidence, unresolvedCallableEvidence,
                 unresolvedCallableEvidence == 0
+                        ? List.of() : List.of("insufficient_parser_recovery"));
+    }
+
+    public StructuralExpressionEvidenceExtraction structuralExpressionEvidenceExtraction() {
+        return new StructuralExpressionEvidenceExtraction(
+                structuralExpressionEvidence,
+                unresolvedStructuralExpressionEvidence,
+                unresolvedStructuralExpressionEvidence == 0
                         ? List.of() : List.of("insufficient_parser_recovery"));
     }
 
@@ -396,6 +408,9 @@ public class CAstListener extends CParserBaseListener
                 assignment.target = name;
                 assignment.operator = "=";
                 assignment.expression = ParserUtils.getExactSourceText(initDecl.initializer());
+                assignment.statementOrigin = "declaration_initializer";
+                emitStructuralExpression(
+                        "initializer_value", initDecl.initializer(), initDecl);
             }
             return;
         }
@@ -633,6 +648,21 @@ public class CAstListener extends CParserBaseListener
                 children);
     }
 
+    private void emitStructuralExpression(
+            String role, ParserRuleContext expression, ParserRuleContext owner) {
+        if (expression == null) return;
+        try {
+            structuralExpressionEvidence.add(new ExpressionCandidate(
+                    role,
+                    range(expression.getStart(), expression.getStop()),
+                    range(owner.getStart(), owner.getStop()),
+                    lexicalScopePath(owner),
+                    syntaxComponent(expression)));
+        } catch (IncompleteSyntaxEvidence ignored) {
+            unresolvedStructuralExpressionEvidence++;
+        }
+    }
+
     private List<SyntaxComponentCandidate> directAttributeComponents(
             ParserRuleContext context) {
         if (context.children == null) return List.of();
@@ -732,6 +762,8 @@ public class CAstListener extends CParserBaseListener
         node.target = source.substring(0, source.length() - operator.length()).trim();
         node.operator = "++".equals(operator) ? "+=" : "-=";
         node.expression = "1";
+        node.statementOrigin = "postfix_update";
+        emitStructuralExpression("update_expression", ctx, ctx);
     }
 
     @Override
@@ -744,6 +776,8 @@ public class CAstListener extends CParserBaseListener
         node.target = ParserUtils.getExactSourceText(ctx.unaryExpression());
         node.operator = "++".equals(operator) ? "+=" : "-=";
         node.expression = "1";
+        node.statementOrigin = "prefix_update";
+        emitStructuralExpression("update_expression", ctx, ctx);
     }
 
     private static boolean spansWholeExpressionStatement(ParserRuleContext ctx) {
@@ -778,6 +812,7 @@ public class CAstListener extends CParserBaseListener
         Node node = h.enterStatement(ctx.If() != null ? "IF" : "SWITCH", ctx.getStart().getLine());
         // 조건식 원문 보존 (spec 016 FR-003) — downstream 이 괄호 짝을 재파싱하지 않는다.
         node.expression = ParserUtils.getExactSourceText(ctx.expression());
+        emitStructuralExpression("condition", ctx.expression(), ctx);
     }
 
     @Override
@@ -796,8 +831,11 @@ public class CAstListener extends CParserBaseListener
         // 아니다(TA-102). grammar 가 ';' 로 구분한 test 절을 그대로 소유시킨다.
         if (ctx.expression() != null) {
             node.expression = ParserUtils.getExactSourceText(ctx.expression());
+            emitStructuralExpression("condition", ctx.expression(), ctx);
         } else if (ctx.forCondition() != null) {
-            node.expression = ParserUtils.getExactSourceText(forTestClause(ctx.forCondition()));
+            CParser.ForExpressionContext test = forTestClause(ctx.forCondition());
+            node.expression = ParserUtils.getExactSourceText(test);
+            emitStructuralExpression("condition", test, ctx);
         }
         if (ctx.Do() != null) {
             node.conditionTiming = "post";
@@ -843,6 +881,7 @@ public class CAstListener extends CParserBaseListener
         Node node = h.enterStatement("CASE", ctx.getStart().getLine());
         // 라벨 상수 원문 보존 (spec 016 FR-003). default 는 expression null.
         node.expression = ParserUtils.getExactSourceText(ctx.constantExpression());
+        emitStructuralExpression("case_value", ctx.constantExpression(), ctx);
     }
 
     @Override
@@ -963,6 +1002,7 @@ public class CAstListener extends CParserBaseListener
             case "return": {
                 Node node = h.addLeafStatement("RETURN", null, startLine, endLine);
                 node.expression = ParserUtils.getExactSourceText(ctx.expression());
+                emitStructuralExpression("return_value", ctx.expression(), ctx);
                 break;
             }
             case "break":
@@ -1000,6 +1040,9 @@ public class CAstListener extends CParserBaseListener
         node.target = ParserUtils.getExactSourceText(ctx.unaryExpression());
         node.operator = ctx.assignementOperator.getText();
         node.expression = ParserUtils.getExactSourceText(ctx.assignmentExpression());
+        node.statementOrigin = "assignment_expression";
+        emitStructuralExpression("assignment_target", ctx.unaryExpression(), ctx);
+        emitStructuralExpression("assignment_value", ctx.assignmentExpression(), ctx);
     }
 
     // ========================================

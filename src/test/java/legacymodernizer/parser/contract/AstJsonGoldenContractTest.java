@@ -36,7 +36,8 @@ class AstJsonGoldenContractTest {
     private static final List<String> PROPERTY_ORDER = List.of(
             "type", "name", "signature", "modifiers", "annotations", "returnType",
             "parameters", "genericType", "extendsType", "implementsTypes", "variableType",
-            "initValue", "target", "operator", "expression", "dataObjectEvidenceVersion",
+            "initValue", "target", "operator", "expression", "statementOrigin",
+            "conditionTiming", "dataObjectEvidenceVersion",
             "dataObjectReferences",
             "qualifiedColumnReferences", "unqualifiedIdentifierReferences",
             "schema", "moduleName",

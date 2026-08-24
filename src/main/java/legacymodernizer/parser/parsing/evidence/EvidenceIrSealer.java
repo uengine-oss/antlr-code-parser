@@ -24,6 +24,7 @@ import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence.C
 import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence.Presence;
 import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableCandidate;
 import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableSyntaxCandidate;
+import legacymodernizer.parser.parsing.evidence.StructuralExpressionEvidenceExtraction.ExpressionCandidate;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 
 /**
@@ -67,7 +68,7 @@ public final class EvidenceIrSealer {
                                    List<CallEvidenceCandidate> calls,
                                    ConditionalCompilationEvidence conditional) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, null, null, null, null, null);
+                conditional, true, null, null, null, null, null, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -78,7 +79,7 @@ public final class EvidenceIrSealer {
                                    ConditionalCompilationEvidence conditional,
                                    MacroEvidenceExtraction macros) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, macros, null, null, null, null);
+                conditional, true, macros, null, null, null, null, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -88,7 +89,7 @@ public final class EvidenceIrSealer {
                                    List<CallEvidenceCandidate> calls,
                                    ImportEvidenceExtraction imports) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                ConditionalCompilationEvidence.NONE, true, null, imports, null, null, null);
+                ConditionalCompilationEvidence.NONE, true, null, imports, null, null, null, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -100,7 +101,7 @@ public final class EvidenceIrSealer {
                                    MacroEvidenceExtraction macros,
                                    ConfiguredPreprocessingEvidence configuredPreprocessing) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, macros, null, configuredPreprocessing, null, null);
+                conditional, true, macros, null, configuredPreprocessing, null, null, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -113,7 +114,7 @@ public final class EvidenceIrSealer {
                                    ImportEvidenceExtraction imports,
                                    ConfiguredPreprocessingEvidence configuredPreprocessing) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, macros, imports, configuredPreprocessing, null, null);
+                conditional, true, macros, imports, configuredPreprocessing, null, null, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -127,7 +128,7 @@ public final class EvidenceIrSealer {
                                    ConfiguredPreprocessingEvidence configuredPreprocessing,
                                    SymbolEvidenceExtraction symbols) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, true, macros, imports, configuredPreprocessing, symbols, null);
+                conditional, true, macros, imports, configuredPreprocessing, symbols, null, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -140,10 +141,11 @@ public final class EvidenceIrSealer {
                                    ImportEvidenceExtraction imports,
                                    ConfiguredPreprocessingEvidence configuredPreprocessing,
                                    SymbolEvidenceExtraction symbols,
-                                   CallableEvidenceExtraction callables) {
+                                   CallableEvidenceExtraction callables,
+                                   StructuralExpressionEvidenceExtraction expressions) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
                 conditional, true, macros, imports, configuredPreprocessing,
-                symbols, callables);
+                symbols, callables, expressions);
     }
 
     private static String seal(Node root, byte[] rawSource,
@@ -157,7 +159,8 @@ public final class EvidenceIrSealer {
                                ImportEvidenceExtraction imports,
                                ConfiguredPreprocessingEvidence configuredPreprocessing,
                                SymbolEvidenceExtraction symbols,
-                               CallableEvidenceExtraction callables) {
+                               CallableEvidenceExtraction callables,
+                               StructuralExpressionEvidenceExtraction expressions) {
         try {
             String source = decoded.text();
             CodePointIndex index = new CodePointIndex(source);
@@ -177,6 +180,8 @@ public final class EvidenceIrSealer {
                     new HashMap<>();
             List<CallableCandidate> emittedCallables = callables == null
                     ? List.of() : callables.callables();
+            List<ExpressionCandidate> emittedExpressions = expressions == null
+                    ? List.of() : expressions.expressions();
             String legacyJson = root.toJson();
             if (legacyJson.isEmpty() || legacyJson.charAt(legacyJson.length() - 1) != '}') {
                 throw new IllegalStateException("FILE root did not serialize as a JSON object");
@@ -226,6 +231,14 @@ public final class EvidenceIrSealer {
                                 decodedHash, index, ordinals, grammarRules, presences,
                                 conditional.presenceAt(callable.range().startOffset()));
                         generator.writeTree(fact);
+                    }
+                }
+                if (expressions != null) {
+                    for (ExpressionCandidate expression : emittedExpressions) {
+                        generator.writeTree(sealStructuralExpression(
+                                expression, normalizedSourceId, decodedHash, index,
+                                ordinals, grammarRules, presences,
+                                conditional.presenceAt(expression.range().startOffset())));
                     }
                 }
                 if (imports != null) {
@@ -293,11 +306,12 @@ public final class EvidenceIrSealer {
                 generator.writeArrayFieldStart("completeness");
                 List<String> completenessKinds = callables == null ? KINDS : List.of(
                         "call", "callable", "import", "symbol",
-                        "literal", "assignment", "parameter", "macro",
+                        "literal", "assignment", "parameter", "structural_expression", "macro",
                         "embedded_language", "conditional_region");
                 for (String kind : completenessKinds) {
                     int emitted = "call".equals(kind) ? emittedCalls.size()
                             : "callable".equals(kind) ? emittedCallables.size()
+                            : "structural_expression".equals(kind) ? emittedExpressions.size()
                             : "import".equals(kind) && imports != null
                                     ? imports.candidates().size()
                             : "macro".equals(kind) && macros != null
@@ -310,7 +324,9 @@ public final class EvidenceIrSealer {
                             : "import".equals(kind) && imports != null
                                     ? imports.explicitlyUnresolved()
                             : "callable".equals(kind) && callables != null
-                                    ? callables.explicitlyUnresolved() : 0;
+                                    ? callables.explicitlyUnresolved()
+                            : "structural_expression".equals(kind) && expressions != null
+                                    ? expressions.explicitlyUnresolved() : 0;
                     List<String> callReasons = new ArrayList<>();
                     if (decoded.lossy()) callReasons.add("insufficient_lossy_decode");
                     if (!"exact".equals(parseStatus)) {
@@ -323,6 +339,12 @@ public final class EvidenceIrSealer {
                     if (callables != null) {
                         for (String reason : callables.reasons()) {
                             if (!callableReasons.contains(reason)) callableReasons.add(reason);
+                        }
+                    }
+                    List<String> expressionReasons = new ArrayList<>(callReasons);
+                    if (expressions != null) {
+                        for (String reason : expressions.reasons()) {
+                            if (!expressionReasons.contains(reason)) expressionReasons.add(reason);
                         }
                     }
                     List<String> macroReasons = new ArrayList<>();
@@ -353,11 +375,15 @@ public final class EvidenceIrSealer {
                             : "callable".equals(kind)
                                     ? callables == null ? "unsupported"
                                             : !callableReasons.isEmpty() ? "partial" : "complete"
+                            : "structural_expression".equals(kind)
+                                    ? expressions == null ? "unsupported"
+                                            : !expressionReasons.isEmpty() ? "partial" : "complete"
                             : "conditional_region".equals(kind) ? "complete" : "unsupported";
                     List<String> reasons = "call".equals(kind)
                             ? callReasons : "macro".equals(kind) ? macroReasons
                             : "import".equals(kind) ? importReasons
                             : "callable".equals(kind) ? callableReasons
+                            : "structural_expression".equals(kind) ? expressionReasons
                             : "symbol".equals(kind) && !unresolvedSymbolFactIds.isEmpty()
                                     ? List.of("insufficient_type_name_environment")
                                     : List.of();
@@ -406,7 +432,7 @@ public final class EvidenceIrSealer {
                                    ConditionalCompilationEvidence conditional,
                                    boolean callSupported) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
-                conditional, callSupported, null, null, null, null, null);
+                conditional, callSupported, null, null, null, null, null, null);
     }
 
     private static void writeConfiguredPreprocessing(
@@ -557,6 +583,44 @@ public final class EvidenceIrSealer {
         payload.set("scopeRange", index.rangeJson(candidate.scopeRange()));
         payload.put("declarationPoint", candidate.declarationPoint());
         payload.set("syntax", callableSyntaxJson(candidate.syntax(), candidate.range(), index));
+        return fact;
+    }
+
+    private static ObjectNode sealStructuralExpression(
+            ExpressionCandidate candidate,
+            String sourceId,
+            String decodedHash,
+            CodePointIndex index,
+            Map<String, Integer> ordinals,
+            Map<String, Integer> grammarRules,
+            Map<Presence, Integer> presences,
+            Presence factPresence) {
+        index.requireValid(candidate.range());
+        index.requireValid(candidate.ownerRange());
+        requireContained(candidate.ownerRange(), candidate.range(), "structural expression");
+        requireScopePath(candidate.scopePath(), candidate.range(), index,
+                "structural expression");
+
+        String ordinalKey = "structural_expression\0" + candidate.range().startOffset()
+                + "\0" + candidate.range().endOffset();
+        int ordinal = ordinals.merge(ordinalKey, 1, Integer::sum) - 1;
+        ObjectNode fact = JSON.createObjectNode();
+        fact.put("factId", factId(sourceId, decodedHash, "structural_expression",
+                candidate.range(), ordinal));
+        fact.put("kind", "structural_expression");
+        fact.set("range", index.rangeJson(candidate.range()));
+        fact.put("grammarRuleRef", reference(
+                grammarRules, candidate.syntax().grammarRule()));
+        fact.put("presenceRef", reference(presences, factPresence));
+
+        ObjectNode payload = fact.putObject("payload");
+        payload.put("role", candidate.role());
+        payload.set("ownerRange", index.rangeJson(candidate.ownerRange()));
+        payload.set("scopePath", scopePathJson(candidate.scopePath(), index));
+        ObjectNode syntax = payload.putObject("syntax");
+        syntax.put("schema", "c-expression-syntax/v1");
+        syntax.set("root", syntaxComponentJson(
+                candidate.syntax(), candidate.range(), index, new HashSet<>()));
         return fact;
     }
 

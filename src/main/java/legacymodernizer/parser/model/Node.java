@@ -20,7 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
     "signature", "modifiers", "annotations", "returnType", "parameters", "genericType",
     "extendsType", "implementsTypes",
     "variableType", "initValue",
-    "target", "operator", "expression", "conditionTiming",
+    "target", "operator", "expression", "statementOrigin", "conditionTiming",
     "dataObjectEvidenceVersion", "dataObjectReferences", "qualifiedColumnReferences",
     "unqualifiedIdentifierReferences",
     "schema", "moduleName",
@@ -85,6 +85,8 @@ public class Node {
     public String target;
     /** ASSIGNMENT 의 대입 연산자 원문 (`=`, `+=`, `:=` …). 다른 노드에서는 null. */
     public String operator;
+    /** Grammar-owned origin of a compatibility statement projection. */
+    public String statementOrigin;
 
     // ========================================
     // 데이터 객체 구문 증거 (PL/SQL spec 017)

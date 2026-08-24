@@ -94,7 +94,8 @@ public class CLanguageModule extends AntlrLanguageModuleSupport {
                         // earlier negative typedef lookahead there is not missing type context.
                         configuredPreprocessing, run.parser().symbolEvidenceExtraction(
                                 run.listener().callEvidenceCandidates()),
-                        run.listener().callableEvidenceExtraction())
+                        run.listener().callableEvidenceExtraction(),
+                        run.listener().structuralExpressionEvidenceExtraction())
                 : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
                 Set.of("functionDefinition"), astJson, Set.of("FUNCTION"));
