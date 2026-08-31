@@ -35,6 +35,7 @@ class CStructuralEvidenceIr2ActualSliceTest {
     @Test
     void sealedActualCFileHasClosedStructuralLedger() throws Exception {
         String configuredPath = System.getProperty("c080.actual.file", "");
+        String configuredSourceId = System.getProperty("c080.actual.source.id", "");
         String expectedHash = System.getProperty("c080.actual.sha256", "");
         int expectedWrapperCalls = Integer.getInteger("c080.actual.wrapper.calls", -1);
         Assumptions.assumeTrue(!configuredPath.isBlank() && !expectedHash.isBlank(),
@@ -46,8 +47,13 @@ class CStructuralEvidenceIr2ActualSliceTest {
         String source = Files.readString(file);
 
         ParserWorkspace workspace = new ParserWorkspace(new SourceIntakeClassifier());
-        Path workspaceFile = workspace.sourceDir()
-                .resolve("actual-c080").resolve(file.getFileName());
+        Path sourceId = configuredSourceId.isBlank()
+                ? Path.of("actual-c080").resolve(file.getFileName())
+                : Path.of(configuredSourceId).normalize();
+        assertFalse(sourceId.isAbsolute());
+        assertFalse(sourceId.startsWith(".."));
+        Path workspaceFile = workspace.sourceDir().resolve(sourceId).normalize();
+        assertTrue(workspaceFile.startsWith(workspace.sourceDir().toAbsolutePath().normalize()));
         Files.createDirectories(workspaceFile.getParent());
         Files.write(workspaceFile, bytes);
         CLanguageModule module = new CLanguageModule(workspace);
@@ -62,6 +68,7 @@ class CStructuralEvidenceIr2ActualSliceTest {
         JsonNode root = JSON.readTree(result.astJson());
         JsonNode evidence = root.path("evidence");
 
+        assertEquals(sourceId.toString().replace('\\', '/'), root.path("filePath").asText());
         assertEquals("2.1.0", evidence.path("version").asText());
         assertEquals("c", evidence.path("language").asText());
         assertEquals("antlr-c/v1", evidence.path("frontendSchema").asText());
