@@ -12,10 +12,16 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableCandidate;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableSyntaxCandidate;
+import legacymodernizer.parser.parsing.evidence.GrammarStructureEvidence;
+import legacymodernizer.parser.parsing.evidence.GrammarStructureEvidence.IncompleteGrammarEvidence;
 import legacymodernizer.parser.parsing.evidence.ImportBindingCandidate;
 import legacymodernizer.parser.parsing.evidence.ImportEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.ImportEvidenceExtraction;
 import legacymodernizer.parser.parsing.evidence.SourceRangeCandidate;
+import legacymodernizer.parser.parsing.evidence.SyntaxComponentCandidate;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -29,11 +35,16 @@ public class JavaAstListener extends Java20ParserBaseListener
         implements AntlrParseHarness.AstListener {
 
     private final ListenerHelper h;
+    private final GrammarStructureEvidence structuralEvidence;
     private final List<CallEvidenceCandidate> callEvidence = new ArrayList<>();
+    private final List<CallableCandidate> callableEvidence = new ArrayList<>();
+    private int unresolvedCallableEvidence;
     private final List<ImportEvidenceCandidate> importEvidence = new ArrayList<>();
 
     public JavaAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
         this.h = new ListenerHelper(tokens, tracker);
+        this.structuralEvidence = new GrammarStructureEvidence(
+                tokens, Java20Parser.VOCABULARY, Java20Parser.ruleNames);
     }
 
     public Node getRoot() { return h.getRoot(); }
@@ -41,6 +52,12 @@ public class JavaAstListener extends Java20ParserBaseListener
     @Override public List<CallEvidenceCandidate> callEvidenceCandidates() { return List.copyOf(callEvidence); }
     @Override public ImportEvidenceExtraction importEvidenceExtraction() {
         return new ImportEvidenceExtraction(importEvidence, 0, List.of());
+    }
+    public CallableEvidenceExtraction callableEvidenceExtraction() {
+        return new CallableEvidenceExtraction(
+                "java", "antlr-java/v1", callableEvidence, unresolvedCallableEvidence,
+                unresolvedCallableEvidence == 0
+                        ? List.of() : List.of("insufficient_parser_recovery"));
     }
 
     @Override
@@ -143,7 +160,8 @@ public class JavaAstListener extends Java20ParserBaseListener
         }
         h.enterStatement("IMPORT", legacyName, ctx.getStart().getLine());
         importEvidence.add(new ImportEvidenceCandidate(
-                grammarRule, range(ctx), "import", List.of(entry)));
+                grammarRule, range(ctx), "import", List.of(entry),
+                structuralEvidence.scopePath(ctx, this::scopeKind)));
     }
     
     @Override
@@ -252,6 +270,33 @@ public class JavaAstListener extends Java20ParserBaseListener
             h.exitStatement("INTERFACE", ctx.getStop().getLine(), ctx);
         }
     }
+
+    @Override
+    public void enterRecordDeclaration(Java20Parser.RecordDeclarationContext ctx) {
+        String name = ctx.typeIdentifier() != null ? ctx.typeIdentifier().getText() : null;
+        Node node = h.enterStatement("CLASS", name, ctx.getStart().getLine());
+        node.signature = ParserUtils.extractSignature(ctx, h.getTokens(), "{");
+        extractModifiers(node, ctx.classModifier(), modifier -> modifier.annotation() != null);
+        if (ctx.typeParameters() != null) {
+            node.genericType = ctx.typeParameters().getText();
+        }
+        if (ctx.classImplements() != null
+                && ctx.classImplements().interfaceTypeList() != null) {
+            node.implementsTypes = ctx.classImplements().interfaceTypeList().getText();
+        }
+    }
+
+    @Override
+    public void exitRecordDeclaration(Java20Parser.RecordDeclarationContext ctx) {
+        if (!h.getNodeStack().isEmpty() && "CLASS".equals(h.getNodeStack().peek().type)) {
+            Node node = h.getNodeStack().peek();
+            node.comment = ParserUtils.getLeadingComment(ctx, h.getTokens());
+            h.exitStatement("CLASS", ctx.getStop().getLine(), ctx);
+            ListenerHelper.propagateModuleName(node, node.name);
+        } else {
+            h.exitStatement("CLASS", ctx.getStop().getLine(), ctx);
+        }
+    }
     
     // ========================================
     // 메서드
@@ -259,6 +304,7 @@ public class JavaAstListener extends Java20ParserBaseListener
     
     @Override
     public void enterMethodDeclaration(Java20Parser.MethodDeclarationContext ctx) {
+        addMethodCallable(ctx, ctx.methodHeader(), ctx.methodBody(), ctx.methodModifier());
         // CLASS/INTERFACE의 직접 자식일 때만 METHOD 노드 생성 (익명 클래스 내부 메서드 무시)
         if (h.getNodeStack().isEmpty()) return;
         String parentType = h.getNodeStack().peek().type;
@@ -298,6 +344,8 @@ public class JavaAstListener extends Java20ParserBaseListener
 
     @Override
     public void enterInterfaceMethodDeclaration(Java20Parser.InterfaceMethodDeclarationContext ctx) {
+        addMethodCallable(ctx, ctx.methodHeader(), ctx.methodBody(),
+                ctx.interfaceMethodModifier());
         String name = null;
         if (ctx.methodHeader() != null && ctx.methodHeader().methodDeclarator() != null 
                 && ctx.methodHeader().methodDeclarator().identifier() != null) {
@@ -328,6 +376,178 @@ public class JavaAstListener extends Java20ParserBaseListener
     @Override
     public void exitInterfaceMethodDeclaration(Java20Parser.InterfaceMethodDeclarationContext ctx) {
         h.exitStatement("METHOD", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterConstructorDeclaration(Java20Parser.ConstructorDeclarationContext ctx) {
+        var declarator = ctx.constructorDeclarator();
+        if (declarator == null || declarator.simpleTypeName() == null) {
+            unresolvedCallableEvidence++;
+            return;
+        }
+        addCallable("definition", "constructorDeclaration", ctx,
+                declarator.simpleTypeName(), declarator, ctx.constructorModifier(),
+                ctx.throwsT() == null ? List.of() : List.of(ctx.throwsT()));
+
+        if (h.getNodeStack().isEmpty()
+                || !"CLASS".equals(h.getNodeStack().peek().type)) {
+            return;
+        }
+        Node node = h.enterStatement(
+                "METHOD", declarator.simpleTypeName().getText(), ctx.getStart().getLine());
+        node.signature = ParserUtils.extractSignature(ctx, h.getTokens(), "{");
+        extractModifiers(node, ctx.constructorModifier(), m -> m.annotation() != null);
+        if (declarator.typeParameters() != null) {
+            node.genericType = declarator.typeParameters().getText();
+        }
+        if (declarator.formalParameterList() != null) {
+            node.parameters = ParserUtils.getOriginalText(
+                    declarator.formalParameterList(), h.getTokens());
+        }
+    }
+
+    @Override
+    public void exitConstructorDeclaration(Java20Parser.ConstructorDeclarationContext ctx) {
+        h.exitStatement("METHOD", ctx.getStop().getLine(), ctx);
+    }
+
+    @Override
+    public void enterCompactConstructorDeclaration(
+            Java20Parser.CompactConstructorDeclarationContext ctx) {
+        if (ctx.simpleTypeName() == null) {
+            unresolvedCallableEvidence++;
+            return;
+        }
+        Java20Parser.RecordDeclarationContext record = enclosingRecord(ctx);
+        addCallable("definition", "compactConstructorDeclaration", ctx,
+                ctx.simpleTypeName(), ctx.simpleTypeName(), ctx.constructorModifier(), List.of());
+
+        if (h.getNodeStack().isEmpty()
+                || !"CLASS".equals(h.getNodeStack().peek().type)) {
+            return;
+        }
+        Node node = h.enterStatement(
+                "METHOD", ctx.simpleTypeName().getText(), ctx.getStart().getLine());
+        node.signature = ParserUtils.extractSignature(ctx, h.getTokens(), "{");
+        extractModifiers(node, ctx.constructorModifier(), modifier -> modifier.annotation() != null);
+        if (record != null && record.recordHeader() != null
+                && record.recordHeader().recordComponentList() != null) {
+            node.parameters = ParserUtils.getOriginalText(
+                    record.recordHeader().recordComponentList(), h.getTokens());
+        }
+    }
+
+    @Override
+    public void exitCompactConstructorDeclaration(
+            Java20Parser.CompactConstructorDeclarationContext ctx) {
+        if (!h.getNodeStack().isEmpty()
+                && "METHOD".equals(h.getNodeStack().peek().type)) {
+            h.exitStatement("METHOD", ctx.getStop().getLine(), ctx);
+        }
+    }
+
+    private static Java20Parser.RecordDeclarationContext enclosingRecord(
+            ParserRuleContext context) {
+        for (ParseTree parent = context.getParent(); parent != null;
+                parent = parent.getParent()) {
+            if (parent instanceof Java20Parser.RecordDeclarationContext record) {
+                return record;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public void enterAnnotationInterfaceElementDeclaration(
+            Java20Parser.AnnotationInterfaceElementDeclarationContext ctx) {
+        if (ctx.identifier() == null) {
+            unresolvedCallableEvidence++;
+            return;
+        }
+        addCallable("declaration", "annotationInterfaceElementDeclaration", ctx,
+                ctx.identifier(), ctx, ctx.annotationInterfaceElementModifier(), List.of());
+    }
+
+    private void addMethodCallable(
+            ParserRuleContext factContext,
+            Java20Parser.MethodHeaderContext header,
+            Java20Parser.MethodBodyContext body,
+            List<? extends ParserRuleContext> modifiers) {
+        if (header == null || header.methodDeclarator() == null
+                || header.methodDeclarator().identifier() == null || body == null) {
+            unresolvedCallableEvidence++;
+            return;
+        }
+        addCallable(body.block() == null ? "declaration" : "definition",
+                factContext instanceof Java20Parser.InterfaceMethodDeclarationContext
+                        ? "interfaceMethodDeclaration" : "methodDeclaration",
+                factContext, header.methodDeclarator().identifier(), header,
+                modifiers, List.of());
+    }
+
+    private void addCallable(
+            String role,
+            String grammarRule,
+            ParserRuleContext factContext,
+            ParserRuleContext nameContext,
+            ParserRuleContext declaratorContext,
+            List<? extends ParserRuleContext> specifierContexts,
+            List<? extends ParserRuleContext> attributeContexts) {
+        try {
+            var scopePath = structuralEvidence.scopePath(
+                    (ParserRuleContext) factContext.getParent(), this::scopeKind);
+            var factRange = structuralEvidence.range(factContext);
+            var scopeRange = scopePath.get(scopePath.size() - 1).range();
+            callableEvidence.add(new CallableCandidate(
+                    grammarRule,
+                    factRange,
+                    structuralEvidence.range(nameContext),
+                    role,
+                    "definition".equals(role) ? factRange : null,
+                    scopePath,
+                    scopeRange,
+                    declaratorContext.getStop().getStopIndex() + 1,
+                    new CallableSyntaxCandidate(
+                            "java-callable-syntax/v1",
+                            syntaxComponents(specifierContexts),
+                            structuralEvidence.component(declaratorContext),
+                            syntaxComponents(attributeContexts))));
+        } catch (IncompleteGrammarEvidence ignored) {
+            unresolvedCallableEvidence++;
+        }
+    }
+
+    private List<SyntaxComponentCandidate> syntaxComponents(
+            List<? extends ParserRuleContext> contexts) {
+        return contexts == null ? List.of() : contexts.stream()
+                .map(structuralEvidence::component)
+                .toList();
+    }
+
+    private String scopeKind(ParserRuleContext context) {
+        if (context instanceof Java20Parser.NormalClassDeclarationContext
+                || context instanceof Java20Parser.NormalInterfaceDeclarationContext
+                || context instanceof Java20Parser.EnumDeclarationContext
+                || context instanceof Java20Parser.RecordDeclarationContext
+                || context instanceof Java20Parser.AnnotationInterfaceDeclarationContext) {
+            return "class";
+        }
+        if (context instanceof Java20Parser.ClassBodyContext
+                && context.getParent()
+                        instanceof Java20Parser.UnqualifiedClassInstanceCreationExpressionContext) {
+            return "class";
+        }
+        if (context instanceof Java20Parser.MethodDeclarationContext
+                || context instanceof Java20Parser.InterfaceMethodDeclarationContext
+                || context instanceof Java20Parser.ConstructorDeclarationContext
+                || context instanceof Java20Parser.CompactConstructorDeclarationContext) {
+            return "function";
+        }
+        if (context instanceof Java20Parser.BlockContext
+                || context instanceof Java20Parser.ConstructorBodyContext) {
+            return "block";
+        }
+        return null;
     }
     
     // ========================================
@@ -394,10 +614,12 @@ public class JavaAstListener extends Java20ParserBaseListener
         }
         h.enterStatement("FUNCTION_CALL", name, ctx.getStart().getLine());
         Token calleeStop = childBeforeDirectTerminal(ctx, "(");
-        callEvidence.add(CallEvidenceCandidate.fromTokens("methodInvocation",
+        CallEvidenceCandidate candidate = CallEvidenceCandidate.fromTokens("methodInvocation",
                 ctx.getStart(), ctx.getStop(), ctx.getStart(), calleeStop,
                 name == null ? "expression" : "named", name,
-                ctx.argumentList() == null ? List.of() : ctx.argumentList().expression()));
+                ctx.argumentList() == null ? List.of() : ctx.argumentList().expression());
+        callEvidence.add(candidate.withStructuralContext(
+                methodReceiverRange(ctx), structuralEvidence.scopePath(ctx, this::scopeKind)));
     }
     
     @Override
@@ -433,12 +655,16 @@ public class JavaAstListener extends Java20ParserBaseListener
                         : context.classOrInterfaceTypeToInstantiate().identifier();
         String terminalName = typeNames.isEmpty()
                 ? null : typeNames.get(typeNames.size() - 1).getText();
-        callEvidence.add(CallEvidenceCandidate.fromTokens(
+        CallEvidenceCandidate candidate = CallEvidenceCandidate.fromTokens(
                 "unqualifiedClassInstanceCreationExpression",
                 context.getStart(), directTerminal(context, ")"),
                 context.getStart(), calleeStop,
                 terminalName == null ? "expression" : "constructor", terminalName,
-                context.argumentList() == null ? List.of() : context.argumentList().expression()));
+                context.argumentList() == null ? List.of() : context.argumentList().expression());
+        candidate = candidate.withCalleeStructure(
+                typeNames.stream().map(structuralEvidence::range).toList(), null);
+        callEvidence.add(candidate.withStructuralContext(
+                null, structuralEvidence.scopePath(context, this::scopeKind)));
     }
 
     private static Token childBeforeDirectTerminal(ParserRuleContext context, String text) {
@@ -453,6 +679,26 @@ public class JavaAstListener extends Java20ParserBaseListener
         }
         throw new IllegalStateException("missing direct terminal " + text + " in "
                 + context.getClass().getSimpleName());
+    }
+
+    private SourceRangeCandidate methodReceiverRange(
+            Java20Parser.MethodInvocationContext context) {
+        List<ParseTree> children = context.children == null ? List.of() : context.children;
+        Token receiverStop = null;
+        for (int index = 1; index < children.size(); index++) {
+            ParseTree child = children.get(index);
+            if (!(child instanceof TerminalNode terminal)
+                    || !".".equals(terminal.getText())) {
+                continue;
+            }
+            ParseTree previous = children.get(index - 1);
+            receiverStop = previous instanceof TerminalNode previousTerminal
+                    ? previousTerminal.getSymbol()
+                    : previous instanceof ParserRuleContext previousContext
+                            ? previousContext.getStop() : null;
+        }
+        return receiverStop == null ? null
+                : structuralEvidence.range(context.getStart(), receiverStop);
     }
 
     private static Token directTerminal(ParserRuleContext context, String text) {

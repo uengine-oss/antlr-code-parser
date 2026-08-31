@@ -8,7 +8,41 @@ public record CallableEvidenceExtraction(
         String frontendSchema,
         List<CallableCandidate> callables,
         int explicitlyUnresolved,
-        List<String> reasons) {
+        List<String> reasons,
+        ParameterEvidenceExtraction parameters,
+        BindingTargetEvidenceExtraction bindingTargets,
+        ScopeDirectiveEvidenceExtraction scopeDirectives) {
+
+    public CallableEvidenceExtraction(
+            String language,
+            String frontendSchema,
+            List<CallableCandidate> callables,
+            int explicitlyUnresolved,
+            List<String> reasons) {
+        this(language, frontendSchema, callables, explicitlyUnresolved, reasons, null, null, null);
+    }
+
+    public CallableEvidenceExtraction(
+            String language,
+            String frontendSchema,
+            List<CallableCandidate> callables,
+            int explicitlyUnresolved,
+            List<String> reasons,
+            ParameterEvidenceExtraction parameters) {
+        this(language, frontendSchema, callables, explicitlyUnresolved, reasons, parameters, null, null);
+    }
+
+    public CallableEvidenceExtraction(
+            String language,
+            String frontendSchema,
+            List<CallableCandidate> callables,
+            int explicitlyUnresolved,
+            List<String> reasons,
+            ParameterEvidenceExtraction parameters,
+            BindingTargetEvidenceExtraction bindingTargets) {
+        this(language, frontendSchema, callables, explicitlyUnresolved, reasons,
+                parameters, bindingTargets, null);
+    }
 
     public CallableEvidenceExtraction {
         callables = List.copyOf(callables == null ? List.of() : callables);
@@ -46,10 +80,27 @@ public record CallableEvidenceExtraction(
             List<ScopeEvidenceCandidate> scopePath,
             SourceRangeCandidate scopeRange,
             int declarationPoint,
-            CallableSyntaxCandidate syntax) {
+            CallableSyntaxCandidate syntax,
+            List<SourceRangeCandidate> namePathRanges) {
+
+        public CallableCandidate(
+                String grammarRule,
+                SourceRangeCandidate range,
+                SourceRangeCandidate nameRange,
+                String role,
+                SourceRangeCandidate astNodeRange,
+                List<ScopeEvidenceCandidate> scopePath,
+                SourceRangeCandidate scopeRange,
+                int declarationPoint,
+                CallableSyntaxCandidate syntax) {
+            this(grammarRule, range, nameRange, role, astNodeRange, scopePath,
+                    scopeRange, declarationPoint, syntax, List.of());
+        }
 
         public CallableCandidate {
             scopePath = List.copyOf(scopePath == null ? List.of() : scopePath);
+            namePathRanges = List.copyOf(
+                    namePathRanges == null ? List.of() : namePathRanges);
             if (grammarRule == null || grammarRule.isBlank()
                     || range == null || nameRange == null
                     || !("declaration".equals(role) || "definition".equals(role))
@@ -71,6 +122,20 @@ public record CallableEvidenceExtraction(
                         scopePath.get(index).range(), "nested scope");
             }
             requireContained(scopeRange, nameRange, "callable name");
+            int previousEnd = -1;
+            for (SourceRangeCandidate component : namePathRanges) {
+                if (component == null || component.endOffset() == component.startOffset()
+                        || component.startOffset() < previousEnd) {
+                    throw new IllegalArgumentException(
+                            "callable name path is not ordered and nonempty");
+                }
+                previousEnd = component.endOffset();
+            }
+            if (!namePathRanges.isEmpty()
+                    && !namePathRanges.get(namePathRanges.size() - 1).equals(nameRange)) {
+                throw new IllegalArgumentException(
+                        "callable name path must end at nameRange");
+            }
         }
 
         private static void requireContained(

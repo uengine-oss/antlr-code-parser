@@ -90,8 +90,11 @@ public class OracleLanguageModule extends AntlrLanguageModuleSupport {
                 PlSqlParser::new, PlSqlParser::sql_script, PlSqlAstListener::new);
         String astJson = evidenceSourceId != null
                 ? EvidenceIrSealer.sealExact(run.listener().getRoot(), sourceBytes, decoded,
-                        evidenceSourceId, parseStatus(run), List.of(),
-                        ConditionalCompilationEvidence.NONE, false)
+                        evidenceSourceId, parseStatus(run),
+                        run.listener().callEvidenceCandidates(),
+                        ConditionalCompilationEvidence.NONE,
+                        null, null, null, null,
+                        run.listener().callableEvidenceExtraction(), null)
                 : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
                 Set.of("create_procedure_body", "create_function_body", "create_trigger",

@@ -64,7 +64,8 @@ public class JavaLanguageModule extends AntlrLanguageModuleSupport {
         String astJson = evidenceSourceId != null
                 ? EvidenceIrSealer.sealExact(run.listener().getRoot(), sourceBytes, decoded,
                         evidenceSourceId, parseStatus(run), run.listener().callEvidenceCandidates(),
-                        run.listener().importEvidenceExtraction())
+                        run.listener().importEvidenceExtraction(),
+                        run.listener().callableEvidenceExtraction())
                 : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
                 Set.of("normalClassDeclaration", "normalInterfaceDeclaration",

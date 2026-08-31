@@ -408,6 +408,33 @@ class StructuralStatementAstContractTest {
     }
 
     @Test
+    void pythonCallsDoNotGuessConstructorsOrVariableTypesFromCapitalization() {
+        Node root = parsePython(
+                "def HTTP():\n" +                              // 대문자 함수
+                "    return 1\n" +
+                "\n" +
+                "class lower:\n" +                            // 소문자 callable class
+                "    pass\n" +
+                "\n" +
+                "upper_result = HTTP()\n" +
+                "lower_result = lower()\n");
+
+        assertEquals(2, all(root, "FUNCTION_CALL").size(),
+                "두 호출은 모두 문법이 증명한 call로 보존한다");
+        assertEquals(0, all(root, "NEW_INSTANCE").size(),
+                "Python call 문법만으로 constructor를 추측하지 않는다");
+
+        Node upper = all(root, "VARIABLE").stream()
+                .filter(node -> "upper_result".equals(node.name)).findFirst().orElseThrow();
+        Node lower = all(root, "VARIABLE").stream()
+                .filter(node -> "lower_result".equals(node.name)).findFirst().orElseThrow();
+        assertNull(upper.variableType,
+                "대문자 함수 호출을 변수 타입으로 승격하지 않는다");
+        assertNull(lower.variableType,
+                "소문자 callable class도 Parser가 임의 타입으로 승격하지 않는다");
+    }
+
+    @Test
     void declarationInitializersBecomeAssignmentNodes() {
         Node cRoot = parseC(
                 "void f(int n) {\n" +                 // 1

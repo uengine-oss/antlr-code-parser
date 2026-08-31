@@ -23,6 +23,9 @@ import legacymodernizer.parser.parsing.SourceTextCodec;
 import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence.ConditionalRegionCandidate;
 import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence.Presence;
 import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableCandidate;
+import legacymodernizer.parser.parsing.evidence.ParameterEvidenceExtraction.ParameterCandidate;
+import legacymodernizer.parser.parsing.evidence.BindingTargetEvidenceExtraction.BindingTargetCandidate;
+import legacymodernizer.parser.parsing.evidence.ScopeDirectiveEvidenceExtraction.ScopeDirectiveCandidate;
 import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableSyntaxCandidate;
 import legacymodernizer.parser.parsing.evidence.StructuralExpressionEvidenceExtraction.ExpressionCandidate;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
@@ -90,6 +93,18 @@ public final class EvidenceIrSealer {
                                    ImportEvidenceExtraction imports) {
         return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
                 ConditionalCompilationEvidence.NONE, true, null, imports, null, null, null, null);
+    }
+
+    public static String sealExact(Node root, byte[] rawSource,
+                                   SourceTextCodec.DecodedText decoded,
+                                   String sourceId,
+                                   String parseStatus,
+                                   List<CallEvidenceCandidate> calls,
+                                   ImportEvidenceExtraction imports,
+                                   CallableEvidenceExtraction callables) {
+        return seal(root, rawSource, decoded, sourceId, parseStatus, calls,
+                ConditionalCompilationEvidence.NONE, true, null, imports, null, null,
+                callables, null);
     }
 
     public static String sealExact(Node root, byte[] rawSource,
@@ -180,6 +195,18 @@ public final class EvidenceIrSealer {
                     new HashMap<>();
             List<CallableCandidate> emittedCallables = callables == null
                     ? List.of() : callables.callables();
+            ParameterEvidenceExtraction parameterExtraction = callables == null
+                    ? null : callables.parameters();
+            List<ParameterCandidate> emittedParameters = parameterExtraction == null
+                    ? List.of() : parameterExtraction.parameters();
+            BindingTargetEvidenceExtraction bindingTargetExtraction = callables == null
+                    ? null : callables.bindingTargets();
+            List<BindingTargetCandidate> emittedBindingTargets = bindingTargetExtraction == null
+                    ? List.of() : bindingTargetExtraction.targets();
+            ScopeDirectiveEvidenceExtraction scopeDirectiveExtraction = callables == null
+                    ? null : callables.scopeDirectives();
+            List<ScopeDirectiveCandidate> emittedScopeDirectives = scopeDirectiveExtraction == null
+                    ? List.of() : scopeDirectiveExtraction.directives();
             List<ExpressionCandidate> emittedExpressions = expressions == null
                     ? List.of() : expressions.expressions();
             String legacyJson = root.toJson();
@@ -232,6 +259,24 @@ public final class EvidenceIrSealer {
                                 conditional.presenceAt(callable.range().startOffset()));
                         generator.writeTree(fact);
                     }
+                }
+                for (ParameterCandidate parameter : emittedParameters) {
+                    generator.writeTree(sealParameter(
+                            parameter, normalizedSourceId, decodedHash, index,
+                            ordinals, grammarRules, presences,
+                            conditional.presenceAt(parameter.range().startOffset())));
+                }
+                for (BindingTargetCandidate target : emittedBindingTargets) {
+                    generator.writeTree(sealBindingTarget(
+                            target, normalizedSourceId, decodedHash, index,
+                            ordinals, grammarRules, presences,
+                            conditional.presenceAt(target.range().startOffset())));
+                }
+                for (ScopeDirectiveCandidate directive : emittedScopeDirectives) {
+                    generator.writeTree(sealScopeDirective(
+                            directive, normalizedSourceId, decodedHash, index,
+                            ordinals, grammarRules, presences,
+                            conditional.presenceAt(directive.range().startOffset())));
                 }
                 if (expressions != null) {
                     for (ExpressionCandidate expression : emittedExpressions) {
@@ -306,12 +351,17 @@ public final class EvidenceIrSealer {
                 generator.writeArrayFieldStart("completeness");
                 List<String> completenessKinds = callables == null ? KINDS : List.of(
                         "call", "callable", "import", "symbol",
-                        "literal", "assignment", "parameter", "structural_expression", "macro",
+                        "literal", "assignment", "parameter", "binding_target",
+                        "scope_directive",
+                        "structural_expression", "macro",
                         "embedded_language", "conditional_region");
                 for (String kind : completenessKinds) {
                     int emitted = "call".equals(kind) ? emittedCalls.size()
                             : "callable".equals(kind) ? emittedCallables.size()
                             : "structural_expression".equals(kind) ? emittedExpressions.size()
+                            : "parameter".equals(kind) ? emittedParameters.size()
+                            : "binding_target".equals(kind) ? emittedBindingTargets.size()
+                            : "scope_directive".equals(kind) ? emittedScopeDirectives.size()
                             : "import".equals(kind) && imports != null
                                     ? imports.candidates().size()
                             : "macro".equals(kind) && macros != null
@@ -327,6 +377,15 @@ public final class EvidenceIrSealer {
                                     ? callables.explicitlyUnresolved()
                             : "structural_expression".equals(kind) && expressions != null
                                     ? expressions.explicitlyUnresolved() : 0;
+                    if ("parameter".equals(kind) && parameterExtraction != null) {
+                        unresolved = parameterExtraction.explicitlyUnresolved();
+                    }
+                    if ("binding_target".equals(kind) && bindingTargetExtraction != null) {
+                        unresolved = bindingTargetExtraction.explicitlyUnresolved();
+                    }
+                    if ("scope_directive".equals(kind) && scopeDirectiveExtraction != null) {
+                        unresolved = scopeDirectiveExtraction.explicitlyUnresolved();
+                    }
                     List<String> callReasons = new ArrayList<>();
                     if (decoded.lossy()) callReasons.add("insufficient_lossy_decode");
                     if (!"exact".equals(parseStatus)) {
@@ -345,6 +404,28 @@ public final class EvidenceIrSealer {
                     if (expressions != null) {
                         for (String reason : expressions.reasons()) {
                             if (!expressionReasons.contains(reason)) expressionReasons.add(reason);
+                        }
+                    }
+                    List<String> parameterReasons = new ArrayList<>(callReasons);
+                    if (parameterExtraction != null) {
+                        for (String reason : parameterExtraction.reasons()) {
+                            if (!parameterReasons.contains(reason)) parameterReasons.add(reason);
+                        }
+                    }
+                    List<String> bindingTargetReasons = new ArrayList<>(callReasons);
+                    if (bindingTargetExtraction != null) {
+                        for (String reason : bindingTargetExtraction.reasons()) {
+                            if (!bindingTargetReasons.contains(reason)) {
+                                bindingTargetReasons.add(reason);
+                            }
+                        }
+                    }
+                    List<String> scopeDirectiveReasons = new ArrayList<>(callReasons);
+                    if (scopeDirectiveExtraction != null) {
+                        for (String reason : scopeDirectiveExtraction.reasons()) {
+                            if (!scopeDirectiveReasons.contains(reason)) {
+                                scopeDirectiveReasons.add(reason);
+                            }
                         }
                     }
                     List<String> macroReasons = new ArrayList<>();
@@ -378,12 +459,24 @@ public final class EvidenceIrSealer {
                             : "structural_expression".equals(kind)
                                     ? expressions == null ? "unsupported"
                                             : !expressionReasons.isEmpty() ? "partial" : "complete"
+                            : "parameter".equals(kind)
+                                    ? parameterExtraction == null ? "unsupported"
+                                            : !parameterReasons.isEmpty() ? "partial" : "complete"
+                            : "binding_target".equals(kind)
+                                    ? bindingTargetExtraction == null ? "unsupported"
+                                            : !bindingTargetReasons.isEmpty() ? "partial" : "complete"
+                            : "scope_directive".equals(kind)
+                                    ? scopeDirectiveExtraction == null ? "unsupported"
+                                            : !scopeDirectiveReasons.isEmpty() ? "partial" : "complete"
                             : "conditional_region".equals(kind) ? "complete" : "unsupported";
                     List<String> reasons = "call".equals(kind)
                             ? callReasons : "macro".equals(kind) ? macroReasons
                             : "import".equals(kind) ? importReasons
                             : "callable".equals(kind) ? callableReasons
                             : "structural_expression".equals(kind) ? expressionReasons
+                            : "parameter".equals(kind) ? parameterReasons
+                            : "binding_target".equals(kind) ? bindingTargetReasons
+                            : "scope_directive".equals(kind) ? scopeDirectiveReasons
                             : "symbol".equals(kind) && !unresolvedSymbolFactIds.isEmpty()
                                     ? List.of("insufficient_type_name_environment")
                                     : List.of();
@@ -505,6 +598,21 @@ public final class EvidenceIrSealer {
                 throw new IllegalArgumentException("argument range is outside call range");
             }
         }
+        int previousPathEnd = candidate.calleeRange().startOffset();
+        for (SourceRangeCandidate component : candidate.calleePathRanges()) {
+            index.requireValid(component);
+            if (component.startOffset() < candidate.calleeRange().startOffset()
+                    || component.endOffset() > candidate.calleeRange().endOffset()
+                    || component.startOffset() < previousPathEnd) {
+                throw new IllegalArgumentException(
+                        "callee path components must be ordered callee subranges");
+            }
+            previousPathEnd = component.endOffset();
+        }
+        if (candidate.databaseLinkRange() != null) {
+            index.requireSubrange(candidate.calleeRange(), candidate.databaseLinkRange(),
+                    "database link");
+        }
         if (candidate.receiverRange() != null) {
             index.requireSubrange(
                     candidate.calleeRange(), candidate.receiverRange(), "call receiver");
@@ -539,6 +647,18 @@ public final class EvidenceIrSealer {
         }
         if (structuralIr) {
             payload.set("scopePath", scopePathJson(candidate.scopePath(), index));
+            if (!candidate.calleePathRanges().isEmpty()) {
+                ArrayNode components = payload.putArray("calleePathRanges");
+                for (SourceRangeCandidate component : candidate.calleePathRanges()) {
+                    components.add(index.rangeJson(component));
+                }
+                if (candidate.databaseLinkRange() == null) {
+                    payload.putNull("databaseLinkRange");
+                } else {
+                    payload.set("databaseLinkRange",
+                            index.rangeJson(candidate.databaseLinkRange()));
+                }
+            }
         }
         return fact;
     }
@@ -557,10 +677,8 @@ public final class EvidenceIrSealer {
         index.requireValid(candidate.scopeRange());
         if (candidate.astNodeRange() != null) {
             index.requireValid(candidate.astNodeRange());
-            if (!candidate.range().equals(candidate.astNodeRange())) {
-                throw new IllegalArgumentException(
-                        "callable definition range must equal its AST node range");
-            }
+            requireContained(candidate.range(), candidate.astNodeRange(),
+                    "callable AST node");
         }
 
         String ordinalKey = "callable\0" + candidate.range().startOffset()
@@ -577,6 +695,13 @@ public final class EvidenceIrSealer {
         ObjectNode payload = fact.putObject("payload");
         payload.put("role", candidate.role());
         payload.set("nameRange", index.rangeJson(candidate.nameRange()));
+        if (!candidate.namePathRanges().isEmpty()) {
+            ArrayNode namePathRanges = payload.putArray("namePathRanges");
+            for (SourceRangeCandidate component : candidate.namePathRanges()) {
+                index.requireValid(component);
+                namePathRanges.add(index.rangeJson(component));
+            }
+        }
         if (candidate.astNodeRange() == null) payload.putNull("astNodeRange");
         else payload.set("astNodeRange", index.rangeJson(candidate.astNodeRange()));
         payload.set("scopePath", scopePathJson(candidate.scopePath(), index));
@@ -742,6 +867,102 @@ public final class EvidenceIrSealer {
         return fact;
     }
 
+    private static ObjectNode sealParameter(
+            ParameterCandidate candidate,
+            String sourceId,
+            String decodedHash,
+            CodePointIndex index,
+            Map<String, Integer> ordinals,
+            Map<String, Integer> grammarRules,
+            Map<Presence, Integer> presences,
+            Presence factPresence) {
+        index.requireValid(candidate.range());
+        String ordinalKey = "parameter\0" + candidate.range().startOffset()
+                + "\0" + candidate.range().endOffset();
+        int ordinal = ordinals.merge(ordinalKey, 1, Integer::sum) - 1;
+        ObjectNode fact = JSON.createObjectNode();
+        fact.put("factId", factId(sourceId, decodedHash, "parameter",
+                candidate.range(), ordinal));
+        fact.put("kind", "parameter");
+        fact.set("range", index.rangeJson(candidate.range()));
+        fact.put("grammarRuleRef", reference(grammarRules, candidate.grammarRule()));
+        fact.put("presenceRef", reference(presences, factPresence));
+        ObjectNode payload = fact.putObject("payload");
+        ArrayNode scopes = payload.putArray("scopePath");
+        for (ScopeEvidenceCandidate scope : candidate.scopePath()) {
+            ObjectNode item = scopes.addObject();
+            item.put("kind", scope.kind());
+            item.set("range", index.rangeJson(scope.range()));
+        }
+        return fact;
+    }
+
+    private static ObjectNode sealBindingTarget(
+            BindingTargetCandidate candidate,
+            String sourceId,
+            String decodedHash,
+            CodePointIndex index,
+            Map<String, Integer> ordinals,
+            Map<String, Integer> grammarRules,
+            Map<Presence, Integer> presences,
+            Presence factPresence) {
+        index.requireValid(candidate.range());
+        String ordinalKey = "binding_target\0" + candidate.range().startOffset()
+                + "\0" + candidate.range().endOffset();
+        int ordinal = ordinals.merge(ordinalKey, 1, Integer::sum) - 1;
+        ObjectNode fact = JSON.createObjectNode();
+        fact.put("factId", factId(sourceId, decodedHash, "binding_target",
+                candidate.range(), ordinal));
+        fact.put("kind", "binding_target");
+        fact.set("range", index.rangeJson(candidate.range()));
+        fact.put("grammarRuleRef", reference(grammarRules, candidate.grammarRule()));
+        fact.put("presenceRef", reference(presences, factPresence));
+        ObjectNode payload = fact.putObject("payload");
+        payload.put("bindingContext", candidate.bindingContext());
+        ArrayNode scopes = payload.putArray("scopePath");
+        for (ScopeEvidenceCandidate scope : candidate.scopePath()) {
+            ObjectNode item = scopes.addObject();
+            item.put("kind", scope.kind());
+            item.set("range", index.rangeJson(scope.range()));
+        }
+        ObjectNode syntax = payload.putObject("syntax");
+        syntax.put("schema", "python-binding-target-syntax/v1");
+        syntax.set("root", syntaxComponentJson(
+                candidate.syntax(), candidate.range(), index, new HashSet<>()));
+        return fact;
+    }
+
+    private static ObjectNode sealScopeDirective(
+            ScopeDirectiveCandidate candidate,
+            String sourceId,
+            String decodedHash,
+            CodePointIndex index,
+            Map<String, Integer> ordinals,
+            Map<String, Integer> grammarRules,
+            Map<Presence, Integer> presences,
+            Presence factPresence) {
+        index.requireValid(candidate.range());
+        String ordinalKey = "scope_directive\0" + candidate.range().startOffset()
+                + "\0" + candidate.range().endOffset();
+        int ordinal = ordinals.merge(ordinalKey, 1, Integer::sum) - 1;
+        ObjectNode fact = JSON.createObjectNode();
+        fact.put("factId", factId(sourceId, decodedHash, "scope_directive",
+                candidate.range(), ordinal));
+        fact.put("kind", "scope_directive");
+        fact.set("range", index.rangeJson(candidate.range()));
+        fact.put("grammarRuleRef", reference(grammarRules, candidate.grammarRule()));
+        fact.put("presenceRef", reference(presences, factPresence));
+        ObjectNode payload = fact.putObject("payload");
+        payload.put("directiveKind", candidate.directiveKind());
+        ArrayNode scopes = payload.putArray("scopePath");
+        for (ScopeEvidenceCandidate scope : candidate.scopePath()) {
+            ObjectNode item = scopes.addObject();
+            item.put("kind", scope.kind());
+            item.set("range", index.rangeJson(scope.range()));
+        }
+        return fact;
+    }
+
     private static ObjectNode sealSymbolDefinition(
             SymbolDefinitionEvidenceCandidate candidate,
             String sourceId,
@@ -846,6 +1067,8 @@ public final class EvidenceIrSealer {
         fact.put("presenceRef", reference(presences, factPresence));
         ObjectNode payload = fact.putObject("payload");
         payload.put("directiveKind", candidate.directiveKind());
+        requireScopePath(candidate.scopePath(), candidate.range(), index, "import");
+        payload.set("scopePath", scopePathJson(candidate.scopePath(), index));
         ArrayNode entries = payload.putArray("entries");
         for (ImportBindingCandidate entry : candidate.entries()) {
             index.requireSubrange(candidate.range(), entry.targetRange(), "import target");

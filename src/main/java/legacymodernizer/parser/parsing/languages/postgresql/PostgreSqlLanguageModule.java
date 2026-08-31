@@ -91,7 +91,10 @@ public class PostgreSqlLanguageModule extends AntlrLanguageModuleSupport {
                 ? EvidenceIrSealer.sealExact(run.listener().getRoot(), sourceBytes, decoded,
                         evidenceSourceId,
                         recoveries == 0 && diagnostics.isEmpty() ? "exact" : "partial",
-                        List.of(), ConditionalCompilationEvidence.NONE, false)
+                        run.listener().callEvidenceCandidates(),
+                        ConditionalCompilationEvidence.NONE,
+                        null, null, null, null,
+                        run.listener().callableEvidenceExtraction(), null)
                 : run.astJson();
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
                 Set.of("createfunctionstmt", "createtrigstmt"), astJson,

@@ -14,7 +14,9 @@ public record CallEvidenceCandidate(
         String calleeKind,
         String terminalName,
         List<SourceRangeCandidate> argumentRanges,
-        List<ScopeEvidenceCandidate> scopePath) {
+        List<ScopeEvidenceCandidate> scopePath,
+        List<SourceRangeCandidate> calleePathRanges,
+        SourceRangeCandidate databaseLinkRange) {
 
     public CallEvidenceCandidate {
         if (grammarRule == null || grammarRule.isBlank()) {
@@ -29,6 +31,8 @@ public record CallEvidenceCandidate(
         }
         argumentRanges = List.copyOf(argumentRanges == null ? List.of() : argumentRanges);
         scopePath = List.copyOf(scopePath == null ? List.of() : scopePath);
+        calleePathRanges = List.copyOf(
+                calleePathRanges == null ? List.of() : calleePathRanges);
     }
 
     public static CallEvidenceCandidate fromTokens(
@@ -41,14 +45,23 @@ public record CallEvidenceCandidate(
                 calleeKind, terminalName,
                 arguments == null ? List.of() : arguments.stream()
                         .map(argument -> range(argument.getStart(), argument.getStop()))
-                        .toList(), List.of());
+                        .toList(), List.of(), List.of(), null);
     }
 
     public CallEvidenceCandidate withStructuralContext(
             SourceRangeCandidate receiver,
             List<ScopeEvidenceCandidate> lexicalScopePath) {
         return new CallEvidenceCandidate(grammarRule, callRange, calleeRange, receiver,
-                calleeKind, terminalName, argumentRanges, lexicalScopePath);
+                calleeKind, terminalName, argumentRanges, lexicalScopePath,
+                calleePathRanges, databaseLinkRange);
+    }
+
+    public CallEvidenceCandidate withCalleeStructure(
+            List<SourceRangeCandidate> pathRanges,
+            SourceRangeCandidate linkRange) {
+        return new CallEvidenceCandidate(grammarRule, callRange, calleeRange, receiverRange,
+                calleeKind, terminalName, argumentRanges, scopePath,
+                pathRanges, linkRange);
     }
 
     private static SourceRangeCandidate range(Token start, Token stop) {

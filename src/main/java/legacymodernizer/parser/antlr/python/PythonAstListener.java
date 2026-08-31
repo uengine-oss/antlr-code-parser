@@ -10,10 +10,22 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.BindingTargetEvidenceExtraction;
+import legacymodernizer.parser.parsing.evidence.BindingTargetEvidenceExtraction.BindingTargetCandidate;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableCandidate;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableSyntaxCandidate;
+import legacymodernizer.parser.parsing.evidence.GrammarStructureEvidence;
+import legacymodernizer.parser.parsing.evidence.GrammarStructureEvidence.IncompleteGrammarEvidence;
 import legacymodernizer.parser.parsing.evidence.ImportBindingCandidate;
 import legacymodernizer.parser.parsing.evidence.ImportEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.ImportEvidenceExtraction;
+import legacymodernizer.parser.parsing.evidence.ParameterEvidenceExtraction;
+import legacymodernizer.parser.parsing.evidence.ParameterEvidenceExtraction.ParameterCandidate;
 import legacymodernizer.parser.parsing.evidence.SourceRangeCandidate;
+import legacymodernizer.parser.parsing.evidence.ScopeDirectiveEvidenceExtraction;
+import legacymodernizer.parser.parsing.evidence.ScopeDirectiveEvidenceExtraction.ScopeDirectiveCandidate;
+import legacymodernizer.parser.parsing.evidence.SyntaxComponentCandidate;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.antlr.ListenerHelper;
 import legacymodernizer.parser.antlr.ParserUtils;
@@ -36,12 +48,23 @@ public class PythonAstListener extends PythonParserBaseListener
         implements AntlrParseHarness.AstListener {
 
     private final ListenerHelper h;
+    private final GrammarStructureEvidence structuralEvidence;
     private List<String> pendingDecorators = new ArrayList<>();
     private final List<CallEvidenceCandidate> callEvidence = new ArrayList<>();
+    private final List<CallableCandidate> callableEvidence = new ArrayList<>();
+    private int unresolvedCallableEvidence;
     private final List<ImportEvidenceCandidate> importEvidence = new ArrayList<>();
+    private final List<ParameterCandidate> parameterEvidence = new ArrayList<>();
+    private int unresolvedParameterEvidence;
+    private final List<BindingTargetCandidate> bindingTargetEvidence = new ArrayList<>();
+    private int unresolvedBindingTargetEvidence;
+    private final List<ScopeDirectiveCandidate> scopeDirectiveEvidence = new ArrayList<>();
+    private int unresolvedScopeDirectiveEvidence;
 
     public PythonAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
         this.h = new ListenerHelper(tokens, tracker);
+        this.structuralEvidence = new GrammarStructureEvidence(
+                tokens, PythonParser.VOCABULARY, PythonParser.ruleNames);
     }
 
     public Node getRoot() {
@@ -60,6 +83,28 @@ public class PythonAstListener extends PythonParserBaseListener
     @Override
     public ImportEvidenceExtraction importEvidenceExtraction() {
         return new ImportEvidenceExtraction(importEvidence, 0, List.of());
+    }
+
+    public CallableEvidenceExtraction callableEvidenceExtraction() {
+        return new CallableEvidenceExtraction(
+                "python", "antlr-python/v1", callableEvidence, unresolvedCallableEvidence,
+                unresolvedCallableEvidence == 0
+                        ? List.of() : List.of("insufficient_parser_recovery"),
+                new ParameterEvidenceExtraction(
+                        parameterEvidence,
+                        unresolvedParameterEvidence,
+                        unresolvedParameterEvidence == 0
+                                ? List.of() : List.of("insufficient_parser_recovery")),
+                new BindingTargetEvidenceExtraction(
+                        bindingTargetEvidence,
+                        unresolvedBindingTargetEvidence,
+                        unresolvedBindingTargetEvidence == 0
+                                ? List.of() : List.of("insufficient_parser_recovery")),
+                new ScopeDirectiveEvidenceExtraction(
+                        scopeDirectiveEvidence,
+                        unresolvedScopeDirectiveEvidence,
+                        unresolvedScopeDirectiveEvidence == 0
+                                ? List.of() : List.of("insufficient_parser_recovery")));
     }
 
     @Override
@@ -225,7 +270,8 @@ public class PythonAstListener extends PythonParserBaseListener
                     0, false, "unspecified"));
         }
         importEvidence.add(new ImportEvidenceCandidate(
-                "import_stmt", range(ctx), "import", entries));
+                "import_stmt", range(ctx), "import", entries,
+                structuralEvidence.scopePath(ctx, this::scopeKind)));
     }
 
     @Override
@@ -258,7 +304,8 @@ public class PythonAstListener extends PythonParserBaseListener
             }
         }
         importEvidence.add(new ImportEvidenceCandidate(
-                "from_stmt", range(ctx), "import", entries));
+                "from_stmt", range(ctx), "import", entries,
+                structuralEvidence.scopePath(ctx, this::scopeKind)));
     }
 
     @Override
@@ -300,6 +347,7 @@ public class PythonAstListener extends PythonParserBaseListener
 
     @Override
     public void enterClassdef(PythonParser.ClassdefContext ctx) {
+        addDefinitionBindingTarget(ctx, ctx.name(), "class_definition");
         String name = ctx.name() != null ? ctx.name().getText() : null;
         Node node = h.enterStatement("CLASS", name, ctx.getStart().getLine());
 
@@ -345,6 +393,8 @@ public class PythonAstListener extends PythonParserBaseListener
 
     @Override
     public void enterFuncdef(PythonParser.FuncdefContext ctx) {
+        addDefinitionBindingTarget(ctx, ctx.name(), "function_definition");
+        addCallable(ctx);
         String name = ctx.name() != null ? ctx.name().getText() : null;
 
         // 클래스 내부이면 METHOD, 아니면 FUNCTION
@@ -404,6 +454,188 @@ public class PythonAstListener extends PythonParserBaseListener
         }
     }
 
+    private void addCallable(PythonParser.FuncdefContext context) {
+        if (context.name() == null || context.COLON() == null) {
+            unresolvedCallableEvidence++;
+            return;
+        }
+        try {
+            ParserRuleContext factContext = context;
+            String grammarRule = "funcdef";
+            List<SyntaxComponentCandidate> specifiers = context.test() == null
+                    ? List.of() : List.of(structuralEvidence.component(context.test()));
+            ParserRuleContext declarator = context.typedargslist() == null
+                    ? context.name() : context.typedargslist();
+            List<SyntaxComponentCandidate> attributes = List.of();
+            if (context.getParent() instanceof PythonParser.Class_or_func_def_stmtContext parent) {
+                attributes = parent.decorator().stream()
+                        .map(structuralEvidence::component)
+                        .toList();
+                if (!parent.decorator().isEmpty()) {
+                    factContext = parent;
+                    grammarRule = "class_or_func_def_stmt";
+                }
+            }
+            var scopePath = structuralEvidence.scopePath(
+                    factContext.getParent(), this::scopeKind);
+            var factRange = structuralEvidence.range(factContext);
+            callableEvidence.add(new CallableCandidate(
+                    grammarRule,
+                    factRange,
+                    structuralEvidence.range(context.name()),
+                    "definition",
+                    structuralEvidence.range(context),
+                    scopePath,
+                    scopePath.get(scopePath.size() - 1).range(),
+                    context.COLON().getSymbol().getStopIndex() + 1,
+                    new CallableSyntaxCandidate(
+                            "python-callable-syntax/v1",
+                            specifiers,
+                            structuralEvidence.component(declarator),
+                            attributes)));
+        } catch (IncompleteGrammarEvidence ignored) {
+            unresolvedCallableEvidence++;
+        }
+    }
+
+    private String scopeKind(ParserRuleContext context) {
+        if (context instanceof PythonParser.ClassdefContext) return "class";
+        if (context instanceof PythonParser.FuncdefContext) return "function";
+        if (context instanceof PythonParser.TestContext test && test.LAMBDA() != null) {
+            return "lambda";
+        }
+        if (context instanceof PythonParser.Testlist_compContext value
+                && value.comp_for() != null) return "comprehension";
+        if (context instanceof PythonParser.DictorsetmakerContext value
+                && value.comp_for() != null) return "comprehension";
+        if (context instanceof PythonParser.ArgumentContext value
+                && value.comp_for() != null) return "comprehension";
+        if (context instanceof PythonParser.SuiteContext
+                && !(context.getParent() instanceof PythonParser.ClassdefContext)) {
+            return "block";
+        }
+        return null;
+    }
+
+    @Override
+    public void enterNamed_parameter(PythonParser.Named_parameterContext ctx) {
+        addParameter(ctx, ctx.name());
+    }
+
+    @Override
+    public void enterVardef_parameter(PythonParser.Vardef_parameterContext ctx) {
+        if (ctx.name() != null) addParameter(ctx, ctx.name());
+    }
+
+    @Override
+    public void enterVarargs(PythonParser.VarargsContext ctx) {
+        addParameter(ctx, ctx.name());
+    }
+
+    @Override
+    public void enterVarkwargs(PythonParser.VarkwargsContext ctx) {
+        addParameter(ctx, ctx.name());
+    }
+
+    private void addParameter(ParserRuleContext grammarContext, PythonParser.NameContext name) {
+        if (name == null) {
+            unresolvedParameterEvidence++;
+            return;
+        }
+        try {
+            List<legacymodernizer.parser.parsing.evidence.ScopeEvidenceCandidate> scopePath =
+                    structuralEvidence.scopePath(grammarContext, this::scopeKind);
+            parameterEvidence.add(new ParameterCandidate(
+                    PythonParser.ruleNames[grammarContext.getRuleIndex()],
+                    structuralEvidence.range(name), scopePath));
+        } catch (IncompleteGrammarEvidence ignored) {
+            unresolvedParameterEvidence++;
+        }
+    }
+
+    private void addBindingTarget(ParserRuleContext target, String bindingContext) {
+        if (target == null) {
+            unresolvedBindingTargetEvidence++;
+            return;
+        }
+        try {
+            bindingTargetEvidence.add(new BindingTargetCandidate(
+                    PythonParser.ruleNames[target.getRuleIndex()],
+                    structuralEvidence.range(target),
+                    bindingContext,
+                    structuralEvidence.scopePath(target, this::scopeKind),
+                    structuralEvidence.component(target)));
+        } catch (IncompleteGrammarEvidence ignored) {
+            unresolvedBindingTargetEvidence++;
+        }
+    }
+
+    private void addDefinitionBindingTarget(
+            ParserRuleContext definition,
+            PythonParser.NameContext name,
+            String bindingContext) {
+        if (name == null) {
+            unresolvedBindingTargetEvidence++;
+            return;
+        }
+        try {
+            bindingTargetEvidence.add(new BindingTargetCandidate(
+                    PythonParser.ruleNames[name.getRuleIndex()],
+                    structuralEvidence.range(name),
+                    bindingContext,
+                    structuralEvidence.scopePath(definition.getParent(), this::scopeKind),
+                    structuralEvidence.component(name)));
+        } catch (IncompleteGrammarEvidence ignored) {
+            unresolvedBindingTargetEvidence++;
+        }
+    }
+
+    @Override
+    public void enterWith_item(PythonParser.With_itemContext ctx) {
+        if (ctx.AS() != null) addBindingTarget(ctx.expr(), "with_target");
+    }
+
+    @Override
+    public void enterComp_for(PythonParser.Comp_forContext ctx) {
+        addBindingTarget(ctx.exprlist(), "comprehension_target");
+    }
+
+    @Override
+    public void enterDel_stmt(PythonParser.Del_stmtContext ctx) {
+        addBindingTarget(ctx.exprlist(), "delete_target");
+    }
+
+    private void addScopeDirectives(
+            ParserRuleContext grammarContext,
+            List<PythonParser.NameContext> names,
+            String directiveKind) {
+        if (names == null || names.isEmpty()) {
+            unresolvedScopeDirectiveEvidence++;
+            return;
+        }
+        for (PythonParser.NameContext name : names) {
+            try {
+                scopeDirectiveEvidence.add(new ScopeDirectiveCandidate(
+                        PythonParser.ruleNames[grammarContext.getRuleIndex()],
+                        structuralEvidence.range(name),
+                        directiveKind,
+                        structuralEvidence.scopePath(name, this::scopeKind)));
+            } catch (IncompleteGrammarEvidence ignored) {
+                unresolvedScopeDirectiveEvidence++;
+            }
+        }
+    }
+
+    @Override
+    public void enterGlobal_stmt(PythonParser.Global_stmtContext ctx) {
+        addScopeDirectives(ctx, ctx.name(), "global");
+    }
+
+    @Override
+    public void enterNonlocal_stmt(PythonParser.Nonlocal_stmtContext ctx) {
+        addScopeDirectives(ctx, ctx.name(), "nonlocal");
+    }
+
     // ========================================
     // 변수/필드 할당 (expr_stmt with assign_part)
     // ========================================
@@ -422,6 +654,19 @@ public class PythonAstListener extends PythonParserBaseListener
 
         // assign_part가 없으면 순수 표현식 → 무시
         if (assignPart == null) return;
+
+        String bindingContext = assignPart.op != null
+                ? "augmented_assignment"
+                : assignPart.COLON() != null ? "annotated_assignment" : "assignment";
+        addBindingTarget(ctx.testlist_star_expr(), bindingContext);
+        if (assignPart.op == null && assignPart.COLON() == null) {
+            int chainedTargets = Math.max(0, assignPart.ASSIGN().size() - 1);
+            List<PythonParser.Testlist_star_exprContext> chained =
+                    assignPart.testlist_star_expr();
+            for (int index = 0; index < Math.min(chainedTargets, chained.size()); index++) {
+                addBindingTarget(chained.get(index), "assignment");
+            }
+        }
 
         // routine 안 대입 statement 는 ASSIGNMENT leaf 로도 emit (spec 016) —
         // 선언 의미(VARIABLE/FIELD)와 별개의 문장 효과 사실이다.
@@ -523,7 +768,6 @@ public class PythonAstListener extends PythonParserBaseListener
             node.variableType = typeAnnotation;
         }
         node.initValue = initializerText;
-        inferVariableType(node, initializerText);
     }
 
     @Override
@@ -561,20 +805,8 @@ public class PythonAstListener extends PythonParserBaseListener
         return null;
     }
 
-    /**
-     * 타입 어노테이션이 없을 때 초기화식의 생성자 호출(ClassName(...))로 변수 타입을 보강한다.
-     * 예: self.svc = StatsService(db) → svc.variableType = "StatsService".
-     */
-    private void inferVariableType(Node node, String initializerText) {
-        if (node.variableType != null) return;
-        String ctorType = ParserUtils.extractPythonNewInstanceType(initializerText);
-        if (ctorType != null) {
-            node.variableType = ctorType;
-        }
-    }
-
     // ========================================
-    // 함수/메서드 호출 (METHOD_CALL)
+    // 함수/메서드/생성자 후보 호출 (FUNCTION_CALL)
     // ========================================
 
     /**
@@ -610,18 +842,65 @@ public class PythonAstListener extends PythonParserBaseListener
                     ? ctx.name().getStop()
                     : tokenBeforeTrailer(expression, ctx);
             Node call = h.enterStatement("FUNCTION_CALL", callName, expression.getStart().getLine());
-            callEvidence.add(CallEvidenceCandidate.fromTokens("trailer",
+            CallEvidenceCandidate candidate = CallEvidenceCandidate.fromTokens("trailer",
                     expression.getStart(), ctx.getStop(), expression.getStart(), calleeStop,
                     callName == null ? "expression" : "named", callName,
                     ctx.arguments().arglist() == null
-                            ? List.of() : ctx.arguments().arglist().argument()));
-            // 대문자 시작 = 생성자 호출(ClassName(...)) — 역할 분리로 NEW_INSTANCE 도 함께 emit
-            if (callName != null && !callName.isEmpty()
-                    && Character.isUpperCase(callName.charAt(0))) {
-                Node ni = new Node("NEW_INSTANCE", callName, ctx.getStart().getLine(), call.parent);
-                ni.endLine = ctx.getStop().getLine();
-            }
+                            ? List.of() : ctx.arguments().arglist().argument());
+            SourceRangeCandidate receiverRange = ctx.name() == null ? null
+                    : structuralEvidence.range(
+                            expression.getStart(), tokenBeforeTrailer(expression, ctx));
+            callEvidence.add(candidate.withStructuralContext(
+                    receiverRange, callScopePath(ctx)));
         }
+    }
+
+    private List<legacymodernizer.parser.parsing.evidence.ScopeEvidenceCandidate>
+            callScopePath(ParserRuleContext callContext) {
+        ParserRuleContext comprehension = nearestComprehension(callContext);
+        PythonParser.Comp_forContext outerFor = outerComprehensionFor(comprehension);
+        if (outerFor != null && isDescendantOf(callContext, outerFor.logical_test())) {
+            return structuralEvidence.scopePath(
+                    (ParserRuleContext) comprehension.getParent(), this::scopeKind);
+        }
+        return structuralEvidence.scopePath(callContext, this::scopeKind);
+    }
+
+    private static ParserRuleContext nearestComprehension(ParserRuleContext context) {
+        ParserRuleContext cursor = context;
+        while (cursor != null) {
+            if (cursor instanceof PythonParser.Testlist_compContext value
+                    && value.comp_for() != null) return cursor;
+            if (cursor instanceof PythonParser.DictorsetmakerContext value
+                    && value.comp_for() != null) return cursor;
+            if (cursor instanceof PythonParser.ArgumentContext value
+                    && value.comp_for() != null) return cursor;
+            cursor = cursor.getParent();
+        }
+        return null;
+    }
+
+    private static PythonParser.Comp_forContext outerComprehensionFor(
+            ParserRuleContext comprehension) {
+        if (comprehension instanceof PythonParser.Testlist_compContext value) {
+            return value.comp_for();
+        }
+        if (comprehension instanceof PythonParser.DictorsetmakerContext value) {
+            return value.comp_for();
+        }
+        if (comprehension instanceof PythonParser.ArgumentContext value) {
+            return value.comp_for();
+        }
+        return null;
+    }
+
+    private static boolean isDescendantOf(ParseTree child, ParseTree ancestor) {
+        ParseTree cursor = child;
+        while (cursor != null) {
+            if (cursor == ancestor) return true;
+            cursor = cursor.getParent();
+        }
+        return false;
     }
 
     @Override
@@ -726,6 +1005,7 @@ public class PythonAstListener extends PythonParserBaseListener
 
     @Override
     public void enterFor_stmt(PythonParser.For_stmtContext ctx) {
+        addBindingTarget(ctx.exprlist(), "for_target");
         if (!isInsideRoutine()) return;
         Node node = h.enterStatement("LOOP", ctx.getStart().getLine());
         // `for <exprlist> in <testlist>` — 반복 지배식 전체를 조건으로 보존.
@@ -751,6 +1031,7 @@ public class PythonAstListener extends PythonParserBaseListener
 
     @Override
     public void enterExcept_clause(PythonParser.Except_clauseContext ctx) {
+        if (ctx.name() != null) addBindingTarget(ctx.name(), "except_target");
         if (isInsideRoutine()) h.enterStatement("CATCH", ctx.getStart().getLine());
     }
 

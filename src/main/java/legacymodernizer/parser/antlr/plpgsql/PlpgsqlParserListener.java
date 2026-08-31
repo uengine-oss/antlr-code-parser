@@ -1,3 +1,4 @@
+// Generated from legacymodernizer/parser/antlr/plpgsql/PlpgsqlParser.g4 by ANTLR 4.13.2
 package legacymodernizer.parser.antlr.plpgsql;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
@@ -796,6 +797,26 @@ public interface PlpgsqlParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitFunctionCall(PlpgsqlParser.FunctionCallContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlpgsqlParser#callableName}.
+	 * @param ctx the parse tree
+	 */
+	void enterCallableName(PlpgsqlParser.CallableNameContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlpgsqlParser#callableName}.
+	 * @param ctx the parse tree
+	 */
+	void exitCallableName(PlpgsqlParser.CallableNameContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link PlpgsqlParser#callableNamePart}.
+	 * @param ctx the parse tree
+	 */
+	void enterCallableNamePart(PlpgsqlParser.CallableNamePartContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link PlpgsqlParser#callableNamePart}.
+	 * @param ctx the parse tree
+	 */
+	void exitCallableNamePart(PlpgsqlParser.CallableNamePartContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link PlpgsqlParser#functionCallArgs}.
 	 * @param ctx the parse tree

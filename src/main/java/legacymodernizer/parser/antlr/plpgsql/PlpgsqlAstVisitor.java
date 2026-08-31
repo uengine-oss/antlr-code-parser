@@ -530,21 +530,9 @@ public class PlpgsqlAstVisitor extends PlpgsqlParserBaseVisitor<Node> {
     
     @Override
     public Node visitFunctionCall(PlpgsqlParser.FunctionCallContext ctx) {
-        String functionName = null;
-        
-        // 함수명 추출 (Identifier 또는 키워드)
-        if (ctx.Identifier() != null) {
-            functionName = ctx.Identifier().getText();
-        } else if (ctx.LEFT() != null) {
-            functionName = "LEFT";
-        } else if (ctx.RIGHT() != null) {
-            functionName = "RIGHT";
-        } else if (ctx.SUBSTRING() != null) {
-            functionName = "SUBSTRING";
-        } else if (ctx.POSITION() != null) {
-            functionName = "POSITION";
-        }
-        
+        java.util.List<PlpgsqlParser.CallableNamePartContext> path =
+                ctx.callableName().callableNamePart();
+        String functionName = path.get(path.size() - 1).getText();
         return createNode("CALL", functionName, ctx, currentBlockNode);
     }
     

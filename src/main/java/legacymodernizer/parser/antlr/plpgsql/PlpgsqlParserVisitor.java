@@ -1,3 +1,4 @@
+// Generated from legacymodernizer/parser/antlr/plpgsql/PlpgsqlParser.g4 by ANTLR 4.13.2
 package legacymodernizer.parser.antlr.plpgsql;
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
@@ -483,6 +484,18 @@ public interface PlpgsqlParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitFunctionCall(PlpgsqlParser.FunctionCallContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link PlpgsqlParser#callableName}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitCallableName(PlpgsqlParser.CallableNameContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link PlpgsqlParser#callableNamePart}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitCallableNamePart(PlpgsqlParser.CallableNamePartContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link PlpgsqlParser#functionCallArgs}.
 	 * @param ctx the parse tree

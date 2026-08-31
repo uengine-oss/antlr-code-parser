@@ -1,3 +1,4 @@
+// Generated from legacymodernizer/parser/antlr/plpgsql/PlpgsqlParser.g4 by ANTLR 4.13.2
 package legacymodernizer.parser.antlr.plpgsql;
 
 import org.antlr.v4.runtime.ParserRuleContext;
@@ -959,6 +960,30 @@ public class PlpgsqlParserBaseListener implements PlpgsqlParserListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitFunctionCall(PlpgsqlParser.FunctionCallContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterCallableName(PlpgsqlParser.CallableNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitCallableName(PlpgsqlParser.CallableNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterCallableNamePart(PlpgsqlParser.CallableNamePartContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitCallableNamePart(PlpgsqlParser.CallableNamePartContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

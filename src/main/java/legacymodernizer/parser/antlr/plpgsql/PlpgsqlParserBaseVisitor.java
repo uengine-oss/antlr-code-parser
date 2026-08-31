@@ -1,3 +1,4 @@
+// Generated from legacymodernizer/parser/antlr/plpgsql/PlpgsqlParser.g4 by ANTLR 4.13.2
 package legacymodernizer.parser.antlr.plpgsql;
 import org.antlr.v4.runtime.tree.AbstractParseTreeVisitor;
 
@@ -564,6 +565,20 @@ public class PlpgsqlParserBaseVisitor<T> extends AbstractParseTreeVisitor<T> imp
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
 	@Override public T visitFunctionCall(PlpgsqlParser.FunctionCallContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitCallableName(PlpgsqlParser.CallableNameContext ctx) { return visitChildren(ctx); }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation returns the result of calling
+	 * {@link #visitChildren} on {@code ctx}.</p>
+	 */
+	@Override public T visitCallableNamePart(PlpgsqlParser.CallableNamePartContext ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
 	 *

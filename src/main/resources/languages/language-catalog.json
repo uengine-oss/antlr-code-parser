@@ -33,7 +33,7 @@
       "sharedExtension": false,
       "entryRules": {"FILE": "root", "CLASS": "classdef", "FUNCTION": "funcdef", "METHOD": "funcdef"},
       "unitKinds": ["FILE", "CLASS", "FUNCTION", "METHOD"],
-      "emittedNodeTypes": ["FILE", "CLASS", "FUNCTION", "METHOD", "FIELD", "CONSTANT_FIELD", "VARIABLE", "IMPORT", "FUNCTION_CALL", "NEW_INSTANCE", "IF", "ELSE", "LOOP", "TRY", "CATCH"],
+      "emittedNodeTypes": ["FILE", "CLASS", "FUNCTION", "METHOD", "FIELD", "CONSTANT_FIELD", "VARIABLE", "IMPORT", "FUNCTION_CALL", "IF", "ELSE", "LOOP", "TRY", "CATCH"],
       "routineNodeTypes": ["FUNCTION", "METHOD"],
       "grammar": {
         "provenance": "local-pinned",
@@ -108,11 +108,11 @@
           {"path": "antlr-grammars/PostgreSQLLexer.g4", "sha256": "858018bfe65724ca32eeb9e1946b4d9d4dfdf61fcf4f92593e4747ac28b3bf0b"},
           {"path": "antlr-grammars/PostgreSQLParser.g4", "sha256": "54680f8853d64ea3e360d2d50cd42047a38f5ae8ce8f7c162628b071182b9209"},
           {"path": "antlr-grammars/PlpgsqlLexer.g4", "sha256": "9c0e740df7e5f2f7f383dbacb8b8ca46677d416d1e443fc30c2d2c6a7884c3ba"},
-          {"path": "antlr-grammars/PlpgsqlParser.g4", "sha256": "e49ae51ea100dae0564b4bd1756b4c2ac112d64aa99e6d630368345128bcc60a"}
+          {"path": "antlr-grammars/PlpgsqlParser.g4", "sha256": "cc48d8e7ddc71a9014158cdb879c5035e51fada55a968ee38e2253a6e9487de4"}
         ]
       },
       "recoveryRuleSets": ["common-safe", "postgresql"]
     }
   ],
-  "catalogSha256": "9c5413de674322b179801ebe176dffe1b2c5fd1e6d0036baca63b75937a01a9a"
+  "catalogSha256": "22ac9238defa61731828d4f0bb90e461876014e0a1aace0cdcc4889bbc175728"
 }

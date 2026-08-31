@@ -14,6 +14,15 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import legacymodernizer.parser.parsing.AntlrParseHarness;
+import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableCandidate;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableSyntaxCandidate;
+import legacymodernizer.parser.parsing.evidence.GrammarStructureEvidence;
+import legacymodernizer.parser.parsing.evidence.GrammarStructureEvidence.IncompleteGrammarEvidence;
+import legacymodernizer.parser.parsing.evidence.ScopeEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.SourceRangeCandidate;
+import legacymodernizer.parser.parsing.evidence.SyntaxComponentCandidate;
 import legacymodernizer.parser.model.DatabaseLinkComponent;
 import legacymodernizer.parser.model.DataObjectReference;
 import legacymodernizer.parser.model.Node;
@@ -31,6 +40,10 @@ import legacymodernizer.parser.service.ParseProgressTracker;
 public class PlSqlAstListener extends PlSqlParserBaseListener
         implements AntlrParseHarness.AstListener {
     private final ListenerHelper h;
+    private final GrammarStructureEvidence structuralEvidence;
+    private final List<CallEvidenceCandidate> callEvidence = new ArrayList<>();
+    private final List<CallableCandidate> callableEvidence = new ArrayList<>();
+    private int unresolvedCallableEvidence;
 
     public Node getRoot() {
         return h.getRoot();
@@ -38,6 +51,21 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     public PlSqlAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
         this.h = new ListenerHelper(tokens, tracker);
+        this.structuralEvidence = new GrammarStructureEvidence(
+                tokens, PlSqlParser.VOCABULARY, PlSqlParser.ruleNames);
+    }
+
+    @Override
+    public List<CallEvidenceCandidate> callEvidenceCandidates() {
+        return List.copyOf(callEvidence);
+    }
+
+    public CallableEvidenceExtraction callableEvidenceExtraction() {
+        return new CallableEvidenceExtraction(
+                "oracle", "antlr-oracle/v1", callableEvidence,
+                unresolvedCallableEvidence,
+                unresolvedCallableEvidence == 0
+                        ? List.of() : List.of("insufficient_parser_recovery"));
     }
 
     public void setFileInfo(String fileName, String filePath) {
@@ -103,6 +131,10 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterCreate_procedure_body(PlSqlParser.Create_procedure_bodyContext ctx) {
+        addCallable("create_procedure_body", ctx,
+                terminalNameContext(ctx.procedure_name()),
+                namePath(ctx.procedure_name()), namePath(ctx.procedure_name()),
+                ctx.parameter());
         String fullName = ctx.procedure_name() != null ? ctx.procedure_name().getText() : null;
         String[] parts = ParserUtils.extractSchemaAndName(fullName);
 
@@ -121,6 +153,10 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterCreate_function_body(PlSqlParser.Create_function_bodyContext ctx) {
+        addCallable("create_function_body", ctx,
+                terminalNameContext(ctx.function_name()),
+                namePath(ctx.function_name()), namePath(ctx.function_name()),
+                ctx.parameter());
         String fullName = ctx.function_name() != null ? ctx.function_name().getText() : null;
         String[] parts = ParserUtils.extractSchemaAndName(fullName);
 
@@ -165,6 +201,17 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterPackage_obj_body(PlSqlParser.Package_obj_bodyContext ctx) {
+        if (ctx.function_body() != null) {
+            addCallable("function_body", ctx, ctx.function_body().identifier(),
+                    List.of(ctx.function_body().identifier()),
+                    packageMemberNamePath(ctx, ctx.function_body().identifier()),
+                    ctx.function_body().parameter());
+        } else if (ctx.procedure_body() != null) {
+            addCallable("procedure_body", ctx, ctx.procedure_body().identifier(),
+                    List.of(ctx.procedure_body().identifier()),
+                    packageMemberNamePath(ctx, ctx.procedure_body().identifier()),
+                    ctx.procedure_body().parameter());
+        }
         String memberType = ctx.function_body() != null ? "FUNCTION" : "PROCEDURE";
 
         String name = null;
@@ -692,14 +739,28 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
 
     @Override
     public void enterGeneral_element_part(PlSqlParser.General_element_partContext ctx) {
-        if (ctx.link_name() == null || ctx.function_argument().isEmpty()) return;
-        h.enterStatement("CALL", remoteRoutineName(ctx), ctx.getStart().getLine());
+        if (ctx.function_argument().isEmpty()) return;
+        PlSqlParser.General_elementContext element = nearestAncestor(
+                ctx, PlSqlParser.General_elementContext.class);
+        if (element == null) return;
+        List<PlSqlParser.General_element_partContext> parts = flattenedParts(element);
+        int partIndex = parts.indexOf(ctx);
+        if (partIndex < 0) return;
+        List<ParserRuleContext> path = new ArrayList<>();
+        for (int index = 0; index <= partIndex; index++) {
+            if (parts.get(index).id_expression() != null) {
+                path.add(parts.get(index).id_expression());
+            }
+        }
+        for (PlSqlParser.Function_argumentContext arguments : ctx.function_argument()) {
+            emitCall("general_element_part", path, ctx.link_name(), arguments,
+                    arguments.argument());
+        }
     }
 
     @Override
     public void exitGeneral_element_part(PlSqlParser.General_element_partContext ctx) {
-        if (ctx.link_name() == null || ctx.function_argument().isEmpty()) return;
-        h.exitStatementWithChildDedupe("CALL", ctx.getStop().getLine(), ctx);
+        // CALL is a leaf occurrence; enterGeneral_element_part attaches it directly.
     }
 
     private static String remoteRoutineName(PlSqlParser.General_element_partContext ctx) {
@@ -964,14 +1025,183 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
     @Override
     public void enterCall_statement(PlSqlParser.Call_statementContext ctx) {
         if (isRaiseCall(ctx)) return;
-        String name = ctx.routine_name().isEmpty() ? null : ctx.routine_name(0).getText();
-        h.enterStatement("CALL", name, ctx.getStart().getLine());
+        List<ParserRuleContext> path = new ArrayList<>();
+        for (PlSqlParser.Routine_nameContext routine : ctx.routine_name()) {
+            path.add(routine.identifier());
+            path.addAll(routine.id_expression());
+            PlSqlParser.Function_argumentContext arguments = functionArgumentAfter(ctx, routine);
+            emitCall("call_statement", path, routine.link_name(),
+                    arguments, arguments == null ? List.of() : arguments.argument());
+        }
     }
 
     @Override
     public void exitCall_statement(PlSqlParser.Call_statementContext ctx) {
-        if (isRaiseCall(ctx)) return;
-        h.exitStatementWithChildDedupe("CALL", ctx.getStop().getLine(), ctx);
+        // CALL is a leaf occurrence; enterCall_statement attaches it directly.
+    }
+
+    private void emitCall(
+            String grammarRule,
+            List<? extends ParserRuleContext> path,
+            PlSqlParser.Link_nameContext databaseLink,
+            ParserRuleContext argumentList,
+            List<? extends ParserRuleContext> arguments) {
+        if (path == null || path.isEmpty()) return;
+        ParserRuleContext terminal = path.get(path.size() - 1);
+        Token callStop = argumentList == null ? terminal.getStop() : argumentList.getStop();
+        SourceRangeCandidate calleeRange = structuralEvidence.range(
+                path.get(0).getStart(), databaseLink == null
+                        ? terminal.getStop() : databaseLink.getStop());
+        SourceRangeCandidate receiverRange = path.size() == 1 ? null
+                : structuralEvidence.range(path.get(0).getStart(),
+                        path.get(path.size() - 2).getStop());
+        CallEvidenceCandidate candidate = new CallEvidenceCandidate(
+                grammarRule,
+                structuralEvidence.range(path.get(0).getStart(), callStop),
+                calleeRange,
+                receiverRange,
+                "named",
+                terminal.getText(),
+                arguments.stream().map(structuralEvidence::range).toList(),
+                structuralEvidence.scopePath(path.get(0), this::scopeKind),
+                path.stream().map(structuralEvidence::range).toList(),
+                databaseLink == null ? null : structuralEvidence.range(databaseLink));
+        callEvidence.add(candidate);
+        Node callNode = new Node("CALL", terminal.getText(),
+                path.get(0).getStart().getLine(), h.getNodeStack().peek());
+        callNode.endLine = callStop.getLine();
+    }
+
+    private static PlSqlParser.Function_argumentContext functionArgumentAfter(
+            PlSqlParser.Call_statementContext call,
+            PlSqlParser.Routine_nameContext routine) {
+        boolean found = false;
+        for (ParseTree child : call.children == null ? List.<ParseTree>of() : call.children) {
+            if (child == routine) {
+                found = true;
+            } else if (found && child instanceof PlSqlParser.Function_argumentContext arguments) {
+                return arguments;
+            } else if (found && child instanceof PlSqlParser.Routine_nameContext) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private void addCallable(
+            String grammarRule,
+            ParserRuleContext factContext,
+            ParserRuleContext nameContext,
+            List<? extends ParserRuleContext> declaratorNamePath,
+            List<? extends ParserRuleContext> qualifiedNamePath,
+            List<? extends ParserRuleContext> parameters) {
+        if (factContext == null || nameContext == null
+                || declaratorNamePath == null || declaratorNamePath.isEmpty()
+                || qualifiedNamePath == null || qualifiedNamePath.isEmpty()) {
+            unresolvedCallableEvidence++;
+            return;
+        }
+        try {
+            List<SyntaxComponentCandidate> declaratorChildren = new ArrayList<>();
+            declaratorNamePath.stream().map(structuralEvidence::component)
+                    .forEach(declaratorChildren::add);
+            if (parameters != null) {
+                parameters.stream().map(structuralEvidence::component)
+                        .forEach(declaratorChildren::add);
+            }
+            ParserRuleContext declaratorStop = parameters == null || parameters.isEmpty()
+                    ? nameContext : parameters.get(parameters.size() - 1);
+            SourceRangeCandidate declaratorRange = structuralEvidence.range(
+                    declaratorNamePath.get(0).getStart(), declaratorStop.getStop());
+            List<ScopeEvidenceCandidate> scopePath = structuralEvidence.scopePath(
+                    factContext, this::scopeKind);
+            SourceRangeCandidate factRange = structuralEvidence.range(factContext);
+            callableEvidence.add(new CallableCandidate(
+                    grammarRule,
+                    factRange,
+                    structuralEvidence.range(nameContext),
+                    "definition",
+                    factRange,
+                    scopePath,
+                    scopePath.get(scopePath.size() - 1).range(),
+                    declaratorRange.endOffset(),
+                    new CallableSyntaxCandidate(
+                            "oracle-callable-syntax/v1",
+                            List.of(),
+                            new SyntaxComponentCandidate(
+                                    "oracle_callable_declarator",
+                                    declaratorRange,
+                                    List.of(),
+                                    declaratorChildren),
+                            List.of()),
+                    qualifiedNamePath.stream().map(structuralEvidence::range).toList()));
+        } catch (IncompleteGrammarEvidence ignored) {
+            unresolvedCallableEvidence++;
+        }
+    }
+
+    private static ParserRuleContext terminalNameContext(
+            PlSqlParser.Procedure_nameContext name) {
+        if (name == null) return null;
+        return name.id_expression() == null ? name.identifier() : name.id_expression();
+    }
+
+    private static List<? extends ParserRuleContext> namePath(
+            PlSqlParser.Procedure_nameContext name) {
+        if (name == null) return List.of();
+        List<ParserRuleContext> result = new ArrayList<>();
+        result.add(name.identifier());
+        if (name.id_expression() != null) result.add(name.id_expression());
+        return result;
+    }
+
+    private static ParserRuleContext terminalNameContext(
+            PlSqlParser.Function_nameContext name) {
+        if (name == null) return null;
+        return name.id_expression() == null ? name.identifier() : name.id_expression();
+    }
+
+    private static List<? extends ParserRuleContext> namePath(
+            PlSqlParser.Function_nameContext name) {
+        if (name == null) return List.of();
+        List<ParserRuleContext> result = new ArrayList<>();
+        result.add(name.identifier());
+        if (name.id_expression() != null) result.add(name.id_expression());
+        return result;
+    }
+
+    private static List<? extends ParserRuleContext> packageMemberNamePath(
+            PlSqlParser.Package_obj_bodyContext member,
+            ParserRuleContext memberName) {
+        ParserRuleContext cursor = member;
+        while (cursor != null
+                && !(cursor instanceof PlSqlParser.Create_package_bodyContext)) {
+            cursor = cursor.getParent();
+        }
+        if (!(cursor instanceof PlSqlParser.Create_package_bodyContext packageBody)
+                || packageBody.package_name().isEmpty()) {
+            return List.of(memberName);
+        }
+        List<ParserRuleContext> result = new ArrayList<>();
+        if (packageBody.schema_object_name() != null) {
+            result.add(packageBody.schema_object_name());
+        }
+        result.add(packageBody.package_name(0));
+        result.add(memberName);
+        return result;
+    }
+
+    private String scopeKind(ParserRuleContext context) {
+        if (context instanceof PlSqlParser.Create_package_bodyContext) return "package";
+        if (context instanceof PlSqlParser.Create_procedure_bodyContext
+                || context instanceof PlSqlParser.Create_function_bodyContext
+                || context instanceof PlSqlParser.Package_obj_bodyContext
+                || context instanceof PlSqlParser.Procedure_bodyContext
+                || context instanceof PlSqlParser.Function_bodyContext) {
+            return "function";
+        }
+        if (context instanceof PlSqlParser.BodyContext) return "block";
+        return null;
     }
 
     /** enter/exit 쌍이 같은 판정을 재계산해야 하므로 RAISE 감지를 한 곳에 둔다. */

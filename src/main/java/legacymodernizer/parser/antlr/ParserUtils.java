@@ -422,19 +422,6 @@ public class ParserUtils {
         return initializerText.matches("(?s).*\\b\\w+\\s*\\(.*");
     }
 
-    private static final java.util.regex.Pattern PYTHON_CTOR_PATTERN =
-            java.util.regex.Pattern.compile("^([A-Z]\\w*)\\s*\\(");
-
-    /**
-     * Python 초기화식에서 생성자 클래스명 추출.
-     * "StatsService(db)" → "StatsService"
-     */
-    public static String extractPythonNewInstanceType(String text) {
-        if (text == null || text.isEmpty()) return null;
-        java.util.regex.Matcher m = PYTHON_CTOR_PATTERN.matcher(text);
-        return m.find() ? m.group(1) : null;
-    }
-
     // ═══════════════════════════════════════════════════════════════════
     // 식별자 분리 (schema.name → schema, name)
     // ═══════════════════════════════════════════════════════════════════

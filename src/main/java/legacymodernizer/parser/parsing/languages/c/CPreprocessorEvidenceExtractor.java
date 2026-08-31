@@ -24,6 +24,7 @@ import legacymodernizer.parser.parsing.evidence.ImportEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.ImportEvidenceExtraction;
 import legacymodernizer.parser.parsing.evidence.MacroEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.MacroEvidenceExtraction;
+import legacymodernizer.parser.parsing.evidence.ScopeEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.SourceRangeCandidate;
 import legacymodernizer.parser.parsing.languages.c.CConditionalCompilationAnalyzer.Directive;
 import legacymodernizer.parser.parsing.languages.c.CConditionalCompilationAnalyzer.Kind;
@@ -60,15 +61,17 @@ public final class CPreprocessorEvidenceExtractor {
                             + ", parser=" + parserErrors.count);
         }
         tokens.fill();
+        int sourceLength = physicalSource.codePointCount(0, physicalSource.length());
         EvidenceListener listener = new EvidenceListener(
-                tokens, spliced, lexer.hasUnterminatedBlockComment());
+                tokens, spliced, lexer.hasUnterminatedBlockComment(), sourceLength);
         new ParseTreeWalker().walk(listener, tree);
-        return listener.result(physicalSource.codePointCount(0, physicalSource.length()));
+        return listener.result(sourceLength);
     }
 
     private static final class EvidenceListener extends CPreprocessorParserBaseListener {
         private final CommonTokenStream tokens;
         private final SplicedSource spliced;
+        private final int sourceLength;
         private final int unterminatedCommentStartTokenIndex;
         private final List<MacroEvidenceCandidate> macros = new ArrayList<>();
         private final Set<String> macroReasons = new LinkedHashSet<>();
@@ -80,9 +83,10 @@ public final class CPreprocessorEvidenceExtractor {
         private int unresolvedImports;
 
         private EvidenceListener(CommonTokenStream tokens, SplicedSource spliced,
-                                 boolean hasUnterminatedBlockComment) {
+                                 boolean hasUnterminatedBlockComment, int sourceLength) {
             this.tokens = tokens;
             this.spliced = spliced;
+            this.sourceLength = sourceLength;
             this.unterminatedCommentStartTokenIndex = unterminatedCommentStart(
                     tokens, hasUnterminatedBlockComment);
         }
@@ -126,7 +130,10 @@ public final class CPreprocessorEvidenceExtractor {
                         "include",
                         List.of(new ImportBindingCandidate(
                                 importKind, targetKind, targetRange, pathComponents,
-                                null, null, 0, false, locality))));
+                                null, null, 0, false, locality)),
+                        List.of(new ScopeEvidenceCandidate(
+                                "translation_unit",
+                                new SourceRangeCandidate(0, sourceLength)))));
             } catch (IllegalArgumentException noncontiguous) {
                 unresolvedImports++;
                 importReasons.add(NONCONTIGUOUS_REASON);

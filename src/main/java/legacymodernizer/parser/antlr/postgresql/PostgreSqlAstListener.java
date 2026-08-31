@@ -8,9 +8,20 @@ import java.util.Locale;
 import java.util.Set;
 
 import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.misc.Interval;
 import org.antlr.v4.runtime.tree.*;
 
 import legacymodernizer.parser.parsing.AntlrParseHarness;
+import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableCandidate;
+import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableSyntaxCandidate;
+import legacymodernizer.parser.parsing.evidence.GrammarStructureEvidence;
+import legacymodernizer.parser.parsing.evidence.GrammarStructureEvidence.IncompleteGrammarEvidence;
+import legacymodernizer.parser.parsing.evidence.ScopeEvidenceCandidate;
+import legacymodernizer.parser.parsing.evidence.SourceRangeCandidate;
+import legacymodernizer.parser.parsing.evidence.SyntaxComponentCandidate;
+import legacymodernizer.parser.parsing.evidence.SyntaxTokenCandidate;
 import legacymodernizer.parser.model.DataObjectReference;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.model.QualifiedColumnReference;
@@ -19,6 +30,7 @@ import legacymodernizer.parser.antlr.ParserUtils;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlAstVisitor;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlLexer;
 import legacymodernizer.parser.antlr.plpgsql.PlpgsqlParser;
+import legacymodernizer.parser.antlr.plpgsql.PlpgsqlStructuralEvidenceListener;
 import legacymodernizer.parser.recovery.diagnostics.CollectingAntlrErrorListener;
 import legacymodernizer.parser.recovery.diagnostics.CountingErrorStrategy;
 import legacymodernizer.parser.recovery.diagnostics.DiagnosticPhase;
@@ -35,6 +47,10 @@ import lombok.extern.slf4j.Slf4j;
 public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
         implements AntlrParseHarness.AstListener {
     private final ListenerHelper h;
+    private final GrammarStructureEvidence structuralEvidence;
+    private final List<CallEvidenceCandidate> callEvidence = new ArrayList<>();
+    private final List<CallableCandidate> callableEvidence = new ArrayList<>();
+    private int unresolvedCallableEvidence;
     private boolean insideExplain = false;
     private final List<ParseDiagnostic> nestedDiagnostics = new ArrayList<>();
     private int nestedRecoveries;
@@ -51,8 +67,23 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
         return nestedRecoveries;
     }
 
+    @Override
+    public List<CallEvidenceCandidate> callEvidenceCandidates() {
+        return List.copyOf(callEvidence);
+    }
+
+    public CallableEvidenceExtraction callableEvidenceExtraction() {
+        return new CallableEvidenceExtraction(
+                "postgresql", "antlr-postgresql/v1", callableEvidence,
+                unresolvedCallableEvidence,
+                unresolvedCallableEvidence == 0
+                        ? List.of() : List.of("insufficient_parser_recovery"));
+    }
+
     public PostgreSqlAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
         this.h = new ListenerHelper(tokens, tracker);
+        this.structuralEvidence = new GrammarStructureEvidence(
+                tokens, PostgreSQLParser.VOCABULARY, PostgreSQLParser.ruleNames);
     }
 
     public void setFileInfo(String fileName, String filePath) {
@@ -84,6 +115,92 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
      */
     private String extractPostgreSQLReturnType(PostgreSQLParser.Func_returnContext funcReturn) {
         return ParserUtils.getOriginalText(funcReturn, h.getTokens());
+    }
+
+    private void emitCallable(PostgreSQLParser.CreatefunctionstmtContext ctx) {
+        if (ctx == null || ctx.func_name() == null
+                || ctx.func_args_with_defaults() == null) {
+            unresolvedCallableEvidence++;
+            return;
+        }
+        try {
+            List<ParserRuleContext> namePath = functionNamePath(ctx.func_name());
+            if (namePath.isEmpty()) {
+                unresolvedCallableEvidence++;
+                return;
+            }
+            ParserRuleContext terminalName = namePath.get(namePath.size() - 1);
+            TerminalNode callableKindNode = ctx.FUNCTION() != null
+                    ? ctx.FUNCTION() : ctx.PROCEDURE();
+            if (callableKindNode == null) {
+                unresolvedCallableEvidence++;
+                return;
+            }
+            Token callableKindToken = callableKindNode.getSymbol();
+            SourceRangeCandidate callableKindRange = structuralEvidence.range(
+                    callableKindToken, callableKindToken);
+            SyntaxComponentCandidate callableKind = new SyntaxComponentCandidate(
+                    "postgresql_callable_kind",
+                    callableKindRange,
+                    List.of(new SyntaxTokenCandidate(
+                            callableKindToken.getType() == PostgreSQLParser.FUNCTION
+                                    ? "FUNCTION" : "PROCEDURE",
+                            callableKindRange)),
+                    List.of());
+            SourceRangeCandidate declaratorRange = structuralEvidence.range(
+                    ctx.func_name().getStart(), ctx.func_args_with_defaults().getStop());
+            List<ScopeEvidenceCandidate> scopePath = structuralEvidence.scopePath(
+                    ctx, this::scopeKind);
+            SourceRangeCandidate factRange = structuralEvidence.range(ctx);
+            callableEvidence.add(new CallableCandidate(
+                    "createfunctionstmt",
+                    factRange,
+                    structuralEvidence.range(terminalName),
+                    "definition",
+                    factRange,
+                    scopePath,
+                    scopePath.get(scopePath.size() - 1).range(),
+                    declaratorRange.endOffset(),
+                    new CallableSyntaxCandidate(
+                            "postgresql-callable-syntax/v1",
+                            List.of(callableKind),
+                            new SyntaxComponentCandidate(
+                                    "postgresql_callable_declarator",
+                                    declaratorRange,
+                                    List.of(),
+                                    List.of(
+                                            structuralEvidence.component(ctx.func_name()),
+                                            structuralEvidence.component(
+                                                    ctx.func_args_with_defaults()))),
+                            List.of()),
+                    namePath.stream().map(structuralEvidence::range).toList()));
+        } catch (IncompleteGrammarEvidence ignored) {
+            unresolvedCallableEvidence++;
+        }
+    }
+
+    private static List<ParserRuleContext> functionNamePath(
+            PostgreSQLParser.Func_nameContext name) {
+        if (name == null) return List.of();
+        List<ParserRuleContext> result = new ArrayList<>();
+        if (name.type_function_name() != null) {
+            result.add(name.type_function_name());
+            return result;
+        }
+        if (name.colid() != null) result.add(name.colid());
+        if (name.indirection() != null) {
+            for (PostgreSQLParser.Indirection_elContext element
+                    : name.indirection().indirection_el()) {
+                if (element.attr_name() != null) result.add(element.attr_name());
+            }
+        }
+        return result;
+    }
+
+    private String scopeKind(ParserRuleContext context) {
+        if (context instanceof PostgreSQLParser.CreatefunctionstmtContext) return "function";
+        if (context instanceof PostgreSQLParser.DostmtContext) return "block";
+        return null;
     }
 
     /**
@@ -132,6 +249,7 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
 
         Node node = h.enterStatement("PROCEDURE", name, ctx.getStart().getLine());
         node.schema = parts[0];
+        emitCallable(ctx);
 
         if (ctx.func_args_with_defaults() != null) {
             node.parameters = extractPostgreSQLParameters(ctx.func_args_with_defaults());
@@ -146,11 +264,9 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
         node.signature = extractSignatureUntil(ctx, dollarLineNumber);
 
         if (dollarLineNumber > 0) {
-            String plpgsqlCode = extractDollarQuotedString(ctx);
-            if (plpgsqlCode != null && !plpgsqlCode.trim().isEmpty()) {
-                int leadingNewlines = countRemovedLeadingLines(plpgsqlCode);
-                int adjustedBaseLineNumber = dollarLineNumber + leadingNewlines - 1;
-                parsePlpgsqlBlock(plpgsqlCode.trim(), adjustedBaseLineNumber);
+            DollarQuotedBody body = extractDollarQuotedBody(ctx);
+            if (body != null && !body.text().isBlank()) {
+                parsePlpgsqlBlock(body, structuralEvidence.scopePath(ctx, this::scopeKind));
             }
         }
     }
@@ -200,11 +316,9 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
         int dollarLineNumber = findDollarStringLine(ctx);
 
         if (dollarLineNumber > 0) {
-            String plpgsqlCode = extractDollarQuotedStringForDo(ctx);
-            if (plpgsqlCode != null && !plpgsqlCode.trim().isEmpty()) {
-                int leadingNewlines = countRemovedLeadingLines(plpgsqlCode);
-                int adjustedBaseLineNumber = dollarLineNumber + leadingNewlines - 1;
-                parsePlpgsqlBlock(plpgsqlCode.trim(), adjustedBaseLineNumber);
+            DollarQuotedBody body = extractDollarQuotedBodyForDo(ctx);
+            if (body != null && !body.text().isBlank()) {
+                parsePlpgsqlBlock(body, structuralEvidence.scopePath(ctx, this::scopeKind));
             }
         }
     }
@@ -214,7 +328,7 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
         h.exitStatement("DO", ctx.getStop().getLine(), ctx);
     }
 
-    private String extractDollarQuotedStringForDo(PostgreSQLParser.DostmtContext ctx) {
+    private DollarQuotedBody extractDollarQuotedBodyForDo(PostgreSQLParser.DostmtContext ctx) {
         if (ctx.dostmt_opt_list() != null) {
             for (PostgreSQLParser.Dostmt_opt_itemContext optItem : ctx.dostmt_opt_list().dostmt_opt_item()) {
                 if (optItem.sconst() != null) {
@@ -225,7 +339,7 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
         return null;
     }
 
-    private String extractDollarQuotedString(PostgreSQLParser.CreatefunctionstmtContext ctx) {
+    private DollarQuotedBody extractDollarQuotedBody(PostgreSQLParser.CreatefunctionstmtContext ctx) {
         PostgreSQLParser.Createfunc_opt_listContext optList = ctx.createfunc_opt_list();
         if (optList == null) return null;
 
@@ -240,44 +354,36 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
         return null;
     }
 
-    private String extractFromSconst(PostgreSQLParser.SconstContext sconstCtx) {
+    private DollarQuotedBody extractFromSconst(PostgreSQLParser.SconstContext sconstCtx) {
         if (sconstCtx == null || sconstCtx.anysconst() == null) return null;
 
         PostgreSQLParser.AnysconstContext anysconst = sconstCtx.anysconst();
-        if (anysconst.BeginDollarStringConstant() == null) return null;
+        if (anysconst.BeginDollarStringConstant() == null
+                || anysconst.EndDollarStringConstant() == null) return null;
 
-        StringBuilder content = new StringBuilder();
-        for (TerminalNode dollarText : anysconst.DollarText()) {
-            content.append(dollarText.getText());
-        }
-        return content.toString();
+        Token begin = anysconst.BeginDollarStringConstant().getSymbol();
+        Token end = anysconst.EndDollarStringConstant().getSymbol();
+        int bodyStartOffset = begin.getStopIndex() + 1;
+        int bodyEndOffset = end.getStartIndex();
+        String text = bodyEndOffset <= bodyStartOffset ? ""
+                : h.getTokens().getTokenSource().getInputStream().getText(
+                        Interval.of(bodyStartOffset, bodyEndOffset - 1));
+        return new DollarQuotedBody(text, bodyStartOffset, begin.getLine() - 1);
     }
 
-    private int countRemovedLeadingLines(String text) {
-        int count = 0;
-        int i = 0;
-
-        while (i < text.length() && Character.isWhitespace(text.charAt(i))) {
-            char c = text.charAt(i);
-            if (c == '\r') {
-                count++;
-                i++;
-                if (i < text.length() && text.charAt(i) == '\n') {
-                    i++;
-                }
-            } else if (c == '\n') {
-                count++;
-                i++;
-            } else {
-                i++;
-            }
-        }
-        return count;
+    private record DollarQuotedBody(
+            String text,
+            int sourceCodePointOffset,
+            int sourceLineOffset) {
     }
 
     // AntlrParseHarness 를 쓰지 않는 이유: 중첩 파싱은 리스너 walk 가 아니라 visitor 로 부분
     // 트리를 부모 노드에 접붙이고, rebase 공식도 파일 오프셋이 아닌 $$ 시작 줄 기준이라 구조가 다르다.
-    private void parsePlpgsqlBlock(String plpgsqlCode, int baseLineNumber) {
+    private void parsePlpgsqlBlock(
+            DollarQuotedBody body,
+            List<ScopeEvidenceCandidate> outerScopePath) {
+        String plpgsqlCode = body.text();
+        int sourceLineOffset = body.sourceLineOffset();
         try {
             CharStream input = CharStreams.fromString(plpgsqlCode);
             PlpgsqlLexer lexer = new PlpgsqlLexer(input);
@@ -297,34 +403,42 @@ public class PostgreSqlAstListener extends PostgreSQLParserBaseListener
             parser.setErrorHandler(errorStrategy);
 
             ParseTree tree = parser.plpgsqlBlock();
-            lexerErrors.diagnostics().stream().map(diagnostic -> rebase(diagnostic, baseLineNumber))
+            lexerErrors.diagnostics().stream().map(
+                    diagnostic -> rebase(diagnostic, sourceLineOffset))
                     .forEach(nestedDiagnostics::add);
-            parserErrors.diagnostics().stream().map(diagnostic -> rebase(diagnostic, baseLineNumber))
+            parserErrors.diagnostics().stream().map(
+                    diagnostic -> rebase(diagnostic, sourceLineOffset))
                     .forEach(nestedDiagnostics::add);
             nestedRecoveries += errorStrategy.recoveryCount();
 
             PlpgsqlAstVisitor visitor = new PlpgsqlAstVisitor(
                 h.getNodeStack().peek(),
-                baseLineNumber,
+                sourceLineOffset,
                 plTokens
             );
             visitor.visit(tree);
+            PlpgsqlStructuralEvidenceListener nestedEvidence =
+                    new PlpgsqlStructuralEvidenceListener(
+                            plTokens,
+                            body.sourceCodePointOffset(),
+                            h.getTokens().getTokenSource().getInputStream().size(),
+                            outerScopePath);
+            ParseTreeWalker.DEFAULT.walk(nestedEvidence, tree);
+            callEvidence.addAll(nestedEvidence.callEvidenceCandidates());
 
         } catch (Exception e) {
             nestedDiagnostics.add(new ParseDiagnostic(
                     DiagnosticPhase.SYSTEM, "ERROR", "PLPGSQL_NESTED_PARSE_FAILED",
-                    e.getMessage(), baseLineNumber, 0, null, null, List.of(), ""));
+                    e.getMessage(), sourceLineOffset, 0, null, null, List.of(), ""));
             // PL/pgSQL 블록 파싱 실패 — 해당 서브트리만 누락하고 outer 파싱은 계속(파일 단위 안전).
             log.warn("PL/pgSQL 블록 파싱 실패 (line {} 부근) — 해당 서브트리 누락: {}",
-                    baseLineNumber, e.getMessage());
+                    sourceLineOffset, e.getMessage());
         }
     }
 
-    // AstCoordinates.rebase(단순 오프셋 합산)와 공식이 다른 이유: 중첩 블록의 1행이
-    // $$ 시작 행과 겹치므로 line-1 보정이 필요하다.
-    private static ParseDiagnostic rebase(ParseDiagnostic diagnostic, int baseLineNumber) {
+    private static ParseDiagnostic rebase(ParseDiagnostic diagnostic, int sourceLineOffset) {
         return new ParseDiagnostic(diagnostic.phase(), diagnostic.severity(), diagnostic.code(),
-                diagnostic.message(), baseLineNumber + Math.max(0, diagnostic.line() - 1),
+                diagnostic.message(), sourceLineOffset + Math.max(1, diagnostic.line()),
                 diagnostic.column(), diagnostic.offendingToken(), diagnostic.expectedTokens(),
                 diagnostic.ruleStack(), diagnostic.tokenWindow());
     }

@@ -8,7 +8,8 @@ public record ScopeEvidenceCandidate(
         SourceRangeCandidate range) {
 
     private static final List<String> KINDS = List.of(
-            "translation_unit", "function", "block", "function_prototype");
+            "translation_unit", "package", "class", "function", "lambda", "comprehension", "block",
+            "function_prototype");
 
     public ScopeEvidenceCandidate {
         if (!KINDS.contains(kind) || range == null || range.endOffset() <= range.startOffset()) {

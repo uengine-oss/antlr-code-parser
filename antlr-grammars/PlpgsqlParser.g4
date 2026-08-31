@@ -455,7 +455,20 @@ specialVariable
     ;
 
 functionCall
-    : (Identifier | LEFT | RIGHT | SUBSTRING | POSITION) LPAREN functionCallArgs RPAREN
+    : callableName LPAREN functionCallArgs RPAREN
+    ;
+
+callableName
+    : callableNamePart (DOT callableNamePart)*
+    ;
+
+callableNamePart
+    : Identifier
+    | QuotedIdentifier
+    | LEFT
+    | RIGHT
+    | SUBSTRING
+    | POSITION
     ;
 
 functionCallArgs
