@@ -14,6 +14,7 @@ import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 
 import legacymodernizer.parser.parsing.AntlrParseHarness;
+import legacymodernizer.parser.parsing.evidence.CallArgumentEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction;
 import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableCandidate;
@@ -1062,7 +1063,8 @@ public class PlSqlAstListener extends PlSqlParserBaseListener
                 receiverRange,
                 "named",
                 terminal.getText(),
-                arguments.stream().map(structuralEvidence::range).toList(),
+                arguments.stream().map(structuralEvidence::range)
+                        .map(CallArgumentEvidenceCandidate::expression).toList(),
                 structuralEvidence.scopePath(path.get(0), this::scopeKind),
                 path.stream().map(structuralEvidence::range).toList(),
                 databaseLink == null ? null : structuralEvidence.range(databaseLink));

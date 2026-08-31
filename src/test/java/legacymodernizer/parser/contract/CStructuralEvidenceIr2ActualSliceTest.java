@@ -36,6 +36,7 @@ class CStructuralEvidenceIr2ActualSliceTest {
     void sealedActualCFileHasClosedStructuralLedger() throws Exception {
         String configuredPath = System.getProperty("c080.actual.file", "");
         String expectedHash = System.getProperty("c080.actual.sha256", "");
+        int expectedWrapperCalls = Integer.getInteger("c080.actual.wrapper.calls", -1);
         Assumptions.assumeTrue(!configuredPath.isBlank() && !expectedHash.isBlank(),
                 "run only for an explicitly sealed C-080 actual slice");
 
@@ -45,24 +46,52 @@ class CStructuralEvidenceIr2ActualSliceTest {
         String source = Files.readString(file);
 
         ParserWorkspace workspace = new ParserWorkspace(new SourceIntakeClassifier());
+        Path workspaceFile = workspace.sourceDir()
+                .resolve("actual-c080").resolve(file.getFileName());
+        Files.createDirectories(workspaceFile.getParent());
+        Files.write(workspaceFile, bytes);
         CLanguageModule module = new CLanguageModule(workspace);
         module.prepareProjectContext();
-        RawParseResult result = module.parseFile(file.toFile(),
+        RawParseResult result = module.parseFile(workspaceFile.toFile(),
                 new ParseProgressTracker(null, file.getFileName().toString()));
+        if (Boolean.getBoolean("c080.actual.emit")) {
+            Path outputDirectory = Path.of("target", "actual-c080").toAbsolutePath().normalize();
+            Files.createDirectories(outputDirectory);
+            Files.writeString(outputDirectory.resolve(file.getFileName() + ".json"), result.astJson());
+        }
         JsonNode root = JSON.readTree(result.astJson());
         JsonNode evidence = root.path("evidence");
 
-        assertEquals("2.0.0", evidence.path("version").asText());
+        assertEquals("2.1.0", evidence.path("version").asText());
         assertEquals("c", evidence.path("language").asText());
         assertEquals("antlr-c/v1", evidence.path("frontendSchema").asText());
         Set<String> factIds = new HashSet<>();
         List<JsonNode> calls = facts(root, "call");
         List<JsonNode> callables = facts(root, "callable");
+        long wrapperCalls = calls.stream().filter(fact -> "mpfm_dlcall".equals(
+                fact.path("payload").path("terminalName").asText())).count();
+        if (expectedWrapperCalls >= 0) assertEquals(expectedWrapperCalls, wrapperCalls);
         evidence.path("facts").forEach(fact -> assertTrue(
                 factIds.add(fact.path("factId").asText()), "duplicate factId"));
         calls.forEach(fact -> {
             assertExactSlice(source, fact.path("range"));
             assertScopePathContains(fact.path("payload").path("scopePath"), fact.path("range"));
+            JsonNode arguments = fact.path("payload").path("arguments");
+            assertTrue(arguments.isArray());
+            arguments.forEach(argument -> {
+                assertEquals(Set.of(
+                        "range", "syntaxKind", "literalKind", "literalValue", "identifier"),
+                        fieldNames(argument));
+                assertExactSlice(source, argument.path("range"));
+                assertTrue(Set.of("string_literal", "identifier", "expression")
+                        .contains(argument.path("syntaxKind").asText()));
+            });
+            if ("mpfm_dlcall".equals(fact.path("payload").path("terminalName").asText())) {
+                assertFalse(arguments.isEmpty(), "runtime wrapper target argument is missing");
+                assertEquals("string_literal", arguments.path(0).path("syntaxKind").asText());
+                assertEquals("string", arguments.path(0).path("literalKind").asText());
+                assertFalse(arguments.path(0).path("literalValue").asText().isBlank());
+            }
             FORBIDDEN_FIELDS.forEach(field -> assertFalse(fact.path("payload").has(field)));
         });
         callables.forEach(fact -> {
@@ -76,9 +105,10 @@ class CStructuralEvidenceIr2ActualSliceTest {
         assertFalse(hasCompleteness(root, "call_binding"));
 
         System.out.printf(
-                "C080_ACTUAL sha256=%s calls=%d callables=%d firstCall=%s firstCallable=%s%n",
+                "C080_ACTUAL sha256=%s calls=%d wrappers=%d callables=%d firstCall=%s firstCallable=%s%n",
                 expectedHash,
                 calls.size(),
+                wrapperCalls,
                 callables.size(),
                 coordinate(calls),
                 coordinate(callables));
@@ -89,6 +119,12 @@ class CStructuralEvidenceIr2ActualSliceTest {
         root.path("evidence").path("facts").forEach(fact -> {
             if (kind.equals(fact.path("kind").asText())) result.add(fact);
         });
+        return result;
+    }
+
+    private static Set<String> fieldNames(JsonNode value) {
+        Set<String> result = new HashSet<>();
+        value.fieldNames().forEachRemaining(result::add);
         return result;
     }
 

@@ -38,7 +38,7 @@ public final class EvidenceIrSealer {
 
     private static final String VERSION = "1.1.0";
     private static final String SYMBOL_VERSION = "1.2.0";
-    private static final String STRUCTURAL_VERSION = "2.0.0";
+    private static final String STRUCTURAL_VERSION = "2.1.0";
     private static final String ID_DOMAIN = "robo-evidence-v1";
     private static final List<String> KINDS = List.of(
             "call", "import", "symbol", "literal", "assignment", "parameter",
@@ -591,10 +591,11 @@ public final class EvidenceIrSealer {
                 || candidate.calleeRange().endOffset() > candidate.callRange().endOffset()) {
             throw new IllegalArgumentException("callee range is outside call range");
         }
-        for (SourceRangeCandidate argument : candidate.argumentRanges()) {
-            index.requireValid(argument);
-            if (argument.startOffset() < candidate.callRange().startOffset()
-                    || argument.endOffset() > candidate.callRange().endOffset()) {
+        for (CallArgumentEvidenceCandidate argument : candidate.arguments()) {
+            SourceRangeCandidate argumentRange = argument.range();
+            index.requireValid(argumentRange);
+            if (argumentRange.startOffset() < candidate.callRange().startOffset()
+                    || argumentRange.endOffset() > candidate.callRange().endOffset()) {
                 throw new IllegalArgumentException("argument range is outside call range");
             }
         }
@@ -641,9 +642,17 @@ public final class EvidenceIrSealer {
         payload.put("calleeKind", candidate.calleeKind());
         if (candidate.terminalName() == null) payload.putNull("terminalName");
         else payload.put("terminalName", candidate.terminalName());
-        ArrayNode arguments = payload.putArray("argumentRanges");
-        for (SourceRangeCandidate argument : candidate.argumentRanges()) {
-            arguments.add(index.rangeJson(argument));
+        ArrayNode arguments = payload.putArray("arguments");
+        for (CallArgumentEvidenceCandidate argument : candidate.arguments()) {
+            ObjectNode argumentJson = arguments.addObject();
+            argumentJson.set("range", index.rangeJson(argument.range()));
+            argumentJson.put("syntaxKind", argument.syntaxKind());
+            if (argument.literalKind() == null) argumentJson.putNull("literalKind");
+            else argumentJson.put("literalKind", argument.literalKind());
+            if (argument.literalValue() == null) argumentJson.putNull("literalValue");
+            else argumentJson.put("literalValue", argument.literalValue());
+            if (argument.identifier() == null) argumentJson.putNull("identifier");
+            else argumentJson.put("identifier", argument.identifier());
         }
         if (structuralIr) {
             payload.set("scopePath", scopePathJson(candidate.scopePath(), index));

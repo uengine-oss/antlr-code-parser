@@ -8,6 +8,7 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 
+import legacymodernizer.parser.parsing.evidence.CallArgumentEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.ScopeEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.SourceRangeCandidate;
@@ -63,7 +64,8 @@ public final class PlpgsqlStructuralEvidenceListener extends PlpgsqlParserBaseLi
                 receiverRange,
                 "named",
                 terminalName.getText(),
-                argumentRanges,
+                argumentRanges.stream()
+                        .map(CallArgumentEvidenceCandidate::expression).toList(),
                 scopePath(ctx),
                 path.stream().map(this::sourceRange).toList(),
                 null));
@@ -93,7 +95,8 @@ public final class PlpgsqlStructuralEvidenceListener extends PlpgsqlParserBaseLi
                 receiverRange,
                 "named",
                 terminalName.getText(),
-                argumentRanges(statementTokens, openParenthesis, closeParenthesis),
+                argumentRanges(statementTokens, openParenthesis, closeParenthesis).stream()
+                        .map(CallArgumentEvidenceCandidate::expression).toList(),
                 scopePath(ctx),
                 nameComponents.stream().map(token -> sourceRange(token, token)).toList(),
                 null));

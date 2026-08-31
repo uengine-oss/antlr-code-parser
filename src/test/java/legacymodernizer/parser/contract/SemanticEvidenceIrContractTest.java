@@ -68,7 +68,7 @@ class SemanticEvidenceIrContractTest {
         for (Map.Entry<String, Fixture> entry : fixtures.entrySet()) {
             JsonNode evidence = parse(workspace, entry.getValue()).path("evidence");
             assertFalse(evidence.isMissingNode(), entry.getKey() + " omitted evidence envelope");
-            assertEquals(structuralFrontends.containsKey(entry.getKey()) ? "2.0.0" : "1.1.0",
+            assertEquals(structuralFrontends.containsKey(entry.getKey()) ? "2.1.0" : "1.1.0",
                     evidence.path("version").asText());
             assertEquals(entry.getValue().relativePath(), evidence.path("sourceId").asText());
             assertEquals(64, evidence.path("rawSourceSha256").asText().length());
@@ -192,6 +192,48 @@ class SemanticEvidenceIrContractTest {
     }
 
     @Test
+    void cCallArgumentsExposeGrammarOwnedLiteralAndIdentifierStructure() throws Exception {
+        ParserWorkspace workspace = workspace();
+        String source = "void run(void) {\n"
+                + "  mpfm_dlcall(\"zordms0100301\", ctx);\n"
+                + "  joined(\"zord\" \"ms0100301\");\n"
+                + "  escaped(\"line\\njob\");\n"
+                + "  grouped((target_job));\n"
+                + "}\n";
+        JsonNode root = parse(workspace, new Fixture(new CLanguageModule(workspace),
+                "calls/wrapper.c", source));
+
+        JsonNode wrapperArguments = callByTerminalName(root, "mpfm_dlcall")
+                .path("payload").path("arguments");
+        JsonNode target = wrapperArguments.get(0);
+        assertEquals("string_literal", target.path("syntaxKind").asText());
+        assertEquals("string", target.path("literalKind").asText());
+        assertEquals("zordms0100301", target.path("literalValue").asText());
+        assertTrue(target.path("identifier").isNull());
+        JsonNode context = wrapperArguments.get(1);
+        assertEquals("identifier", context.path("syntaxKind").asText());
+        assertEquals("ctx", context.path("identifier").asText());
+        assertTrue(context.path("literalKind").isNull());
+        assertTrue(context.path("literalValue").isNull());
+
+        JsonNode joined = callByTerminalName(root, "joined")
+                .path("payload").path("arguments").get(0);
+        assertEquals("string_literal", joined.path("syntaxKind").asText());
+        assertEquals("zordms0100301", joined.path("literalValue").asText());
+
+        JsonNode escaped = callByTerminalName(root, "escaped")
+                .path("payload").path("arguments").get(0);
+        assertEquals("line\njob", escaped.path("literalValue").asText());
+
+        JsonNode grouped = callByTerminalName(root, "grouped")
+                .path("payload").path("arguments").get(0);
+        assertEquals("expression", grouped.path("syntaxKind").asText());
+        assertTrue(grouped.path("literalKind").isNull());
+        assertTrue(grouped.path("literalValue").isNull());
+        assertTrue(grouped.path("identifier").isNull());
+    }
+
+    @Test
     void javaAndPythonCallableFactsCloseDefinitionAndCallScopePopulations() throws Exception {
         ParserWorkspace workspace = workspace();
 
@@ -254,7 +296,7 @@ class SemanticEvidenceIrContractTest {
         JsonNode root = parse(workspace, new Fixture(new OracleLanguageModule(workspace),
                 "oracle-calls/sample.prc", source));
         JsonNode evidence = root.path("evidence");
-        assertEquals("2.0.0", evidence.path("version").asText());
+        assertEquals("2.1.0", evidence.path("version").asText());
         assertEquals("oracle", evidence.path("language").asText());
         assertEquals("antlr-oracle/v1", evidence.path("frontendSchema").asText());
 
@@ -323,7 +365,7 @@ class SemanticEvidenceIrContractTest {
         JsonNode root = parse(workspace, new Fixture(new PostgreSqlLanguageModule(workspace),
                 "postgresql-calls/sample.sql", source));
         JsonNode evidence = root.path("evidence");
-        assertEquals("2.0.0", evidence.path("version").asText());
+        assertEquals("2.1.0", evidence.path("version").asText());
         assertEquals("postgresql", evidence.path("language").asText());
         assertEquals("antlr-postgresql/v1", evidence.path("frontendSchema").asText());
 
@@ -1021,8 +1063,8 @@ class SemanticEvidenceIrContractTest {
 
     private static List<String> argumentExpressions(String source, JsonNode call) {
         List<String> result = new ArrayList<>();
-        call.path("payload").path("argumentRanges").forEach(range ->
-                result.add(slice(source, range)));
+        call.path("payload").path("arguments").forEach(argument ->
+                result.add(slice(source, argument.path("range"))));
         return result;
     }
 
@@ -1059,7 +1101,7 @@ class SemanticEvidenceIrContractTest {
     private static void assertNoDuplicatedSourceText(JsonNode call) {
         assertFalse(call.path("payload").has("callExpression"));
         assertFalse(call.path("payload").has("calleeExpression"));
-        assertFalse(call.path("payload").has("arguments"));
+        assertFalse(call.path("payload").has("argumentRanges"));
         assertFalse(call.has("sourceSliceSha256"));
         assertFalse(call.has("syntaxOwnerFactId"));
         assertTrue(call.path("grammarRuleRef").isIntegralNumber());

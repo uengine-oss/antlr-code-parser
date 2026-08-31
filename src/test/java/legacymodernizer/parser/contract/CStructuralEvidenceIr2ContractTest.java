@@ -55,7 +55,7 @@ class CStructuralEvidenceIr2ContractTest {
         JsonNode root = parse("identity.c", source);
         JsonNode evidence = root.path("evidence");
 
-        assertEquals("2.0.0", evidence.path("version").asText());
+        assertEquals("2.1.0", evidence.path("version").asText());
         assertEquals("c", evidence.path("language").asText());
         assertEquals("antlr-c/v1", evidence.path("frontendSchema").asText());
 

@@ -866,7 +866,8 @@ class SemanticEvidenceActualCorpusTest {
         assertFalse(payload.has("callExpression"), "call source text was duplicated in " + path);
         assertFalse(payload.has("calleeExpression"), "callee source text was duplicated in " + path);
         int previousEnd = callStart;
-        for (JsonNode range : payload.path("argumentRanges")) {
+        for (JsonNode argument : payload.path("arguments")) {
+            JsonNode range = argument.path("range");
             int start = rangeStart(range);
             int end = rangeEnd(range);
             assertTrue(start >= callStart && end <= callEnd && start >= previousEnd,
@@ -1405,8 +1406,8 @@ class SemanticEvidenceActualCorpusTest {
             display.put("calleeExpression",
                     slice(source, fact.path("payload").path("calleeRange")));
             ArrayNode arguments = display.putArray("arguments");
-            fact.path("payload").path("argumentRanges").forEach(range ->
-                    arguments.add(slice(source, range)));
+            fact.path("payload").path("arguments").forEach(argument ->
+                    arguments.add(slice(source, argument.path("range"))));
             row.set("selectionReasons", JSON.createArrayNode());
             return row;
         });

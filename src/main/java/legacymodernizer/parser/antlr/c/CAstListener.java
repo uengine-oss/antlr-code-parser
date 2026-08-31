@@ -10,6 +10,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import legacymodernizer.parser.parsing.AntlrParseHarness;
+import legacymodernizer.parser.parsing.evidence.CallArgumentEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.CallEvidenceCandidate;
 import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction;
 import legacymodernizer.parser.parsing.evidence.CallableEvidenceExtraction.CallableCandidate;
@@ -524,13 +525,162 @@ public class CAstListener extends CParserBaseListener
             String calleeKind = index == 1 && context.primaryExpression() != null
                     && context.primaryExpression().Identifier() != null
                             ? "named" : "expression";
-            CallEvidenceCandidate candidate = CallEvidenceCandidate.fromTokens(
+            List<CallArgumentEvidenceCandidate> argumentEvidence = arguments.stream()
+                    .map(CAstListener::callArgumentEvidence)
+                    .toList();
+            CallEvidenceCandidate candidate = CallEvidenceCandidate.fromStructuredArguments(
                     "postfixExpression",
                     context.getStart(), close.getSymbol(), context.getStart(), calleeStop,
-                    calleeKind, terminalName, arguments);
+                    calleeKind, terminalName, argumentEvidence);
             callEvidence.add(candidate.withStructuralContext(
                     callReceiverRange(context, children, index),
                     lexicalScopePath(context)));
+        }
+    }
+
+    private static CallArgumentEvidenceCandidate callArgumentEvidence(
+            CParser.AssignmentExpressionContext argument) {
+        SourceRangeCandidate argumentRange = range(argument.getStart(), argument.getStop());
+        CParser.PrimaryExpressionContext primary = exactPrimaryExpression(
+                argument, argument.getStart(), argument.getStop());
+        if (primary == null) {
+            return CallArgumentEvidenceCandidate.expression(argumentRange);
+        }
+        if (primary.Identifier() != null) {
+            return CallArgumentEvidenceCandidate.identifier(
+                    argumentRange, primary.Identifier().getText());
+        }
+        if (!primary.StringLiteral().isEmpty()) {
+            String decoded = decodeCStringLiteral(primary.StringLiteral().stream()
+                    .map(TerminalNode::getText)
+                    .toList());
+            if (decoded != null) {
+                return CallArgumentEvidenceCandidate.stringLiteral(argumentRange, decoded);
+            }
+        }
+        return CallArgumentEvidenceCandidate.expression(argumentRange);
+    }
+
+    private static CParser.PrimaryExpressionContext exactPrimaryExpression(
+            ParseTree tree, Token argumentStart, Token argumentStop) {
+        if (tree instanceof CParser.PrimaryExpressionContext primary
+                && primary.getStart().getStartIndex() == argumentStart.getStartIndex()
+                && primary.getStop().getStopIndex() == argumentStop.getStopIndex()) {
+            return primary;
+        }
+        for (int index = 0; index < tree.getChildCount(); index++) {
+            CParser.PrimaryExpressionContext match = exactPrimaryExpression(
+                    tree.getChild(index), argumentStart, argumentStop);
+            if (match != null) return match;
+        }
+        return null;
+    }
+
+    private static String decodeCStringLiteral(List<String> tokens) {
+        StringBuilder decoded = new StringBuilder();
+        for (String token : tokens) {
+            int cursor = 0;
+            while (cursor < token.length()) {
+                while (cursor < token.length() && Character.isWhitespace(token.charAt(cursor))) {
+                    cursor++;
+                }
+                if (cursor >= token.length()) break;
+                if (token.startsWith("u8", cursor)) cursor += 2;
+                else if (token.charAt(cursor) == 'u' || token.charAt(cursor) == 'U'
+                        || token.charAt(cursor) == 'L') cursor++;
+                if (cursor >= token.length() || token.charAt(cursor) != '"') return null;
+                int bodyStart = ++cursor;
+                boolean escaped = false;
+                while (cursor < token.length()) {
+                    char value = token.charAt(cursor);
+                    if (value == '"' && !escaped) break;
+                    if (value == '\\' && !escaped) escaped = true;
+                    else escaped = false;
+                    cursor++;
+                }
+                if (cursor >= token.length()
+                        || !appendDecodedCStringBody(
+                                decoded, token.substring(bodyStart, cursor))) {
+                    return null;
+                }
+                cursor++;
+            }
+        }
+        return decoded.toString();
+    }
+
+    private static boolean appendDecodedCStringBody(StringBuilder decoded, String body) {
+        for (int index = 0; index < body.length(); index++) {
+            char value = body.charAt(index);
+            if (value != '\\') {
+                decoded.append(value);
+                continue;
+            }
+            if (++index >= body.length()) return false;
+            char escape = body.charAt(index);
+            switch (escape) {
+                case '\'', '"', '?', '\\' -> decoded.append(escape);
+                case 'a' -> decoded.append('\u0007');
+                case 'b' -> decoded.append('\b');
+                case 'e' -> decoded.append('\u001b');
+                case 'f' -> decoded.append('\f');
+                case 'n' -> decoded.append('\n');
+                case 'r' -> decoded.append('\r');
+                case 't' -> decoded.append('\t');
+                case 'v' -> decoded.append('\u000b');
+                case '\n' -> { }
+                case '\r' -> {
+                    if (index + 1 < body.length() && body.charAt(index + 1) == '\n') index++;
+                }
+                case 'x' -> {
+                    int start = index + 1;
+                    int end = start;
+                    while (end < body.length() && hexValue(body.charAt(end)) >= 0) end++;
+                    if (end == start || !appendCodePoint(decoded, body.substring(start, end), 16)) {
+                        return false;
+                    }
+                    index = end - 1;
+                }
+                case 'u', 'U' -> {
+                    int digits = escape == 'u' ? 4 : 8;
+                    int start = index + 1;
+                    int end = start + digits;
+                    if (end > body.length()
+                            || !appendCodePoint(decoded, body.substring(start, end), 16)) {
+                        return false;
+                    }
+                    index = end - 1;
+                }
+                default -> {
+                    if (escape < '0' || escape > '7') return false;
+                    int end = index + 1;
+                    while (end < body.length() && end < index + 3
+                            && body.charAt(end) >= '0' && body.charAt(end) <= '7') {
+                        end++;
+                    }
+                    if (!appendCodePoint(decoded, body.substring(index, end), 8)) return false;
+                    index = end - 1;
+                }
+            }
+        }
+        return true;
+    }
+
+    private static int hexValue(char value) {
+        return Character.digit(value, 16);
+    }
+
+    private static boolean appendCodePoint(StringBuilder target, String digits, int radix) {
+        try {
+            long value = Long.parseLong(digits, radix);
+            if (value < 0 || value > Character.MAX_CODE_POINT
+                    || value >= Character.MIN_SURROGATE && value <= Character.MAX_SURROGATE) {
+                return false;
+            }
+            target.appendCodePoint((int) value);
+            return true;
+        } catch (NumberFormatException ignored) {
+            return false;
         }
     }
 
