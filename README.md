@@ -655,6 +655,9 @@ Agent 요청은 OpenAI 호환 `chat/completions` 프로토콜의 **강제 functi
           "comment": "주문을 생성한다",
           "startLine": 45,
           "endLine": 98,
+          "identifierReferences": [
+            {"name": "validate", "line": 47}
+          ],
           "children": [
             {"type": "FUNCTION_CALL", "name": "validate", "startLine": 47, "endLine": 47}
           ]
@@ -685,6 +688,7 @@ Agent 요청은 OpenAI 호환 `chat/completions` 프로토콜의 **강제 functi
 | `fileName` / `filePath` / `packageName` | FILE | 파일 메타 |
 | `comment` | 전체 | 선행 주석 |
 | `startLine` / `endLine` | 전체 | 원본 라인 범위 (1-based) |
+| `identifierReferences` | 전체 | 해당 노드 범위에서 lexer가 확인한 식별자 occurrence `(name, line)` |
 | `children` | 전체 | 자식 노드 배열 |
 
 ### 9.3 진단 사이드카

@@ -1,5 +1,8 @@
 package legacymodernizer.parser.parsing;
 
+import java.util.ArrayList;
+
+import legacymodernizer.parser.model.IdentifierReference;
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.recovery.diagnostics.ParseDiagnostic;
 
@@ -24,6 +27,13 @@ public final class AstCoordinates {
     private static void rebaseNode(Node node, int lineOffset) {
         if (node.startLine > 0) node.startLine += lineOffset;
         if (node.endLine > 0) node.endLine += lineOffset;
+        if (node.identifierReferences != null) {
+            node.identifierReferences = new ArrayList<>(
+                    node.identifierReferences.stream()
+                            .map(reference -> new IdentifierReference(
+                                    reference.name(), reference.line() + lineOffset))
+                            .toList());
+        }
         node.children.forEach(child -> rebaseNode(child, lineOffset));
     }
 }

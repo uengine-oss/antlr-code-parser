@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
     "type", "name",
     "signature", "modifiers", "annotations", "returnType", "parameters", "genericType",
     "extendsType", "implementsTypes",
-    "variableType", "initValue",
+    "variableType", "initValue", "identifierReferenceVersion", "identifierReferences",
     "target", "operator", "expression", "statementOrigin", "conditionTiming",
     "dataObjectEvidenceVersion", "dataObjectReferences", "qualifiedColumnReferences",
     "unqualifiedIdentifierReferences",
@@ -65,6 +65,10 @@ public class Node {
     public String variableType;
     /** 변수 선언 시 초기화 표현식 텍스트 (예: "tagsn", "DBMS_UTILITY.GET_TIME", "'N'"). 없으면 null. */
     public String initValue;
+    /** Presence proves the common lexer-reference contract was applied to this node. */
+    public Integer identifierReferenceVersion;
+    /** Lexer-confirmed identifier occurrences inside this node's exact line range. */
+    public ArrayList<IdentifierReference> identifierReferences;
 
     // ========================================
     // 구조 statement 표현식 (spec 016)

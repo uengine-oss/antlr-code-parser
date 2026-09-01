@@ -92,6 +92,7 @@ public final class AntlrParseHarness {
         listener.setFileInfo(fileName, filePath);
         new ParseTreeWalker().walk(listener, tree);
         listener.finalizeAst();
+        IdentifierReferenceProjector.attach(listener.getRoot(), tokens, parser.getVocabulary());
         AstCoordinates.rebaseChildren(listener.getRoot(), lineOffset);
 
         String astJson = listener.getRoot().toJson();
