@@ -95,7 +95,11 @@ public class ParseOrchestrator {
         if (!Files.exists(sourceBase)) {
             eventSink.error("run_failed", "파싱할 소스 디렉터리를 찾을 수 없어요: "
                     + sourceBase, "PREPARING");
-            throw new RuntimeException("소스 디렉토리 없음: " + sourceBase);
+            // 작업 폴더가 프로젝트마다 갈린 뒤로 "아직 안 올렸다"가 흔한 경우가 됐다.
+            // 경로만 던지면 사람이 무엇을 해야 할지 알 수 없다.
+            throw new RuntimeException(
+                    "이 프로젝트에 올린 소스가 없습니다. 먼저 소스를 업로드하세요. (작업 폴더: "
+                            + sourceBase + ")");
         }
 
         // 파싱은 매 run 자기 출력(analysis/)을 새로 만든다(재파싱 시 stale AST 방지).

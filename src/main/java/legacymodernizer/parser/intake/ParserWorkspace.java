@@ -84,24 +84,35 @@ public class ParserWorkspace {
     // 경로
     // ═══════════════════════════════════════════════════════════════════
 
+    /**
+     * 이 요청이 쓸 뿌리 — 프로젝트마다 갈린다({@link WorkspaceScope}).
+     *
+     * <p>예전에는 {@code BASE_DIR} 을 그대로 썼다. 그러면 작업 폴더가 서버에 하나라
+     * 뒤에 올린 사람의 소스를 앞사람이 분석한다. 범위가 없으면 예전 자리를 그대로
+     * 쓰므로 단독 실행은 달라지지 않는다.
+     */
+    private Path root() {
+        return WorkspaceScope.rootOf(BASE_DIR);
+    }
+
     public Path sourceDir() {
-        return Paths.get(BASE_DIR, SOURCE);
+        return root().resolve(SOURCE);
     }
 
     public Path ddlDir() {
-        return Paths.get(BASE_DIR, DDL);
+        return root().resolve(DDL);
     }
 
     public Path analysisDir() {
-        return Paths.get(BASE_DIR, ANALYSIS);
+        return root().resolve(ANALYSIS);
     }
 
     public Path diagnosticsDir() {
-        return Paths.get(BASE_DIR, DIAGNOSTICS);
+        return root().resolve(DIAGNOSTICS);
     }
 
     public Path repairsDir() {
-        return Paths.get(BASE_DIR, REPAIRS);
+        return root().resolve(REPAIRS);
     }
 
     /** analysis/ 비우기 — 파싱이 매 run 자기 출력 디렉토리를 새로 만든다(경로 모드의 stale AST 방지). */

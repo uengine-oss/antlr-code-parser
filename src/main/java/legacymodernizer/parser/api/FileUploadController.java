@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import legacymodernizer.parser.api.stream.ParseStreamEvent;
 import legacymodernizer.parser.intake.ParserWorkspace;
+import legacymodernizer.parser.intake.WorkspaceScope;
 import legacymodernizer.parser.parsing.ParseOrchestrator;
 import legacymodernizer.parser.parsing.ParserSelection;
 import lombok.RequiredArgsConstructor;
@@ -61,8 +63,12 @@ public class FileUploadController {
      */
     @PostMapping(value = "/fileUpload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> upload(
+            @RequestHeader(value = "X-Neo4j-Database", required = false) String workspace,
             @RequestPart(value = "metadata", required = false) String metadata,
             @RequestPart("files") MultipartFile[] files) {
+
+        // 작업 폴더를 프로젝트마다 가른다. 없으면 예전처럼 루트를 쓴다.
+        WorkspaceScope.set(workspace);
 
         if (files == null || files.length == 0) return badRequest("files 필수");
 
@@ -79,12 +85,15 @@ public class FileUploadController {
         try {
             Map<String, Object> uploadSummary =
                     parserWorkspace.uploadFiles(files, parserSelection.supportedExtensions(), targetFolder);
-            log.info("[업로드 완료] src={}개, ddl={}개", size(uploadSummary.get("files")),
-                    size(uploadSummary.get("ddlFiles")));
+            log.info("[업로드 완료] src={}개, ddl={}개, ws={}", size(uploadSummary.get("files")),
+                    size(uploadSummary.get("ddlFiles")), WorkspaceScope.current());
             return ResponseEntity.ok(uploadSummary);
         } catch (Exception e) {
             log.error("[업로드 실패] {}", e.getMessage(), e);
             return badRequest(e.getMessage());
+        } finally {
+            // 풀 스레드는 재사용된다 — 안 지우면 다음 요청이 남의 폴더를 쓴다.
+            WorkspaceScope.clear();
         }
     }
 
@@ -95,6 +104,7 @@ public class FileUploadController {
      */
     @PostMapping(value = "/parsing", produces = APPLICATION_NDJSON)
     public ResponseEntity<ResponseBodyEmitter> parse(
+            @RequestHeader(value = "X-Neo4j-Database", required = false) String workspace,
             @RequestBody(required = false) Map<String, Object> body) {
         // 타임아웃 30분 (대용량 대비)
         ResponseBodyEmitter emitter = new ResponseBodyEmitter(30 * 60 * 1000L);
@@ -102,7 +112,14 @@ public class FileUploadController {
         // 경로 모드: body.project_root = 분석할 로컬 폴더(robo 와 동일 키). 없으면 업로드 모드.
         String sourcePath = body != null ? (String) body.get("project_root") : null;
 
+        // **작업 스레드로 넘길 때 명시적으로 싣는다.** 풀 스레드는 재사용되므로
+        // 요청 스레드의 값을 물려받게 두면 다음 요청이 남의 폴더를 쓴다.
+        WorkspaceScope.set(workspace);
+        final String ws = WorkspaceScope.capture();
+        WorkspaceScope.clear();
+
         executor.execute(() -> {
+            WorkspaceScope.set(ws);
             try {
                 parseOrchestrator.parse(sourcePath, event -> {
                     try {
@@ -117,6 +134,8 @@ public class FileUploadController {
             } catch (Exception e) {
                 log.error("[파싱 실패] {}", e.getMessage(), e);
                 sendErrorAndComplete(emitter, e.getMessage());
+            } finally {
+                WorkspaceScope.clear();
             }
         });
 
