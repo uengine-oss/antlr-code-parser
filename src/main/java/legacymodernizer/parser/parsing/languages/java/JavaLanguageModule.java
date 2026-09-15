@@ -21,6 +21,7 @@ import legacymodernizer.parser.recovery.quality.DeclarationCoverageCounter;
 import legacymodernizer.parser.parsing.AntlrParseHarness;
 import legacymodernizer.parser.parsing.SourceTextCodec;
 import legacymodernizer.parser.parsing.evidence.EvidenceIrSealer;
+import legacymodernizer.parser.parsing.evidence.SyntaxArenaSealer;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.service.ParseProgressTracker;
@@ -67,6 +68,10 @@ public class JavaLanguageModule extends AntlrLanguageModuleSupport {
                         run.listener().importEvidenceExtraction(),
                         run.listener().callableEvidenceExtraction())
                 : run.astJson();
+        if (evidenceSourceId != null) {
+            astJson = SyntaxArenaSealer.attach(astJson, run.parser(), run.tree(),
+                    source.codePointCount(0, source.length()), parseStatus(run));
+        }
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
                 Set.of("normalClassDeclaration", "normalInterfaceDeclaration",
                         "methodDeclaration", "interfaceMethodDeclaration"),

@@ -987,6 +987,57 @@ class SemanticEvidenceIrContractTest {
         assertEquals(1, completeness(root, "callable").path("emitted").asInt());
     }
 
+    @Test
+    void javaSyntaxArenaPreservesBodyAndSingleOwnership() throws Exception {
+        ParserWorkspace workspace = workspace();
+        String source = "class Bodies { /* 😀 */ Object run() { if (ready()) return null; throw new IllegalStateException(); } }";
+        Fixture fixture = new Fixture(new JavaLanguageModule(workspace), "arena/Bodies.java", source);
+        JsonNode arena = parse(workspace, fixture).path("evidence").path("syntaxArena");
+        assertEquals("exact", arena.path("status").asText());
+        assertEquals("antlr-syntax-arena/v1", arena.path("schema").asText());
+        assertEquals(64, arena.path("grammarFingerprint").asText().length());
+        assertEquals(arena, parse(workspace, fixture).path("evidence").path("syntaxArena"));
+        JsonNode nodes = arena.path("nodes");
+        assertTrue(nodes.size() > 20);
+        int[] owners = new int[nodes.size()];
+        List<String> names = new ArrayList<>();
+        for (int parent = 0; parent < nodes.size(); parent++) {
+            JsonNode node = nodes.get(parent);
+            names.add(node.path("name").asText());
+            assertFalse(node.has("text"));
+            int offset = node.path("range").path("charOffset").asInt();
+            int end = offset + node.path("range").path("charLength").asInt();
+            int previousEnd = offset;
+            for (JsonNode childId : node.path("children")) {
+                int child = childId.asInt();
+                assertTrue(child > parent && child < nodes.size());
+                owners[child]++;
+                JsonNode range = nodes.get(child).path("range");
+                int begin = range.path("charOffset").asInt();
+                int stop = begin + range.path("charLength").asInt();
+                assertTrue(begin >= previousEnd && stop <= end);
+                previousEnd = stop;
+            }
+            if (node.path("kind").asText().equals("token")) assertFalse(slice(source, node.path("range")).isEmpty());
+        }
+        assertEquals(0, owners[0]);
+        for (int i = 1; i < owners.length; i++) assertEquals(1, owners[i]);
+        assertTrue(names.containsAll(List.of("ifThenStatement", "returnStatement", "throwStatement")));
+    }
+
+    @Test
+    void javaSyntaxArenaDoesNotPretendRecoveredSyntaxIsExact() throws Exception {
+        ParserWorkspace workspace = workspace();
+        JsonNode root = parse(workspace, new Fixture(new JavaLanguageModule(workspace),
+                "arena/Broken.java", "class Broken { int run() { return 1 } }"));
+        JsonNode arena = root.path("evidence").path("syntaxArena");
+        assertEquals("unavailable", arena.path("status").asText());
+        assertFalse(arena.has("nodes"));
+        JsonNode empty = parse(workspace, new Fixture(new JavaLanguageModule(workspace),
+                "arena/Empty.java", ""));
+        assertEquals("exact", empty.path("evidence").path("syntaxArena").path("status").asText());
+    }
+
     private static ParserWorkspace workspace() {
         return new ParserWorkspace(new SourceIntakeClassifier());
     }
