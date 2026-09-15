@@ -39,6 +39,7 @@ public class JavaAstListener extends Java20ParserBaseListener
     private final List<CallEvidenceCandidate> callEvidence = new ArrayList<>();
     private final List<CallableCandidate> callableEvidence = new ArrayList<>();
     private int unresolvedCallableEvidence;
+    private int unsupportedLambdaCallables;
     private final List<ImportEvidenceCandidate> importEvidence = new ArrayList<>();
 
     public JavaAstListener(CommonTokenStream tokens, ParseProgressTracker tracker) {
@@ -54,10 +55,18 @@ public class JavaAstListener extends Java20ParserBaseListener
         return new ImportEvidenceExtraction(importEvidence, 0, List.of());
     }
     public CallableEvidenceExtraction callableEvidenceExtraction() {
+        List<String> reasons = new ArrayList<>();
+        if (unresolvedCallableEvidence > 0) reasons.add("insufficient_parser_recovery");
+        if (unsupportedLambdaCallables > 0) reasons.add("unsupported_lambda_callable");
         return new CallableEvidenceExtraction(
-                "java", "antlr-java/v1", callableEvidence, unresolvedCallableEvidence,
-                unresolvedCallableEvidence == 0
-                        ? List.of() : List.of("insufficient_parser_recovery"));
+                "java", "antlr-java/v1", callableEvidence,
+                unresolvedCallableEvidence + unsupportedLambdaCallables, reasons);
+    }
+
+    @Override
+    public void enterLambdaExpression(Java20Parser.LambdaExpressionContext ctx) {
+        // The current callable contract requires a name; do not fabricate one for a lambda.
+        unsupportedLambdaCallables++;
     }
 
     @Override
@@ -540,6 +549,7 @@ public class JavaAstListener extends Java20ParserBaseListener
         if (context instanceof Java20Parser.MethodDeclarationContext
                 || context instanceof Java20Parser.InterfaceMethodDeclarationContext
                 || context instanceof Java20Parser.ConstructorDeclarationContext
+                || context instanceof Java20Parser.LambdaExpressionContext
                 || context instanceof Java20Parser.CompactConstructorDeclarationContext) {
             return "function";
         }

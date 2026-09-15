@@ -970,6 +970,23 @@ class SemanticEvidenceIrContractTest {
         }
     }
 
+    @Test
+    void javaLambdaCallsHaveTheirOwnExecutionScope() throws Exception {
+        ParserWorkspace workspace = workspace();
+        String source = "class Deferred { Object run() { return (java.util.function.Supplier<Object>) () -> later(); } }";
+        JsonNode root = parse(workspace, new Fixture(new JavaLanguageModule(workspace),
+                "expression/Deferred.java", source));
+        JsonNode call = callByTerminalName(root, "later");
+        List<JsonNode> functions = new ArrayList<>();
+        call.path("payload").path("scopePath").forEach(scope -> {
+            if (scope.path("kind").asText().equals("function")) functions.add(scope);
+        });
+        assertEquals(2, functions.size(), "lambda is not the enclosing method execution scope");
+        assertEquals("() -> later()", slice(source, functions.get(1).path("range")));
+        assertEquals(1, completeness(root, "callable").path("explicitlyUnresolved").asInt());
+        assertEquals(1, completeness(root, "callable").path("emitted").asInt());
+    }
+
     private static ParserWorkspace workspace() {
         return new ParserWorkspace(new SourceIntakeClassifier());
     }
