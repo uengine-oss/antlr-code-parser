@@ -626,6 +626,42 @@ public class JavaAstListener extends Java20ParserBaseListener
     public void exitMethodInvocation(Java20Parser.MethodInvocationContext ctx) {
         h.exitStatement("FUNCTION_CALL", ctx.getStop().getLine(), ctx);
     }
+
+    @Override
+    public void enterPrimaryNoNewArray(Java20Parser.PrimaryNoNewArrayContext ctx) {
+        if (ctx.LPAREN() == null || (ctx.methodName() == null && ctx.identifier() == null)) return;
+        String name = ctx.methodName() != null ? ctx.methodName().getText() : ctx.identifier().getText();
+        collectExpressionCall(ctx, ctx.getStart(), name, ctx.argumentList(), methodReceiverRange(ctx));
+    }
+
+    @Override
+    public void enterPNNA(Java20Parser.PNNAContext ctx) {
+        if (ctx.LPAREN() == null || ctx.identifier() == null) return;
+        // Recursive suffixes own only '.member(...)'; their receiver starts at the primary.
+        ParserRuleContext primary = ctx.getParent();
+        while (primary instanceof Java20Parser.PNNAContext) primary = primary.getParent();
+        if (!(primary instanceof Java20Parser.PrimaryNoNewArrayContext)) {
+            throw new IllegalStateException("call suffix without primary expression");
+        }
+        ParserRuleContext parent = ctx.getParent();
+        int position = parent.children.indexOf(ctx);
+        if (position < 1) throw new IllegalStateException("call suffix without receiver");
+        ParseTree preceding = parent.children.get(position - 1);
+        Token receiverStop = preceding instanceof TerminalNode terminal ? terminal.getSymbol()
+                : ((ParserRuleContext) preceding).getStop();
+        collectExpressionCall(ctx, primary.getStart(), ctx.identifier().getText(), ctx.argumentList(),
+                structuralEvidence.range(primary.getStart(), receiverStop));
+    }
+
+    private void collectExpressionCall(ParserRuleContext ctx, Token start, String name,
+            Java20Parser.ArgumentListContext arguments, SourceRangeCandidate receiver) {
+        CallEvidenceCandidate candidate = CallEvidenceCandidate.fromTokens(
+                Java20Parser.ruleNames[ctx.getRuleIndex()], start, directTerminal(ctx, ")"),
+                start, childBeforeDirectTerminal(ctx, "("), "named", name,
+                arguments == null ? List.of() : arguments.expression());
+        callEvidence.add(candidate.withStructuralContext(
+                receiver, structuralEvidence.scopePath(ctx, this::scopeKind)));
+    }
     
     // ========================================
     // 객체 생성 (new) — NEW_INSTANCE + FUNCTION_CALL 둘 다 emit (역할 분리)
@@ -682,7 +718,7 @@ public class JavaAstListener extends Java20ParserBaseListener
     }
 
     private SourceRangeCandidate methodReceiverRange(
-            Java20Parser.MethodInvocationContext context) {
+            ParserRuleContext context) {
         List<ParseTree> children = context.children == null ? List.of() : context.children;
         Token receiverStop = null;
         for (int index = 1; index < children.size(); index++) {

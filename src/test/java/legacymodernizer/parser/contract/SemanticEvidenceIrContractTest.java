@@ -974,6 +974,43 @@ class SemanticEvidenceIrContractTest {
         return new ParserWorkspace(new SourceIntakeClassifier());
     }
 
+    @Test
+    void javaExpressionCallsPreserveNestedAndChainedRanges() throws Exception {
+        ParserWorkspace workspace = workspace();
+        String source = """
+                class Flow {
+                    // Unicode offset: 😀
+                    Object run() {
+                        Object a = factory(inner(1)).next(2).finish();
+                        consume(a);
+                        Object b = (a);
+                        Object c = this.field;
+                        java.util.function.Supplier<Object> ref = this::run;
+                        return wrap(new Item(), compute(3));
+                    }
+                }
+                """;
+        JsonNode root = parse(workspace, new Fixture(new JavaLanguageModule(workspace),
+                "expression/Flow.java", source));
+        List<JsonNode> calls = facts(root, "call");
+        assertEquals(8, calls.size(), "every invocation exactly once; references are not calls");
+        Map<String, String> expected = Map.of(
+                "factory", "factory(inner(1))", "inner", "inner(1)",
+                "next", "factory(inner(1)).next(2)",
+                "finish", "factory(inner(1)).next(2).finish()",
+                "consume", "consume(a)", "wrap", "wrap(new Item(), compute(3))",
+                "Item", "new Item()", "compute", "compute(3)");
+        for (var entry : expected.entrySet()) {
+            JsonNode call = callByTerminalName(root, entry.getKey());
+            assertEquals(entry.getValue(), slice(source, call.path("range")), entry.getKey());
+        }
+        assertEquals("factory(inner(1))", slice(source,
+                callByTerminalName(root, "next").path("payload").path("receiverRange")));
+        assertEquals(List.of("new Item()", "compute(3)"),
+                argumentExpressions(source, callByTerminalName(root, "wrap")));
+        assertCompletePopulation(completeness(root, "call"), 8);
+    }
+
     private static JsonNode parse(ParserWorkspace workspace, Fixture fixture) throws Exception {
         Path file = workspace.sourceDir().resolve(fixture.relativePath());
         Files.createDirectories(file.getParent());
