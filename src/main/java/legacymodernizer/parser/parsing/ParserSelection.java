@@ -52,13 +52,16 @@ public class ParserSelection {
             String analysisStrategy) {
     }
 
-    public DetectionResult detect(Path sourceDir) {
-        List<Path> files;
-        try (var walk = Files.walk(sourceDir)) {
-            files = walk.filter(Files::isRegularFile).sorted().toList();
-        } catch (IOException exception) {
-            throw new RuntimeException("Cannot scan source directory: " + sourceDir, exception);
+    public DetectionResult detect(Path... roots) {
+        Set<Path> collected = new java.util.TreeSet<>();
+        for (Path root : roots) {
+            try (var walk = Files.walk(root)) {
+                walk.filter(Files::isRegularFile).forEach(collected::add);
+            } catch (IOException exception) {
+                throw new RuntimeException("Cannot scan input directory: " + root, exception);
+            }
         }
+        List<Path> files = List.copyOf(collected);
 
         Map<Path, LanguageModule> modulesByFile = new LinkedHashMap<>();
         Set<String> detectedTargets = new LinkedHashSet<>();

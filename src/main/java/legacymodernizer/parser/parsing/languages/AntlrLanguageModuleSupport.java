@@ -30,6 +30,8 @@ public abstract class AntlrLanguageModuleSupport implements LanguageModule {
         try {
             if (filePath.startsWith(sourceDir)) {
                 return sourceDir.relativize(filePath).toString().replace('\\', '/');
+            } else if (filePath.startsWith(parserWorkspace.ddlDir())) {
+                return "ddl/" + parserWorkspace.ddlDir().relativize(filePath).toString().replace('\\', '/');
             } else {
                 return filePath.toString().replace('\\', '/');
             }
@@ -45,6 +47,10 @@ public abstract class AntlrLanguageModuleSupport implements LanguageModule {
         Path candidate = file.toPath().toAbsolutePath().normalize();
         if (candidate.startsWith(sourceRoot)) {
             return sourceRoot.relativize(candidate).toString().replace('\\', '/');
+        }
+        Path ddlRoot = parserWorkspace.ddlDir().toAbsolutePath().normalize();
+        if (candidate.startsWith(ddlRoot)) {
+            return "ddl/" + ddlRoot.relativize(candidate).toString().replace('\\', '/');
         }
         return "unscoped/" + Hashes.sha256(sourceBytes) + "/" + file.getName();
     }

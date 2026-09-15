@@ -25,6 +25,7 @@ import legacymodernizer.parser.parsing.AstCoordinates;
 import legacymodernizer.parser.parsing.SourceTextCodec;
 import legacymodernizer.parser.parsing.evidence.ConditionalCompilationEvidence;
 import legacymodernizer.parser.parsing.evidence.EvidenceIrSealer;
+import legacymodernizer.parser.parsing.evidence.SyntaxArenaSealer;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.service.ParseProgressTracker;
@@ -96,6 +97,11 @@ public class PostgreSqlLanguageModule extends AntlrLanguageModuleSupport {
                         null, null, null, null,
                         run.listener().callableEvidenceExtraction(), null)
                 : run.astJson();
+        if (evidenceSourceId != null) {
+            astJson = SyntaxArenaSealer.attach(astJson, run.parser(), run.tree(),
+                    source.codePointCount(0, source.length()),
+                    recoveries == 0 && diagnostics.isEmpty() ? "exact" : "partial");
+        }
         var coverage = DeclarationCoverageCounter.count(run.parser(), run.tree(),
                 Set.of("createfunctionstmt", "createtrigstmt"), astJson,
                 Set.of("PROCEDURE", "TRIGGER"));

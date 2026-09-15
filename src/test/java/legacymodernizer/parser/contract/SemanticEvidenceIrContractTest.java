@@ -1038,6 +1038,49 @@ class SemanticEvidenceIrContractTest {
         assertEquals("exact", empty.path("evidence").path("syntaxArena").path("status").asText());
     }
 
+    @Test
+    void postgresDdlArenaPreservesChildrenAndQuotedUnicodeSource() throws Exception {
+        ParserWorkspace workspace = workspace();
+        String source = "-- 😀\nCREATE TABLE hr.\"직원\" (\"이름\" text NOT NULL, id integer PRIMARY KEY);";
+        Fixture fixture = new Fixture(new PostgreSqlLanguageModule(workspace), "arena/Schema.sql", source);
+        JsonNode arena = parse(workspace, fixture).path("evidence").path("syntaxArena");
+        assertEquals("exact", arena.path("status").asText());
+        assertEquals(arena, parse(workspace, fixture).path("evidence").path("syntaxArena"));
+        List<String> rules = new ArrayList<>();
+        List<String> tokens = new ArrayList<>();
+        for (JsonNode node : arena.path("nodes")) {
+            if (node.path("kind").asText().equals("rule")) rules.add(node.path("name").asText());
+            else tokens.add(slice(source, node.path("range")));
+        }
+        assertTrue(rules.contains("createstmt"));
+        assertTrue(rules.contains("columnDef"));
+        assertTrue(tokens.contains("\"직원\""));
+        assertTrue(tokens.contains("\"이름\""));
+        JsonNode nodes = arena.path("nodes");
+        for (JsonNode parent : nodes) {
+            int start = parent.path("range").path("charOffset").asInt();
+            int end = start + parent.path("range").path("charLength").asInt();
+            int previousEnd = start;
+            for (JsonNode id : parent.path("children")) {
+                JsonNode child = nodes.get(id.asInt());
+                int childStart = child.path("range").path("charOffset").asInt();
+                int childEnd = childStart + child.path("range").path("charLength").asInt();
+                assertTrue(childStart >= previousEnd && childEnd <= end,
+                        parent.path("name").asText() + ":" + child.path("name").asText());
+                previousEnd = childEnd;
+            }
+        }
+    }
+
+    @Test
+    void postgresRecoveredDdlDoesNotEmitExactArena() throws Exception {
+        ParserWorkspace workspace = workspace();
+        JsonNode root = parse(workspace, new Fixture(new PostgreSqlLanguageModule(workspace),
+                "arena/BrokenSchema.sql", "CREATE TABLE hr.broken (id integer, );"));
+        assertEquals("unavailable", root.path("evidence").path("syntaxArena").path("status").asText());
+        assertFalse(root.path("evidence").path("syntaxArena").has("nodes"));
+    }
+
     private static ParserWorkspace workspace() {
         return new ParserWorkspace(new SourceIntakeClassifier());
     }

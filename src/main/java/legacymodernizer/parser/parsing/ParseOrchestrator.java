@@ -103,8 +103,23 @@ public class ParseOrchestrator {
         parserWorkspace.clearRecoveryArtifacts();
         languageCatalogValidator.validateModules(parserSelection.modules());
 
-        DetectionResult detection = parserSelection.detect(sourceBase);
+        Path ddlBase = parserWorkspace.ddlDir();
+        Path[] inputRoots = java.util.stream.Stream.of(sourceBase, ddlBase)
+                .filter(Files::isDirectory).toArray(Path[]::new);
+        DetectionResult detection = parserSelection.detect(inputRoots);
         Map<Path, LanguageModule> modulesByFile = detection.modulesByFile();
+        java.util.Set<Path> outputs = new java.util.HashSet<>();
+        for (Path file : modulesByFile.keySet()) {
+            boolean ddl = file.startsWith(ddlBase);
+            Path relative = (ddl ? ddlBase : sourceBase).relativize(file);
+            String path = relative.toString();
+            int dot = path.lastIndexOf('.');
+            Path output = (ddl ? analysisBase.resolve("ddl") : analysisBase)
+                    .resolve((dot > 0 ? path.substring(0, dot) : path) + ".json").normalize();
+            if (!output.startsWith(analysisBase.normalize()) || !outputs.add(output)) {
+                throw new IllegalArgumentException("Analysis output path collision or escape: " + relative);
+            }
+        }
 
         eventSink.emit(ParseStreamEvent.builder("message", "language_detection_completed")
                 .content(String.format("🔎 언어를 확인했어요 — %s%s · 파싱 대상 %d개",
@@ -135,7 +150,9 @@ public class ParseOrchestrator {
         modulesByFile.values().stream().distinct().forEach(LanguageModule::prepareProjectContext);
 
         for (Map.Entry<Path, LanguageModule> entry : modulesByFile.entrySet()) {
-            parseSingleFile(entry.getKey(), entry.getValue(), sourceBase, analysisBase, eventSink,
+            boolean ddl = entry.getKey().startsWith(ddlBase);
+            parseSingleFile(entry.getKey(), entry.getValue(), ddl ? ddlBase : sourceBase,
+                    ddl ? analysisBase.resolve("ddl") : analysisBase, eventSink,
                     index.incrementAndGet(), total, counters);
         }
 

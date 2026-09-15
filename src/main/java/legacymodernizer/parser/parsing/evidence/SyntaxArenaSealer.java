@@ -39,7 +39,7 @@ public final class SyntaxArenaSealer {
         arena.put("root", 0);
         ArrayNode nodes = arena.putArray("nodes");
         ArrayDeque<Pending> pending = new ArrayDeque<>();
-        pending.add(new Pending(root, null));
+        pending.add(new Pending(root, null, 0, sourceLength));
         while (!pending.isEmpty()) {
             Pending item = pending.removeFirst();
             ParseTree tree = item.tree();
@@ -66,6 +66,9 @@ public final class SyntaxArenaSealer {
                     && ((stop == null && start.getType() == Token.EOF)
                         || (stop != null && stop.getTokenIndex() < start.getTokenIndex()));
             if (stop == null && !epsilon) throw new IllegalArgumentException("Syntax rule has no stop token");
+            // Empty optional rules can start at the next token after trailing whitespace,
+            // beyond the parent's final consumed token. Anchor absence inside its parent.
+            if (epsilon) offset = Math.max(item.parentOffset(), Math.min(offset, item.parentEnd()));
             int end = epsilon ? offset : stop.getType() == Token.EOF ? sourceLength : stop.getStopIndex() + 1;
             if (offset < 0 || end < offset || end > sourceLength) {
                 throw new IllegalArgumentException("Invalid syntax arena source range");
@@ -73,12 +76,12 @@ public final class SyntaxArenaSealer {
             ObjectNode range = node.putObject("range");
             range.put("charOffset", offset); range.put("charLength", end - offset);
             ArrayNode children = node.putArray("children");
-            for (int i = 0; i < tree.getChildCount(); i++) pending.addLast(new Pending(tree.getChild(i), children));
+            for (int i = 0; i < tree.getChildCount(); i++) pending.addLast(new Pending(tree.getChild(i), children, offset, end));
         }
         return JSON.writeValueAsString(document);
     }
 
-    private record Pending(ParseTree tree, ArrayNode parentChildren) {}
+    private record Pending(ParseTree tree, ArrayNode parentChildren, int parentOffset, int parentEnd) {}
 
     private static String fingerprint(Parser parser) throws NoSuchAlgorithmException {
         Lexer lexer = (Lexer) parser.getTokenStream().getTokenSource();
