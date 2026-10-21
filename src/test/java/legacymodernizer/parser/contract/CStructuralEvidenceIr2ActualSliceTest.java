@@ -15,8 +15,8 @@ import java.util.Set;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.intake.SourceIntakeClassifier;
@@ -131,7 +131,7 @@ class CStructuralEvidenceIr2ActualSliceTest {
 
     private static Set<String> fieldNames(JsonNode value) {
         Set<String> result = new HashSet<>();
-        value.fieldNames().forEachRemaining(result::add);
+        value.propertyNames().forEach(result::add);
         return result;
     }
 

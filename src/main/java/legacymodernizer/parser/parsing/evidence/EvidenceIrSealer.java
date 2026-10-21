@@ -13,10 +13,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.core.JsonGenerator;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JsonGenerator;
 
 import legacymodernizer.parser.model.Node;
 import legacymodernizer.parser.parsing.SourceTextCodec;
@@ -216,27 +216,27 @@ public final class EvidenceIrSealer {
             StringWriter output = new StringWriter(legacyJson.length() + source.length());
             output.write(legacyJson, 0, legacyJson.length() - 1);
             output.write(",\"evidence\":");
-            try (JsonGenerator generator = JSON.getFactory().createGenerator(output)) {
+            try (JsonGenerator generator = JSON.tokenStreamFactory().createGenerator(output)) {
                 generator.writeStartObject();
-                generator.writeStringField("version", callables != null
+                generator.writeStringProperty("version", callables != null
                         ? STRUCTURAL_VERSION
                         : symbols == null ? VERSION : SYMBOL_VERSION);
                 if (callables != null) {
-                    generator.writeStringField("language", callables.language());
-                    generator.writeStringField("frontendSchema", callables.frontendSchema());
+                    generator.writeStringProperty("language", callables.language());
+                    generator.writeStringProperty("frontendSchema", callables.frontendSchema());
                 }
-                generator.writeStringField("sourceId", normalizedSourceId);
-                generator.writeStringField("rawSourceSha256", Hashes.sha256(rawSource));
-                generator.writeStringField("decodedTextSha256", decodedHash);
-                generator.writeStringField("decodedText", source);
-                generator.writeStringField("sourceEncoding", decoded.charset());
-                generator.writeStringField("decodeStatus", decoded.lossy() ? "lossy" : "exact");
-                generator.writeStringField("positionEncoding", "unicode-code-point");
-                generator.writeStringField("rangeConvention", "half-open");
-                generator.writeStringField("rangeEncoding", "char-offset-length");
+                generator.writeStringProperty("sourceId", normalizedSourceId);
+                generator.writeStringProperty("rawSourceSha256", Hashes.sha256(rawSource));
+                generator.writeStringProperty("decodedTextSha256", decodedHash);
+                generator.writeStringProperty("decodedText", source);
+                generator.writeStringProperty("sourceEncoding", decoded.charset());
+                generator.writeStringProperty("decodeStatus", decoded.lossy() ? "lossy" : "exact");
+                generator.writeStringProperty("positionEncoding", "unicode-code-point");
+                generator.writeStringProperty("rangeConvention", "half-open");
+                generator.writeStringProperty("rangeEncoding", "char-offset-length");
                 boolean unresolvedSymbols = symbols != null
                         && symbols.unresolvedLookups() > 0;
-                generator.writeStringField("parseStatus",
+                generator.writeStringProperty("parseStatus",
                         (unresolvedRegions > 0 || unresolvedSymbols)
                                 && "exact".equals(effectiveParseStatus)
                                         ? "partial" : effectiveParseStatus);
@@ -244,7 +244,7 @@ public final class EvidenceIrSealer {
                     writeConfiguredPreprocessing(generator, configuredPreprocessing);
                 }
 
-                generator.writeArrayFieldStart("facts");
+                generator.writeArrayPropertyStart("facts");
                 for (CallEvidenceCandidate call : emittedCalls) {
                     ObjectNode fact = sealCall(call, normalizedSourceId,
                             decodedHash, index, ordinals, grammarRules, presences,
@@ -337,18 +337,18 @@ public final class EvidenceIrSealer {
                 }
                 generator.writeEndArray();
 
-                generator.writeArrayFieldStart("grammarRules");
+                generator.writeArrayPropertyStart("grammarRules");
                 for (String grammarRule : grammarRules.keySet()) {
                     generator.writeString(grammarRule);
                 }
                 generator.writeEndArray();
-                generator.writeArrayFieldStart("presences");
+                generator.writeArrayPropertyStart("presences");
                 for (Presence presence : presences.keySet()) {
                     generator.writeTree(presenceJson(presence));
                 }
                 generator.writeEndArray();
 
-                generator.writeArrayFieldStart("completeness");
+                generator.writeArrayPropertyStart("completeness");
                 List<String> completenessKinds = callables == null ? KINDS : List.of(
                         "call", "callable", "import", "symbol",
                         "literal", "assignment", "parameter", "binding_target",
@@ -481,30 +481,30 @@ public final class EvidenceIrSealer {
                                     ? List.of("insufficient_type_name_environment")
                                     : List.of();
                     generator.writeStartObject();
-                    generator.writeStringField("kind", kind);
-                    generator.writeStringField("status", status);
+                    generator.writeStringProperty("kind", kind);
+                    generator.writeStringProperty("status", status);
                     if (!reasons.isEmpty()) {
-                        generator.writeStringField("reason", reasons.get(0));
-                        generator.writeArrayFieldStart("reasons");
+                        generator.writeStringProperty("reason", reasons.get(0));
+                        generator.writeArrayPropertyStart("reasons");
                         for (String reason : reasons) generator.writeString(reason);
                         generator.writeEndArray();
                     }
                     if ("call".equals(kind) && callSupported
                             && !unresolvedScopeFactIds.isEmpty()) {
-                        generator.writeArrayFieldStart("unresolvedScopeFactIds");
+                        generator.writeArrayPropertyStart("unresolvedScopeFactIds");
                         for (String factId : unresolvedScopeFactIds) generator.writeString(factId);
                         generator.writeEndArray();
                     }
                     if ("symbol".equals(kind) && !unresolvedSymbolFactIds.isEmpty()) {
-                        generator.writeArrayFieldStart("unresolvedFactIds");
+                        generator.writeArrayPropertyStart("unresolvedFactIds");
                         for (String factId : unresolvedSymbolFactIds) {
                             generator.writeString(factId);
                         }
                         generator.writeEndArray();
                     }
-                    generator.writeNumberField("population", emitted + unresolved);
-                    generator.writeNumberField("emitted", emitted);
-                    generator.writeNumberField("explicitlyUnresolved", unresolved);
+                    generator.writeNumberProperty("population", emitted + unresolved);
+                    generator.writeNumberProperty("emitted", emitted);
+                    generator.writeNumberProperty("explicitlyUnresolved", unresolved);
                     generator.writeEndObject();
                 }
                 generator.writeEndArray();
@@ -531,18 +531,18 @@ public final class EvidenceIrSealer {
     private static void writeConfiguredPreprocessing(
             JsonGenerator generator,
             ConfiguredPreprocessingEvidence configured) throws Exception {
-        generator.writeObjectFieldStart("configuredPreprocessing");
-        generator.writeStringField("version", configured.version());
-        generator.writeStringField("status", configured.status());
-        generator.writeStringField("trust", configured.trust());
+        generator.writeObjectPropertyStart("configuredPreprocessing");
+        generator.writeStringProperty("version", configured.version());
+        generator.writeStringProperty("status", configured.status());
+        generator.writeStringProperty("trust", configured.trust());
 
         var build = configured.build();
-        generator.writeObjectFieldStart("build");
-        generator.writeStringField("status",
+        generator.writeObjectPropertyStart("build");
+        generator.writeStringProperty("status",
                 build.status().name().toLowerCase(Locale.ROOT));
-        generator.writeNumberField("population", build.population());
-        generator.writeNumberField("emitted", build.emitted());
-        generator.writeNumberField("explicitlyUnresolved", build.explicitlyUnresolved());
+        generator.writeNumberProperty("population", build.population());
+        generator.writeNumberProperty("emitted", build.emitted());
+        generator.writeNumberProperty("explicitlyUnresolved", build.explicitlyUnresolved());
         writeStringArray(generator, "commandOccurrenceIds", build.commandOccurrenceIds());
         writeStringArray(generator, "emittedCommandOccurrenceIds",
                 build.emittedCommandOccurrenceIds());
@@ -554,11 +554,11 @@ public final class EvidenceIrSealer {
         generator.writeEndObject();
 
         var trace = configured.trace();
-        generator.writeObjectFieldStart("trace");
-        generator.writeStringField("status", trace.status());
-        generator.writeNumberField("population", trace.population());
-        generator.writeNumberField("emitted", trace.emitted());
-        generator.writeNumberField("explicitlyUnresolved", trace.explicitlyUnresolved());
+        generator.writeObjectPropertyStart("trace");
+        generator.writeStringProperty("status", trace.status());
+        generator.writeNumberProperty("population", trace.population());
+        generator.writeNumberProperty("emitted", trace.emitted());
+        generator.writeNumberProperty("explicitlyUnresolved", trace.explicitlyUnresolved());
         writeStringArray(generator, "evidenceIds", trace.evidenceIds());
         writeStringArray(generator, "emittedEvidenceIds", trace.emittedEvidenceIds());
         writeStringArray(generator, "unresolvedEvidenceIds", trace.unresolvedEvidenceIds());
@@ -569,7 +569,7 @@ public final class EvidenceIrSealer {
 
     private static void writeStringArray(JsonGenerator generator, String field,
                                          List<String> values) throws Exception {
-        generator.writeArrayFieldStart(field);
+        generator.writeArrayPropertyStart(field);
         for (String value : values) {
             generator.writeString(value);
         }

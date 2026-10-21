@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 
 import legacymodernizer.parser.api.stream.ParseEventSink;
 import legacymodernizer.parser.api.stream.ParseStreamEvent;

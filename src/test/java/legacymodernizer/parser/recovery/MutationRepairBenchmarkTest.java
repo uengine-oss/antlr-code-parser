@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.intake.SourceIntakeClassifier;
@@ -234,19 +234,19 @@ class MutationRepairBenchmarkTest {
     private boolean partialChildrenMatchOriginal(String cleanAstJson, String partialAstJson)
             throws Exception {
         java.util.Set<String> cleanChildren = new java.util.HashSet<>();
-        for (com.fasterxml.jackson.databind.JsonNode child
+        for (tools.jackson.databind.JsonNode child
                 : mapper.readTree(cleanAstJson).path("children")) {
             cleanChildren.add(normalizedChild(child));
         }
-        for (com.fasterxml.jackson.databind.JsonNode child
+        for (tools.jackson.databind.JsonNode child
                 : mapper.readTree(partialAstJson).path("children")) {
             if (!cleanChildren.contains(normalizedChild(child))) return false;
         }
         return true;
     }
 
-    private String normalizedChild(com.fasterxml.jackson.databind.JsonNode child) {
-        com.fasterxml.jackson.databind.JsonNode copy = child.deepCopy();
+    private String normalizedChild(tools.jackson.databind.JsonNode child) {
+        tools.jackson.databind.JsonNode copy = child.deepCopy();
         stripComments(copy);
         stripCoordinates(copy);
         return copy.toString();
@@ -260,8 +260,8 @@ class MutationRepairBenchmarkTest {
      * a recovery-fidelity gap (unit boundaries exclude leading comments), not a wrong repair.
      */
     private AstMatch compareAst(String cleanAstJson, String repairedAstJson) throws Exception {
-        var clean = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(cleanAstJson);
-        var repaired = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.readTree(repairedAstJson);
+        var clean = (tools.jackson.databind.node.ObjectNode) mapper.readTree(cleanAstJson);
+        var repaired = (tools.jackson.databind.node.ObjectNode) mapper.readTree(repairedAstJson);
         Stream.of(clean, repaired).forEach(node -> {
             node.remove("name");
             node.remove("fileName");
@@ -277,16 +277,16 @@ class MutationRepairBenchmarkTest {
         return clean.equals(repaired) ? AstMatch.COORD_ONLY : AstMatch.DIFFERENT;
     }
 
-    private static void stripCoordinates(com.fasterxml.jackson.databind.JsonNode node) {
-        if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode object) {
+    private static void stripCoordinates(tools.jackson.databind.JsonNode node) {
+        if (node instanceof tools.jackson.databind.node.ObjectNode object) {
             object.remove("startLine");
             object.remove("endLine");
         }
         node.path("children").forEach(MutationRepairBenchmarkTest::stripCoordinates);
     }
 
-    private static void stripComments(com.fasterxml.jackson.databind.JsonNode node) {
-        if (node instanceof com.fasterxml.jackson.databind.node.ObjectNode object) {
+    private static void stripComments(tools.jackson.databind.JsonNode node) {
+        if (node instanceof tools.jackson.databind.node.ObjectNode object) {
             object.remove("comment");
         }
         node.path("children").forEach(MutationRepairBenchmarkTest::stripComments);

@@ -20,8 +20,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import legacymodernizer.parser.api.stream.ParseStreamEvent;
 import legacymodernizer.parser.intake.ParserWorkspace;
@@ -64,7 +64,7 @@ class ShopmallParseQualityTest {
         assertEquals(124, actual.size());
 
         List<String> mismatches = new ArrayList<>();
-        expected.fields().forEachRemaining(entry -> compare(
+        expected.properties().forEach(entry -> compare(
                 entry.getKey(), entry.getValue(), actual, mismatches));
         assertTrue(mismatches.isEmpty(), String.join("\n", mismatches));
 

@@ -7,10 +7,11 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.node.ObjectNode;
 
 import legacymodernizer.parser.recovery.quality.DeclarationCoverage;
 import legacymodernizer.parser.recovery.diagnostics.ParseDiagnostic;
@@ -45,9 +46,10 @@ public final class FailureEnvelopeFactory {
     private static final int DIAGNOSTIC_WINDOW_RADIUS = 96;
     private static final int DIAGNOSTIC_WINDOW_TOKEN_CAP = 256;
 
-    private final ObjectMapper canonicalMapper = new ObjectMapper()
+    private final ObjectMapper canonicalMapper = JsonMapper.builder()
             .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
-            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
+            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+            .build();
     private final ErrorSpanLocator locator = new ErrorSpanLocator();
 
     public FailureEnvelope create(String language, String fileSha256, SourceUnit unit,

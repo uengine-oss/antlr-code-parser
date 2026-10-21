@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 
 import legacymodernizer.parser.recovery.orchestration.TokenBudgetSemaphore;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;

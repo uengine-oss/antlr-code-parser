@@ -11,11 +11,12 @@ import java.time.Duration;
 
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 @Component
 public final class StructuredRepairAgent implements RepairAgent {
@@ -75,8 +76,9 @@ public final class StructuredRepairAgent implements RepairAgent {
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))
                 .build();
-        this.objectMapper = new ObjectMapper()
-                .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        this.objectMapper = JsonMapper.builder()
+                .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .build();
         this.systemPrompt = loadSystemPrompt();
         this.promptAssembler = new RepairPromptAssembler(new RepairSkillCatalog());
     }
@@ -125,8 +127,9 @@ public final class StructuredRepairAgent implements RepairAgent {
         this.thinkingEnabled = thinkingEnabled;
         this.topK = topK;
         this.httpClient = httpClient;
-        this.objectMapper = objectMapper.enable(
-                DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        this.objectMapper = objectMapper.rebuild()
+                .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                .build();
         this.systemPrompt = systemPrompt;
         this.promptAssembler = promptAssembler;
     }

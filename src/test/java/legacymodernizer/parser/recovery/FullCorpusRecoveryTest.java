@@ -23,8 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 import legacymodernizer.parser.intake.ParserWorkspace;
@@ -376,10 +376,10 @@ class FullCorpusRecoveryTest {
     private static void removeElapsedMillis(JsonNode node) {
         if (node == null) return;
         if (node.isObject()) {
-            ((com.fasterxml.jackson.databind.node.ObjectNode) node).remove("elapsedMillis");
-            ((com.fasterxml.jackson.databind.node.ObjectNode) node)
+            ((tools.jackson.databind.node.ObjectNode) node).remove("elapsedMillis");
+            ((tools.jackson.databind.node.ObjectNode) node)
                     .remove("processingElapsedMillis");
-            node.elements().forEachRemaining(FullCorpusRecoveryTest::removeElapsedMillis);
+            node.values().forEach(FullCorpusRecoveryTest::removeElapsedMillis);
         } else if (node.isArray()) {
             node.forEach(FullCorpusRecoveryTest::removeElapsedMillis);
         }

@@ -8,9 +8,10 @@ import java.nio.file.Path;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
 
 import legacymodernizer.parser.parsing.RawParseResult;
 import legacymodernizer.parser.recovery.evidence.RecoveryOutcome;
@@ -20,10 +21,11 @@ import legacymodernizer.parser.intake.ParserWorkspace;
 public final class ParseDiagnosticsWriter {
 
     private final ParserWorkspace parserWorkspace;
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+    private final ObjectMapper objectMapper = JsonMapper.builder()
+            .changeDefaultPropertyInclusion(v -> v.withValueInclusion(JsonInclude.Include.NON_NULL))
             .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
-            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
+            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+            .build();
 
     public ParseDiagnosticsWriter(ParserWorkspace parserWorkspace) {
         this.parserWorkspace = parserWorkspace;

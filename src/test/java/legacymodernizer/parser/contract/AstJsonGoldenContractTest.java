@@ -15,8 +15,8 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.intake.SourceIntakeClassifier;
@@ -143,7 +143,7 @@ class AstJsonGoldenContractTest {
                 "children must always be an array");
 
         List<String> fields = new ArrayList<>();
-        node.fieldNames().forEachRemaining(fields::add);
+        node.propertyNames().forEach(fields::add);
         int previous = -1;
         for (String field : fields) {
             assertTrue(PROPERTY_ORDER.contains(field), "Unknown Node JSON property: " + field);

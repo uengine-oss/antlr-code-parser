@@ -12,11 +12,12 @@ import java.util.List;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.intake.SourceIntakeClassifier;
@@ -101,7 +102,7 @@ class EvidenceCurrentBenchmarkTest {
                 .mapToLong(pool -> pool.getPeakUsage().getUsed()).sum());
         report.set("files", files);
         Files.createDirectories(reportPath.getParent());
-        new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT)
+        JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build()
                 .writeValue(reportPath.toFile(), report);
     }
 

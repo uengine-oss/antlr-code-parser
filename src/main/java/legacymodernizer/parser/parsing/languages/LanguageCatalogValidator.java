@@ -14,11 +14,12 @@ import java.util.regex.Pattern;
 import org.antlr.v4.runtime.RuntimeMetaData;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.node.ObjectNode;
 
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 
@@ -30,9 +31,10 @@ public final class LanguageCatalogValidator {
     private static final Pattern LANGUAGE_ID = Pattern.compile("[a-z][a-z0-9-]*");
     private static final Pattern SHA256 = Pattern.compile("[0-9a-f]{64}");
 
-    private final ObjectMapper objectMapper = new ObjectMapper()
+    private final ObjectMapper objectMapper = JsonMapper.builder()
             .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
-            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
+            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+            .build();
     private LanguageCatalog cachedCatalog;
 
     public synchronized LanguageCatalog load() {
@@ -222,11 +224,7 @@ public final class LanguageCatalogValidator {
     private String checksum(LanguageCatalog catalog) {
         JsonNode tree = objectMapper.valueToTree(catalog);
         ((ObjectNode) tree).remove("catalogSha256");
-        try {
-            return Hashes.sha256(objectMapper.writeValueAsBytes(tree));
-        } catch (IOException exception) {
-            throw new IllegalStateException("Cannot checksum language catalog", exception);
-        }
+        return Hashes.sha256(objectMapper.writeValueAsBytes(tree));
     }
 
     private static boolean isSupportedSchema(String version) {

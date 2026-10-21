@@ -12,8 +12,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
 
 import legacymodernizer.parser.recovery.quality.QualityDecision;
 import legacymodernizer.parser.parsing.RawParseResult;
@@ -67,7 +68,7 @@ class OracleCorpusRecoveryTest {
         report.put("units", outcome.units());
         Path reportPath = Path.of("target", "corpus-reports", "ams-recovery.json");
         Files.createDirectories(reportPath.getParent());
-        new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT).writeValue(reportPath.toFile(), report);
+        JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build().writeValue(reportPath.toFile(), report);
 
         assertEquals(originalHash, Hashes.sha256(Files.readAllBytes(original)), "Original corpus file changed");
         assertTrue(outcome.units().size() >= 1);

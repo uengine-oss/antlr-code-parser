@@ -13,8 +13,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
 
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.intake.SourceIntakeClassifier;
@@ -69,7 +70,7 @@ class PostgreSqlCorpusCompatibilityTest {
         report.put("deterministic", first.astJson().equals(second.astJson()));
         Path reportPath = Path.of("target", "corpus-reports", "postgresql-corpus.json");
         Files.createDirectories(reportPath.getParent());
-        new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT)
+        JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build()
                 .writeValue(reportPath.toFile(), report);
 
         assertEquals(originalHash, Hashes.sha256(Files.readAllBytes(original)),

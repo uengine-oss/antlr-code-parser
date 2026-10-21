@@ -15,10 +15,11 @@ import java.util.TreeSet;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
 
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
@@ -30,10 +31,11 @@ public final class RepairPromotionReporter {
     private static final String REPORT_NAME = "promotion-candidates.json";
 
     private final ParserWorkspace parserWorkspace;
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .setSerializationInclusion(JsonInclude.Include.NON_NULL)
+    private final ObjectMapper objectMapper = JsonMapper.builder()
+            .changeDefaultPropertyInclusion(v -> v.withValueInclusion(JsonInclude.Include.NON_NULL))
             .enable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
-            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
+            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+            .build();
 
     public RepairPromotionReporter(ParserWorkspace parserWorkspace) {
         this.parserWorkspace = parserWorkspace;

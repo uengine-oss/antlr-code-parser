@@ -23,11 +23,12 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 import legacymodernizer.parser.intake.ParserWorkspace;
 import legacymodernizer.parser.intake.SourceIntakeClassifier;
@@ -728,7 +729,7 @@ class SemanticEvidenceActualCorpusTest {
         }
 
         Files.createDirectories(reportPath.getParent());
-        new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT)
+        JsonMapper.builder().enable(SerializationFeature.INDENT_OUTPUT).build()
                 .writeValue(reportPath.toFile(), report);
     }
 
@@ -811,7 +812,7 @@ class SemanticEvidenceActualCorpusTest {
 
     private static JsonNode nodeWithoutType(JsonNode node, String omittedType) {
         if (omittedType.equals(node.path("type").asText())) return null;
-        ObjectNode copy = node.deepCopy();
+        ObjectNode copy = (ObjectNode) node.deepCopy();
         if (node.has("children")) {
             ArrayNode children = JSON.createArrayNode();
             for (JsonNode child : node.path("children")) {

@@ -12,10 +12,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 
@@ -49,7 +49,7 @@ public final class CompilationDatabaseLoader {
         JsonNode root;
         try {
             root = JSON.readTree(raw);
-        } catch (IOException | RuntimeException malformed) {
+        } catch (RuntimeException malformed) {
             return unresolved(normalizedPath, rawSha256,
                     "insufficient_compilation_database_syntax");
         }
@@ -215,7 +215,7 @@ public final class CompilationDatabaseLoader {
         if (node.isObject()) {
             ObjectNode result = JSON.createObjectNode();
             TreeMap<String, JsonNode> ordered = new TreeMap<>();
-            node.fields().forEachRemaining(entry -> ordered.put(entry.getKey(), entry.getValue()));
+            node.properties().forEach(entry -> ordered.put(entry.getKey(), entry.getValue()));
             ordered.forEach((field, value) -> result.set(field, canonicalize(value)));
             return result;
         }
