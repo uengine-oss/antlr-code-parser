@@ -19,8 +19,10 @@ import tools.jackson.databind.MapperFeature;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
+import legacymodernizer.parser.recovery.workingcopy.CanonicalJson;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 
 @Service
@@ -221,11 +223,25 @@ public final class LanguageCatalogValidator {
         }
     }
 
+    /**
+     * 카탈로그의 지문.
+     *
+     * ⚠ **키 순서를 우리가 정한다** (2026-10-22). 전에는 매퍼의
+     * `SORT_PROPERTIES_ALPHABETICALLY` 에 기대 정렬된 JSON 이 나오는 것을
+     * 전제로 지문을 떴다. Boot 4(Jackson 3)로 옮기자 그 기능이 record 에
+     * 적용되지 않아 **선언 순서**로 나왔고, 내용은 한 글자도 안 바뀌었는데
+     * 지문만 달라져 `checksum mismatch` 로 파싱이 통째로 멈췄다(실측).
+     *
+     * 지문이 **직렬화기의 기본값에 매달려 있으면** 라이브러리가 움직일 때마다
+     * 같은 일이 난다. 그래서 여기서 **직접 정렬한다** — 배열은 순서가 데이터
+     * 자체이므로 그대로 두고, 객체 키만 재귀로 정렬한다.
+     */
     private String checksum(LanguageCatalog catalog) {
         JsonNode tree = objectMapper.valueToTree(catalog);
         ((ObjectNode) tree).remove("catalogSha256");
-        return Hashes.sha256(objectMapper.writeValueAsBytes(tree));
+        return CanonicalJson.sha256(objectMapper, tree);
     }
+
 
     private static boolean isSupportedSchema(String version) {
         return isSemanticVersion(version) && version.startsWith("1.");

@@ -6,9 +6,26 @@ FROM maven:3.9-eclipse-temurin-17 AS builder
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
+# 문법 원본도 넣는다 (2026-10-22) — 카탈로그 테스트가 `antlr-grammars/*.g4` 의
+# sha256 핀을 **실제 파일과** 맞춘다. 빌더 단계에만 들어가고 런타임 이미지에는
+# 안 실린다.
+COPY antlr-grammars ./antlr-grammars
 
 # Build the application
-RUN mvn clean package -DskipTests -B
+#
+# ⚠ **카탈로그·계약 테스트는 빌드에서 돈다** (2026-10-22).
+#
+# 전에는 `-DskipTests` 로 전부 건너뛰었다. 그 사이에 **두 달 동안 세 가지가
+# 조용히 깨져 있었다**:
+#   · 문법 파일 네 개의 sha256 핀이 카탈로그와 어긋났다(2026-08 변경 뒤로)
+#   · `core.autocrlf` 때문에 테스트 입력이 CRLF 로 깔려 골든이 전부 틀어졌다
+#   · Boot 4 이식에서 `EvidenceIrSealer` 가 죽어 **Java 파싱이 안 됐다**
+#     (`writeTree()` → `UnsupportedOperationException`)
+# 마지막 것은 **설치본까지 나갔고**, 사용자가 코드 분석을 돌려서야 드러났다.
+#
+# 전부 돌리면 말뭉치 테스트까지 끌려와 느리다. 그래서 **바이트 계약을 지키는
+# 것만** 돌린다 — 약 3분 30초다. 이 셋이 제품의 출력 모양을 고정한다.
+RUN mvn -B clean package       -Dtest='LanguageCatalogValidationTest,*ContractTest'       -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false
 
 # Runtime stage (멀티플랫폼 지원)
 # ⚠ 베이스를 `17-jre` 가 아니라 **`17-jre-noble`** 로 둔다 (2026-10-20 · done15 §298).

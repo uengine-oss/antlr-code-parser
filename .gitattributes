@@ -1,0 +1,26 @@
+# 바이트 계약이 걸린 파일은 **플랫폼과 무관하게 LF** 다 (2026-10-22).
+#
+# ## 왜 필요했나
+#
+# 이 저장소에는 **바이트 단위로 비교하는 계약 테스트**가 있다 —
+# `AstJsonGoldenContractTest` 는 파서가 낸 JSON 을 골든 파일과 **바이트로**
+# 맞추고, `FailureEnvelopeContractTest` 는 고정 입력의 체크섬을 맞추며,
+# `LanguageCatalogValidationTest` 는 문법 파일의 sha256 핀을 맞춘다.
+#
+# 그런데 이 PC 는 `core.autocrlf=true` 이고 `.gitattributes` 가 없었다.
+# 그래서 체크아웃하면 테스트 입력이 **CRLF** 로 깔리는데, 골든과 핀은
+# **LF** 로 만들어진 값이었다. 결과는 세 테스트의 지속적인 실패였고,
+# 이미지 빌드가 `-DskipTests` 라 **두 달 가까이 아무도 몰랐다**
+# (2026-08 에 문법이 바뀐 뒤로).
+#
+# 줄바꿈은 내용이 아니다. 그런데 바이트로 재는 테스트에게는 내용이다.
+# 그래서 **그 테스트들이 읽는 것만** 못 박는다.
+
+# 파서 입력 고정물 · 골든 · 계약 fixture
+src/test/resources/** text eol=lf
+
+# 카탈로그가 sha256 으로 핀하는 문법 원본
+antlr-grammars/*.g4 text eol=lf
+
+# 그 핀을 담은 카탈로그 자신
+src/main/resources/languages/*.json text eol=lf

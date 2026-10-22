@@ -20,6 +20,7 @@ import legacymodernizer.parser.recovery.evidence.RecoveryAttemptEvidence;
 import legacymodernizer.parser.recovery.localization.ContextSlice;
 import legacymodernizer.parser.recovery.localization.ErrorSpanLocator;
 import legacymodernizer.parser.recovery.boundaries.SourceUnit;
+import legacymodernizer.parser.recovery.workingcopy.CanonicalJson;
 import legacymodernizer.parser.recovery.workingcopy.Hashes;
 
 import java.nio.charset.StandardCharsets;
@@ -164,7 +165,9 @@ public final class FailureEnvelopeFactory {
         try {
             ObjectNode payload = canonicalMapper.valueToTree(envelope);
             payload.remove("failureEnvelopeHash");
-            return Hashes.sha256(canonicalMapper.writeValueAsBytes(payload));
+            // ⚠ 키 순서를 **우리가** 정한다 (2026-10-22 · CanonicalJson 주석 참고).
+            //    매퍼의 정렬 기능에 기대면 라이브러리가 바뀔 때 지문이 흔들린다.
+            return CanonicalJson.sha256(canonicalMapper, payload);
         } catch (Exception error) {
             throw new IllegalStateException("FAILURE_ENVELOPE_SERIALIZATION_FAILED", error);
         }

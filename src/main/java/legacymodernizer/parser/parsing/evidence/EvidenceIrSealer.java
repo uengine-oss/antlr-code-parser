@@ -216,7 +216,15 @@ public final class EvidenceIrSealer {
             StringWriter output = new StringWriter(legacyJson.length() + source.length());
             output.write(legacyJson, 0, legacyJson.length() - 1);
             output.write(",\"evidence\":");
-            try (JsonGenerator generator = JSON.tokenStreamFactory().createGenerator(output)) {
+            // ⚠ **매퍼에서 생성기를 만든다** (2026-10-22 · Jackson 3).
+            //
+            // Jackson 2 에서는 `getFactory().createGenerator()` 로 만든 생성기도
+            // `writeTree()` 가 됐다 — 팩토리에 코덱(ObjectMapper)이 붙어 있었다.
+            // Jackson 3 은 코덱 개념을 없앴고, 팩토리에서 직접 만든 생성기는
+            // **빈 `ObjectWriteContext`** 를 들고 있어 `writeTree()` 가
+            // `UnsupportedOperationException` 으로 죽는다. 그러면 `sealExact` 가
+            // 통째로 실패해 **Java 파일 파싱이 안 된다**(계약 테스트 52건이 이것).
+            try (JsonGenerator generator = JSON.createGenerator(output)) {
                 generator.writeStartObject();
                 generator.writeStringProperty("version", callables != null
                         ? STRUCTURAL_VERSION
