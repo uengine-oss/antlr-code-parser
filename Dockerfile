@@ -47,7 +47,12 @@ RUN mvn -B clean package       -Dtest='LanguageCatalogValidationTest,*ContractTe
 FROM eclipse-temurin:17-jre-noble
 
 WORKDIR /app
+# ⚠ **보안 고침을 받는다.** 2026-10-29 에 `brotli` 가 고위험 1건으로 떴는데
+#    (CVE-2026-111497 · **CISA KEV**) 우리가 깐 것이 아니라 **베이스 이미지에 있던
+#    것**이었다. 우분투는 고친 판을 이미 냈고, `install` 만 해서는 안 걷힌다.
+#    ⚠ 같은 레이어에서 해야 한다 — 다음 레이어에서 고치면 옛 판이 그대로 남는다.
 RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
