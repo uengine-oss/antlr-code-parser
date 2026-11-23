@@ -26,7 +26,7 @@ final class MultipartPost {
             out.write("\r\n".getBytes(StandardCharsets.UTF_8));
         }
         out.write(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
-        HttpRequest req = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/fileUpload"))
+        HttpRequest req = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/antlr/fileUpload"))
                 .header("Content-Type", "multipart/form-data; boundary=" + boundary)
                 .POST(HttpRequest.BodyPublishers.ofByteArray(out.toByteArray()))
                 .build();

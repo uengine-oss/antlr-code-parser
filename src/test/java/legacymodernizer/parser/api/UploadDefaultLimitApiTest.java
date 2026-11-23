@@ -1,7 +1,6 @@
 package legacymodernizer.parser.api;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.net.http.HttpResponse;
 
@@ -31,12 +30,12 @@ class UploadDefaultLimitApiTest {
     @Test
     void twoMegabyteFileIsNotRejectedForSize() throws Exception {
         HttpResponse<String> r = MultipartPost.files(port, 1, 2 * 1024 * 1024, "src/Big.java");
-        assertNotEquals(413, r.statusCode(), r.body());
+        assertEquals(200, r.statusCode(), r.body());
     }
 
     @Test
     void sixtyKoreanPathFilesPass() throws Exception {   // 11-20 현장 모양: 한글 경로 · 파일 50개 넘게
         HttpResponse<String> r = MultipartPost.files(port, 60, 100, "소스/업무/인사관리/급여계산/모듈#.java");
-        assertNotEquals(413, r.statusCode(), r.body());
+        assertEquals(200, r.statusCode(), r.body());
     }
 }
