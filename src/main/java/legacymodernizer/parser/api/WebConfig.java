@@ -38,15 +38,32 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(Map.of("detail", detail != null ? detail : ""));
     }
 
+    private final org.springframework.core.env.Environment env;
+
+    GlobalExceptionHandler(org.springframework.core.env.Environment env) {
+        this.env = env;
+    }
+
+    /** 어느 한도에 걸렸는지 골라 그 한도 값으로 알린다 — {@link UploadLimitMessages}. */
     @ExceptionHandler(MultipartException.class)
     public ResponseEntity<Map<String, String>> handleMultipartException(MultipartException ex) {
-        if (ex instanceof MaxUploadSizeExceededException) {
-            return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                    .body(Map.of("error", "파일 크기가 제한을 초과했습니다. 최대 파일 크기: 100MB, 최대 요청 크기: 500MB"));
+        UploadLimitMessages.Reason reason = UploadLimitMessages.classify(ex);
+        if (reason == UploadLimitMessages.Reason.NOT_A_LIMIT && ex instanceof MaxUploadSizeExceededException) {
+            reason = UploadLimitMessages.Reason.LIMIT_OTHER;
         }
-        String message = ex.getMessage();
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("error", "파일 업로드 처리 중 오류가 발생했습니다: " + (message != null ? message : "")));
+        // 원문은 서버 로그에만 — 화면 문구로 못 고른 경우에도 원인을 찾을 수 있게.
+        org.slf4j.LoggerFactory.getLogger(getClass()).warn("[업로드 거절] {} — {}", reason, rootMessage(ex));
+        return ResponseEntity.status(UploadLimitMessages.status(reason))
+                .body(UploadLimitMessages.body(reason, env, ex));
+    }
+
+    private static String rootMessage(Throwable ex) {
+        StringBuilder sb = new StringBuilder();
+        for (Throwable t = ex; t != null; t = t.getCause() == t ? null : t.getCause()) {
+            if (sb.length() > 0) sb.append(" ← ");
+            sb.append(t.getClass().getSimpleName()).append(": ").append(t.getMessage());
+        }
+        return sb.toString();
     }
 
     @ExceptionHandler(Exception.class)
